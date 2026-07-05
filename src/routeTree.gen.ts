@@ -9,38 +9,248 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TerapieRouteImport } from './routes/terapie'
+import { Route as StoricoRouteImport } from './routes/storico'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as ScorteRouteImport } from './routes/scorte'
+import { Route as ReportRouteImport } from './routes/report'
+import { Route as PazienteRouteImport } from './routes/paziente'
+import { Route as NotificheRouteImport } from './routes/notifiche'
+import { Route as ImpostazioniRouteImport } from './routes/impostazioni'
+import { Route as CaregiverRouteImport } from './routes/caregiver'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PazientiIndexRouteImport } from './routes/pazienti.index'
+import { Route as PazientiIdRouteImport } from './routes/pazienti.$id'
 
+const TerapieRoute = TerapieRouteImport.update({
+  id: '/terapie',
+  path: '/terapie',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoricoRoute = StoricoRouteImport.update({
+  id: '/storico',
+  path: '/storico',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScorteRoute = ScorteRouteImport.update({
+  id: '/scorte',
+  path: '/scorte',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportRoute = ReportRouteImport.update({
+  id: '/report',
+  path: '/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PazienteRoute = PazienteRouteImport.update({
+  id: '/paziente',
+  path: '/paziente',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificheRoute = NotificheRouteImport.update({
+  id: '/notifiche',
+  path: '/notifiche',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImpostazioniRoute = ImpostazioniRouteImport.update({
+  id: '/impostazioni',
+  path: '/impostazioni',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CaregiverRoute = CaregiverRouteImport.update({
+  id: '/caregiver',
+  path: '/caregiver',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PazientiIndexRoute = PazientiIndexRouteImport.update({
+  id: '/pazienti/',
+  path: '/pazienti/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PazientiIdRoute = PazientiIdRouteImport.update({
+  id: '/pazienti/$id',
+  path: '/pazienti/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/caregiver': typeof CaregiverRoute
+  '/impostazioni': typeof ImpostazioniRoute
+  '/notifiche': typeof NotificheRoute
+  '/paziente': typeof PazienteRoute
+  '/report': typeof ReportRoute
+  '/scorte': typeof ScorteRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/storico': typeof StoricoRoute
+  '/terapie': typeof TerapieRoute
+  '/pazienti/$id': typeof PazientiIdRoute
+  '/pazienti/': typeof PazientiIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/caregiver': typeof CaregiverRoute
+  '/impostazioni': typeof ImpostazioniRoute
+  '/notifiche': typeof NotificheRoute
+  '/paziente': typeof PazienteRoute
+  '/report': typeof ReportRoute
+  '/scorte': typeof ScorteRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/storico': typeof StoricoRoute
+  '/terapie': typeof TerapieRoute
+  '/pazienti/$id': typeof PazientiIdRoute
+  '/pazienti': typeof PazientiIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/caregiver': typeof CaregiverRoute
+  '/impostazioni': typeof ImpostazioniRoute
+  '/notifiche': typeof NotificheRoute
+  '/paziente': typeof PazienteRoute
+  '/report': typeof ReportRoute
+  '/scorte': typeof ScorteRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/storico': typeof StoricoRoute
+  '/terapie': typeof TerapieRoute
+  '/pazienti/$id': typeof PazientiIdRoute
+  '/pazienti/': typeof PazientiIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/caregiver'
+    | '/impostazioni'
+    | '/notifiche'
+    | '/paziente'
+    | '/report'
+    | '/scorte'
+    | '/sitemap.xml'
+    | '/storico'
+    | '/terapie'
+    | '/pazienti/$id'
+    | '/pazienti/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/caregiver'
+    | '/impostazioni'
+    | '/notifiche'
+    | '/paziente'
+    | '/report'
+    | '/scorte'
+    | '/sitemap.xml'
+    | '/storico'
+    | '/terapie'
+    | '/pazienti/$id'
+    | '/pazienti'
+  id:
+    | '__root__'
+    | '/'
+    | '/caregiver'
+    | '/impostazioni'
+    | '/notifiche'
+    | '/paziente'
+    | '/report'
+    | '/scorte'
+    | '/sitemap.xml'
+    | '/storico'
+    | '/terapie'
+    | '/pazienti/$id'
+    | '/pazienti/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CaregiverRoute: typeof CaregiverRoute
+  ImpostazioniRoute: typeof ImpostazioniRoute
+  NotificheRoute: typeof NotificheRoute
+  PazienteRoute: typeof PazienteRoute
+  ReportRoute: typeof ReportRoute
+  ScorteRoute: typeof ScorteRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  StoricoRoute: typeof StoricoRoute
+  TerapieRoute: typeof TerapieRoute
+  PazientiIdRoute: typeof PazientiIdRoute
+  PazientiIndexRoute: typeof PazientiIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terapie': {
+      id: '/terapie'
+      path: '/terapie'
+      fullPath: '/terapie'
+      preLoaderRoute: typeof TerapieRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/storico': {
+      id: '/storico'
+      path: '/storico'
+      fullPath: '/storico'
+      preLoaderRoute: typeof StoricoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scorte': {
+      id: '/scorte'
+      path: '/scorte'
+      fullPath: '/scorte'
+      preLoaderRoute: typeof ScorteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/report': {
+      id: '/report'
+      path: '/report'
+      fullPath: '/report'
+      preLoaderRoute: typeof ReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/paziente': {
+      id: '/paziente'
+      path: '/paziente'
+      fullPath: '/paziente'
+      preLoaderRoute: typeof PazienteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifiche': {
+      id: '/notifiche'
+      path: '/notifiche'
+      fullPath: '/notifiche'
+      preLoaderRoute: typeof NotificheRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/impostazioni': {
+      id: '/impostazioni'
+      path: '/impostazioni'
+      fullPath: '/impostazioni'
+      preLoaderRoute: typeof ImpostazioniRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/caregiver': {
+      id: '/caregiver'
+      path: '/caregiver'
+      fullPath: '/caregiver'
+      preLoaderRoute: typeof CaregiverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +258,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pazienti/': {
+      id: '/pazienti/'
+      path: '/pazienti'
+      fullPath: '/pazienti/'
+      preLoaderRoute: typeof PazientiIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pazienti/$id': {
+      id: '/pazienti/$id'
+      path: '/pazienti/$id'
+      fullPath: '/pazienti/$id'
+      preLoaderRoute: typeof PazientiIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CaregiverRoute: CaregiverRoute,
+  ImpostazioniRoute: ImpostazioniRoute,
+  NotificheRoute: NotificheRoute,
+  PazienteRoute: PazienteRoute,
+  ReportRoute: ReportRoute,
+  ScorteRoute: ScorteRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
+  StoricoRoute: StoricoRoute,
+  TerapieRoute: TerapieRoute,
+  PazientiIdRoute: PazientiIdRoute,
+  PazientiIndexRoute: PazientiIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
