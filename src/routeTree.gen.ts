@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as GuidaRouteImport } from './routes/guida'
 import { Route as TerapieRouteImport } from './routes/terapie'
 import { Route as StoricoRouteImport } from './routes/storico'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -18,16 +17,12 @@ import { Route as ReportRouteImport } from './routes/report'
 import { Route as PazienteRouteImport } from './routes/paziente'
 import { Route as NotificheRouteImport } from './routes/notifiche'
 import { Route as ImpostazioniRouteImport } from './routes/impostazioni'
+import { Route as GuidaRouteImport } from './routes/guida'
 import { Route as CaregiverRouteImport } from './routes/caregiver'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PazientiIndexRouteImport } from './routes/pazienti.index'
 import { Route as PazientiIdRouteImport } from './routes/pazienti.$id'
 
-const GuidaRoute = GuidaRouteImport.update({
-  id: '/guida',
-  path: '/guida',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TerapieRoute = TerapieRouteImport.update({
   id: '/terapie',
   path: '/terapie',
@@ -66,6 +61,11 @@ const NotificheRoute = NotificheRouteImport.update({
 const ImpostazioniRoute = ImpostazioniRouteImport.update({
   id: '/impostazioni',
   path: '/impostazioni',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuidaRoute = GuidaRouteImport.update({
+  id: '/guida',
+  path: '/guida',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CaregiverRoute = CaregiverRouteImport.update({
@@ -201,13 +201,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/guida': {
-      id: '/guida'
-      path: '/guida'
-      fullPath: '/guida'
-      preLoaderRoute: typeof GuidaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/terapie': {
       id: '/terapie'
       path: '/terapie'
@@ -262,6 +255,13 @@ declare module '@tanstack/react-router' {
       path: '/impostazioni'
       fullPath: '/impostazioni'
       preLoaderRoute: typeof ImpostazioniRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guida': {
+      id: '/guida'
+      path: '/guida'
+      fullPath: '/guida'
+      preLoaderRoute: typeof GuidaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/caregiver': {
