@@ -7,12 +7,13 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { FamilyMedProvider } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
+import { InstallBanner } from "../components/InstallBanner";
 
 function NotFoundComponent() {
   return (
@@ -86,7 +87,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "PWA per gestire la terapia farmacologica di persone anziane: promemoria, conferme in un tap, monitoraggio live per i familiari.",
       },
       { name: "author", content: "FamilyMed" },
-      { name: "theme-color", content: "#f7f3ea" },
+      { name: "theme-color", content: "#6366f1" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-title", content: "FamilyMed" },
+      { name: "mobile-web-app-capable", content: "yes" },
       { property: "og:title", content: "FamilyMed — Terapia condivisa in famiglia" },
       {
         property: "og:description",
@@ -99,6 +104,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "manifest", href: "/manifest.json" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -130,11 +137,23 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    if ("serviceWorker" in navigator && typeof window !== "undefined") {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((reg) => console.log("[SW] Registered:", reg.scope))
+          .catch((err) => console.warn("[SW] Registration failed:", err));
+      });
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <FamilyMedProvider>
         <Outlet />
         <Toaster position="top-center" richColors />
+        <InstallBanner />
       </FamilyMedProvider>
     </QueryClientProvider>
   );

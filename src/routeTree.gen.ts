@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as GuidaRouteImport } from './routes/guida'
 import { Route as TerapieRouteImport } from './routes/terapie'
 import { Route as StoricoRouteImport } from './routes/storico'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -22,6 +23,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PazientiIndexRouteImport } from './routes/pazienti.index'
 import { Route as PazientiIdRouteImport } from './routes/pazienti.$id'
 
+const GuidaRoute = GuidaRouteImport.update({
+  id: '/guida',
+  path: '/guida',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TerapieRoute = TerapieRouteImport.update({
   id: '/terapie',
   path: '/terapie',
@@ -86,6 +92,7 @@ const PazientiIdRoute = PazientiIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/caregiver': typeof CaregiverRoute
+  '/guida': typeof GuidaRoute
   '/impostazioni': typeof ImpostazioniRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/caregiver': typeof CaregiverRoute
+  '/guida': typeof GuidaRoute
   '/impostazioni': typeof ImpostazioniRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/caregiver': typeof CaregiverRoute
+  '/guida': typeof GuidaRoute
   '/impostazioni': typeof ImpostazioniRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/caregiver'
+    | '/guida'
     | '/impostazioni'
     | '/notifiche'
     | '/paziente'
@@ -145,6 +155,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/caregiver'
+    | '/guida'
     | '/impostazioni'
     | '/notifiche'
     | '/paziente'
@@ -159,6 +170,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/caregiver'
+    | '/guida'
     | '/impostazioni'
     | '/notifiche'
     | '/paziente'
@@ -174,6 +186,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CaregiverRoute: typeof CaregiverRoute
+  GuidaRoute: typeof GuidaRoute
   ImpostazioniRoute: typeof ImpostazioniRoute
   NotificheRoute: typeof NotificheRoute
   PazienteRoute: typeof PazienteRoute
@@ -188,6 +201,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/guida': {
+      id: '/guida'
+      path: '/guida'
+      fullPath: '/guida'
+      preLoaderRoute: typeof GuidaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terapie': {
       id: '/terapie'
       path: '/terapie'
@@ -278,6 +298,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CaregiverRoute: CaregiverRoute,
+  GuidaRoute: GuidaRoute,
   ImpostazioniRoute: ImpostazioniRoute,
   NotificheRoute: NotificheRoute,
   PazienteRoute: PazienteRoute,

@@ -1,0 +1,49 @@
+{
+  "name": "FamilyMed — Terapia condivisa",
+  "short_name": "FamilyMed",
+  "description": "Promemoria in un tap per il paziente, monitoraggio in tempo reale per la famiglia.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f7f3ea",
+  "theme_color": "#6366f1",
+  "categories": ["health", "medical"],
+  "lang": "it",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard Caregiver",
+      "short_name": "Dashboard",
+      "description": "Vai alla vista caregiver",
+      "url": "/caregiver",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Vista Paziente",
+      "short_name": "Paziente",
+      "description": "Vai alla vista paziente",
+      "url": "/paziente",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

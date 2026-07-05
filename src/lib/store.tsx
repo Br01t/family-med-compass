@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { initialData, type FamilyMedData, type Role } from "./mock-data";
+import { initialData, type FamilyMedData, type Role, type Patient } from "./mock-data";
 
 const STORAGE_KEY = "familymed:data:v1";
 
@@ -24,6 +24,8 @@ type Ctx = {
   addTherapy: (t: FamilyMedData["therapies"][number]) => void;
   updateTherapy: (id: string, patch: Partial<FamilyMedData["therapies"][number]>) => void;
   deleteTherapy: (id: string) => void;
+  addPatient: (p: Patient) => void;
+  deletePatient: (id: string) => void;
   markNotificationRead: (id: string) => void;
   markAllRead: () => void;
   resetDemoData: () => void;
@@ -206,6 +208,18 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     setData((d) => ({ ...d, therapies: d.therapies.filter((t) => t.id !== id) }));
   }, []);
 
+  const addPatient = useCallback((p: Patient) => {
+    setData((d) => ({ ...d, patients: [...d.patients, p] }));
+  }, []);
+
+  const deletePatient = useCallback((id: string) => {
+    setData((d) => ({
+      ...d,
+      patients: d.patients.filter((p) => p.id !== id),
+      therapies: d.therapies.filter((t) => t.patientId !== id),
+    }));
+  }, []);
+
   const markNotificationRead = useCallback((id: string) => {
     setData((d) => ({
       ...d,
@@ -237,6 +251,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       addTherapy,
       updateTherapy,
       deleteTherapy,
+      addPatient,
+      deletePatient,
       markNotificationRead,
       markAllRead,
       resetDemoData,
@@ -250,6 +266,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       addTherapy,
       updateTherapy,
       deleteTherapy,
+      addPatient,
+      deletePatient,
       markNotificationRead,
       markAllRead,
       resetDemoData,

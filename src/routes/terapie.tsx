@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Pill, Power, PowerOff } from "lucide-react";
+import { Pill, Plus, Power, PowerOff } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { AddTherapyDialog } from "@/components/AddTherapyDialog";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { recurrenceLabel } from "@/lib/therapy";
 import { cn } from "@/lib/utils";
+import type { Therapy } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/terapie")({
   head: () => ({ meta: [{ title: "Terapie — FamilyMed" }] }),
@@ -14,27 +17,38 @@ export const Route = createFileRoute("/terapie")({
 
 function TherapiesPage() {
   const { data, updateTherapy, deleteTherapy } = useFamilyMed();
+  const [editTherapy, setEditTherapy] = useState<Therapy | null>(null);
 
   return (
     <AppShell
       title="Gestione terapie"
       subtitle="Modifica piani, orari e reminder per ogni paziente"
+      actions={<AddTherapyDialog />}
     >
       <div className="space-y-8">
         {data.patients.map((p) => {
           const therapies = data.therapies.filter((t) => t.patientId === p.id);
           return (
             <section key={p.id}>
-              <div className="mb-4 flex items-center gap-3">
-                <div className="grid size-10 place-items-center rounded-xl bg-primary-soft font-black text-primary">
-                  {p.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="grid size-10 place-items-center rounded-xl bg-primary-soft font-black text-primary">
+                    {p.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black tracking-tight">{p.name}</h2>
+                    <p className="text-xs text-muted-foreground">
+                      {therapies.length} terapie
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-black tracking-tight">{p.name}</h2>
-                  <p className="text-xs text-muted-foreground">
-                    {therapies.length} terapie
-                  </p>
-                </div>
+                <AddTherapyDialog
+                  trigger={
+                    <Button variant="outline" size="sm" id={`add-therapy-${p.id}`}>
+                      <Plus className="mr-1.5 size-3.5" /> Terapia
+                    </Button>
+                  }
+                />
               </div>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {therapies.map((t) => (
@@ -111,9 +125,14 @@ function TherapiesPage() {
                     )}
 
                     <div className="mt-4 flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1" disabled>
-                        Modifica
-                      </Button>
+                      <AddTherapyDialog
+                        editTherapy={t}
+                        trigger={
+                          <Button variant="outline" size="sm" className="flex-1">
+                            Modifica
+                          </Button>
+                        }
+                      />
                       <Button
                         variant="ghost"
                         size="sm"
