@@ -127,6 +127,19 @@ function TherapiesPage() {
                       </Row>
                     </dl>
 
+                    {t.photoPackage && (
+                      <div className="mt-3">
+                        <p className="mb-1.5 text-xs uppercase tracking-widest text-muted-foreground">
+                          Confezione
+                        </p>
+                        <img
+                          src={t.photoPackage}
+                          alt={`Confezione di ${t.name}`}
+                          className="h-24 w-full rounded-lg border border-border/50 object-cover"
+                        />
+                      </div>
+                    )}
+
                     {t.notes && (
                       <p className="mt-3 rounded-lg bg-surface-muted p-3 text-xs italic text-muted-foreground">
                         {t.notes}
