@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { FamilyMedProvider } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
 import { InstallBanner } from "../components/InstallBanner";
+import { NotificationScheduler } from "../components/NotificationScheduler";
 
 function NotFoundComponent() {
   return (
