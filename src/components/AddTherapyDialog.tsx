@@ -178,6 +178,8 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
         lowStockThreshold: values.lowStockThreshold,
         notes: values.notes || undefined,
         reminderIntervals: [15, 30],
+        photoDrug,
+        photoPackage,
       });
       toast.success("Terapia aggiornata", { description: values.name });
     } else {
