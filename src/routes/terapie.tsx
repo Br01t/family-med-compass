@@ -61,9 +61,17 @@ function TherapiesPage() {
                     )}
                   >
                     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3">
-                      <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-                        <Pill className="size-5" />
-                      </div>
+                      {t.photoDrug ? (
+                        <img
+                          src={t.photoDrug}
+                          alt={t.name}
+                          className="size-11 shrink-0 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                          <Pill className="size-5" />
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <p className="truncate text-lg font-black">{t.name}</p>
                         <p className="text-xs text-muted-foreground">
