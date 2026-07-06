@@ -43,11 +43,13 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
 
 /**
  * Registra un nuovo utente con email, password, nome e ruolo desiderato.
- * Il trigger del database configurerà automaticamente la riga nella tabella public.profiles.
+ * Solo "paziente" o "caregiver" sono ruoli validi in fase di registrazione.
+ * Il trigger del database configura automaticamente la riga in public.profiles
+ * a partire dai metadata passati qui sotto (vedi supabase/schema.sql).
  */
 export async function signUpUser(params: {
   email: string;
-  password: createPassword;
+  password: string;
   name: string;
   role: Role;
 }): Promise<UserProfile> {
@@ -67,7 +69,6 @@ export async function signUpUser(params: {
   if (error) throw error;
   if (!data.user) throw new Error("Errore durante la creazione dell'account.");
 
-  // Restituiamo il profilo formattato
   return {
     uid: data.user.id,
     email: params.email,
@@ -77,4 +78,14 @@ export async function signUpUser(params: {
   };
 }
 
-type createPassword = string;
+/**
+ * Effettua il login con email e password.
+ */
+export async function signInUser(params: { email: string; password: string }): Promise<void> {
+  if (!supabase) throw new Error("Supabase non inizializzato");
+  const { error } = await supabase.auth.signInWithPassword({
+    email: params.email,
+    password: params.password,
+  });
+  if (error) throw error;
+}

@@ -14,8 +14,10 @@ import { Route as StoricoRouteImport } from './routes/storico'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ScorteRouteImport } from './routes/scorte'
 import { Route as ReportRouteImport } from './routes/report'
+import { Route as RegistratiRouteImport } from './routes/registrati'
 import { Route as PazienteRouteImport } from './routes/paziente'
 import { Route as NotificheRouteImport } from './routes/notifiche'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as ImpostazioniRouteImport } from './routes/impostazioni'
 import { Route as GuidaRouteImport } from './routes/guida'
 import { Route as CaregiverRouteImport } from './routes/caregiver'
@@ -48,6 +50,11 @@ const ReportRoute = ReportRouteImport.update({
   path: '/report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RegistratiRoute = RegistratiRouteImport.update({
+  id: '/registrati',
+  path: '/registrati',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PazienteRoute = PazienteRouteImport.update({
   id: '/paziente',
   path: '/paziente',
@@ -56,6 +63,11 @@ const PazienteRoute = PazienteRouteImport.update({
 const NotificheRoute = NotificheRouteImport.update({
   id: '/notifiche',
   path: '/notifiche',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImpostazioniRoute = ImpostazioniRouteImport.update({
@@ -94,8 +106,10 @@ export interface FileRoutesByFullPath {
   '/caregiver': typeof CaregiverRoute
   '/guida': typeof GuidaRoute
   '/impostazioni': typeof ImpostazioniRoute
+  '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
+  '/registrati': typeof RegistratiRoute
   '/report': typeof ReportRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -109,8 +123,10 @@ export interface FileRoutesByTo {
   '/caregiver': typeof CaregiverRoute
   '/guida': typeof GuidaRoute
   '/impostazioni': typeof ImpostazioniRoute
+  '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
+  '/registrati': typeof RegistratiRoute
   '/report': typeof ReportRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -125,8 +141,10 @@ export interface FileRoutesById {
   '/caregiver': typeof CaregiverRoute
   '/guida': typeof GuidaRoute
   '/impostazioni': typeof ImpostazioniRoute
+  '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
+  '/registrati': typeof RegistratiRoute
   '/report': typeof ReportRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -142,8 +160,10 @@ export interface FileRouteTypes {
     | '/caregiver'
     | '/guida'
     | '/impostazioni'
+    | '/login'
     | '/notifiche'
     | '/paziente'
+    | '/registrati'
     | '/report'
     | '/scorte'
     | '/sitemap.xml'
@@ -157,8 +177,10 @@ export interface FileRouteTypes {
     | '/caregiver'
     | '/guida'
     | '/impostazioni'
+    | '/login'
     | '/notifiche'
     | '/paziente'
+    | '/registrati'
     | '/report'
     | '/scorte'
     | '/sitemap.xml'
@@ -172,8 +194,10 @@ export interface FileRouteTypes {
     | '/caregiver'
     | '/guida'
     | '/impostazioni'
+    | '/login'
     | '/notifiche'
     | '/paziente'
+    | '/registrati'
     | '/report'
     | '/scorte'
     | '/sitemap.xml'
@@ -188,8 +212,10 @@ export interface RootRouteChildren {
   CaregiverRoute: typeof CaregiverRoute
   GuidaRoute: typeof GuidaRoute
   ImpostazioniRoute: typeof ImpostazioniRoute
+  LoginRoute: typeof LoginRoute
   NotificheRoute: typeof NotificheRoute
   PazienteRoute: typeof PazienteRoute
+  RegistratiRoute: typeof RegistratiRoute
   ReportRoute: typeof ReportRoute
   ScorteRoute: typeof ScorteRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -236,6 +262,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/registrati': {
+      id: '/registrati'
+      path: '/registrati'
+      fullPath: '/registrati'
+      preLoaderRoute: typeof RegistratiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/paziente': {
       id: '/paziente'
       path: '/paziente'
@@ -248,6 +281,13 @@ declare module '@tanstack/react-router' {
       path: '/notifiche'
       fullPath: '/notifiche'
       preLoaderRoute: typeof NotificheRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/impostazioni': {
@@ -300,8 +340,10 @@ const rootRouteChildren: RootRouteChildren = {
   CaregiverRoute: CaregiverRoute,
   GuidaRoute: GuidaRoute,
   ImpostazioniRoute: ImpostazioniRoute,
+  LoginRoute: LoginRoute,
   NotificheRoute: NotificheRoute,
   PazienteRoute: PazienteRoute,
+  RegistratiRoute: RegistratiRoute,
   ReportRoute: ReportRoute,
   ScorteRoute: ScorteRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,

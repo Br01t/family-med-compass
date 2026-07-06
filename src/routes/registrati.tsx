@@ -1,0 +1,155 @@
+import { useEffect, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { HeartPulse, Pill, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { signUpUser } from "@/lib/auth-service";
+import { useFamilyMed } from "@/lib/store";
+import { cn } from "@/lib/utils";
+import { type Role } from "@/lib/mock-data";
+
+export const Route = createFileRoute("/registrati")({
+  head: () => ({ meta: [{ title: "Registrati — FamilyMed" }] }),
+  component: RegisterPage,
+});
+
+function RegisterPage() {
+  const { user, userProfile, loadingAuth } = useFamilyMed();
+  const navigate = useNavigate();
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<Role>("caregiver");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!loadingAuth && user && userProfile) {
+      navigate({ to: userProfile.role === "paziente" ? "/paziente" : "/caregiver" });
+    }
+  }, [loadingAuth, user, userProfile, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await signUpUser({ email, password, name, role });
+      toast.success("Registrazione completata!", {
+        description: "Controlla la tua email se è richiesta la conferma dell'account.",
+      });
+    } catch (error: any) {
+      toast.error("Errore durante la registrazione", {
+        description: error?.message || "Riprova con un'altra email.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const roleOptions: { value: Role; label: string; hint: string; icon: typeof HeartPulse }[] = [
+    {
+      value: "caregiver",
+      label: "Caregiver",
+      hint: "Segui le terapie di un familiare",
+      icon: Users,
+    },
+    {
+      value: "paziente",
+      label: "Paziente",
+      hint: "Gestisci le tue terapie",
+      icon: HeartPulse,
+    },
+  ];
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <Link to="/" className="mb-4 grid size-14 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lift">
+            <Pill className="size-6" />
+          </Link>
+          <h1 className="text-2xl font-black tracking-tight">Crea il tuo account</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Scegli come vuoi usare FamilyMed.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4 rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+          <div>
+            <Label>Ti registri come</Label>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {roleOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setRole(opt.value)}
+                  className={cn(
+                    "flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-center transition-colors",
+                    role === opt.value
+                      ? "border-primary bg-primary-soft text-primary"
+                      : "border-border/60 bg-surface text-muted-foreground hover:bg-secondary",
+                  )}
+                >
+                  <opt.icon className="size-5" />
+                  <span className="text-sm font-bold">{opt.label}</span>
+                  <span className="text-[11px] leading-tight">{opt.hint}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="name">Nome completo</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              placeholder="Mario Rossi"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="nome@esempio.it"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              placeholder="Almeno 6 caratteri"
+              className="mt-1"
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={submitting}>
+            {submitting ? "Creazione in corso..." : "Registrati"}
+          </Button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Hai già un account?{" "}
+          <Link to="/login" className="font-semibold text-primary hover:underline">
+            Accedi
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
