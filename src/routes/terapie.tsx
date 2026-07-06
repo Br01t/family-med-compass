@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Pill, Plus, Power, PowerOff } from "lucide-react";
+import { CalendarPlus, Pill, Plus, Power, PowerOff } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { AddTherapyDialog } from "@/components/AddTherapyDialog";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { recurrenceLabel } from "@/lib/therapy";
+import { downloadIcs, therapyToIcs } from "@/lib/ics";
 import { cn } from "@/lib/utils";
 import type { Therapy } from "@/lib/mock-data";
 
