@@ -49,6 +49,8 @@ export type Therapy = {
   lowStockThreshold: number;
   active: boolean;
   suspended: boolean;
+  photoDrug?: string; // base64 dataURL della pastiglia/farmaco
+  photoPackage?: string; // base64 dataURL della confezione
 };
 
 export type DoseStatus =

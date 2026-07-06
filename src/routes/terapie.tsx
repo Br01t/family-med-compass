@@ -1,14 +1,15 @@
-import { useState } from "react";
+
 import { createFileRoute } from "@tanstack/react-router";
-import { Pill, Plus, Power, PowerOff } from "lucide-react";
+import { CalendarPlus, Pill, Plus, Power, PowerOff } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { AddTherapyDialog } from "@/components/AddTherapyDialog";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { recurrenceLabel } from "@/lib/therapy";
+import { downloadIcs, therapyToIcs } from "@/lib/ics";
 import { cn } from "@/lib/utils";
-import type { Therapy } from "@/lib/mock-data";
+
 
 export const Route = createFileRoute("/terapie")({
   head: () => ({ meta: [{ title: "Terapie — FamilyMed" }] }),
@@ -17,7 +18,6 @@ export const Route = createFileRoute("/terapie")({
 
 function TherapiesPage() {
   const { data, updateTherapy, deleteTherapy } = useFamilyMed();
-  const [editTherapy, setEditTherapy] = useState<Therapy | null>(null);
 
   return (
     <AppShell
@@ -60,9 +60,17 @@ function TherapiesPage() {
                     )}
                   >
                     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3">
-                      <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-                        <Pill className="size-5" />
-                      </div>
+                      {t.photoDrug ? (
+                        <img
+                          src={t.photoDrug}
+                          alt={t.name}
+                          className="size-11 shrink-0 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                          <Pill className="size-5" />
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <p className="truncate text-lg font-black">{t.name}</p>
                         <p className="text-xs text-muted-foreground">
@@ -118,13 +126,26 @@ function TherapiesPage() {
                       </Row>
                     </dl>
 
+                    {t.photoPackage && (
+                      <div className="mt-3">
+                        <p className="mb-1.5 text-xs uppercase tracking-widest text-muted-foreground">
+                          Confezione
+                        </p>
+                        <img
+                          src={t.photoPackage}
+                          alt={`Confezione di ${t.name}`}
+                          className="h-24 w-full rounded-lg border border-border/50 object-cover"
+                        />
+                      </div>
+                    )}
+
                     {t.notes && (
                       <p className="mt-3 rounded-lg bg-surface-muted p-3 text-xs italic text-muted-foreground">
                         {t.notes}
                       </p>
                     )}
 
-                    <div className="mt-4 flex gap-2">
+                    <div className="mt-4 flex flex-wrap gap-2">
                       <AddTherapyDialog
                         editTherapy={t}
                         trigger={
@@ -133,6 +154,20 @@ function TherapiesPage() {
                           </Button>
                         }
                       />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const ics = therapyToIcs(t, p);
+                          downloadIcs(`${t.name.replace(/\s+/g, "_")}.ics`, ics);
+                          toast.success("Evento calendario esportato", {
+                            description: "Apri il file per aggiungerlo al calendario del telefono.",
+                          });
+                        }}
+                      >
+                        <CalendarPlus className="mr-1.5 size-3.5" />
+                        Calendario
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"

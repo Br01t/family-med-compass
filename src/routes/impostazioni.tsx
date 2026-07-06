@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -5,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useFamilyMed } from "@/lib/store";
+import { requestNotificationPermission } from "@/components/NotificationScheduler";
 
 export const Route = createFileRoute("/impostazioni")({
   head: () => ({ meta: [{ title: "Impostazioni — FamilyMed" }] }),
@@ -37,6 +39,8 @@ function SettingsPage() {
           <ToggleRow label="Alert timeout terapia" defaultChecked />
           <ToggleRow label="Alert scorte basse" defaultChecked />
         </Card>
+
+        <NotificationsCard />
 
         <Card title="Dati demo">
           <p className="text-sm text-muted-foreground">
@@ -101,5 +105,73 @@ function ToggleRow({
       <Label className="text-sm font-semibold">{label}</Label>
       <Switch defaultChecked={defaultChecked} />
     </div>
+  );
+}
+
+function NotificationsCard() {
+  const [perm, setPerm] = useState<NotificationPermission | "unsupported">(
+    typeof window !== "undefined" && "Notification" in window
+      ? Notification.permission
+      : "unsupported",
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    const id = window.setInterval(() => setPerm(Notification.permission), 2000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  async function ask() {
+    const p = await requestNotificationPermission();
+    setPerm(p);
+    if (p === "granted") {
+      toast.success("Notifiche attive", {
+        description: "Riceverai un promemoria all'orario di ogni farmaco.",
+      });
+      new Notification("FamilyMed", {
+        body: "Le notifiche dei farmaci sono attive ✅",
+        icon: "/icons/icon-192.png",
+      });
+    } else if (p === "denied") {
+      toast.error("Notifiche bloccate", {
+        description: "Abilitale dalle impostazioni del browser per riceverle.",
+      });
+    }
+  }
+
+  const status =
+    perm === "granted"
+      ? "Attive"
+      : perm === "denied"
+        ? "Bloccate dal browser"
+        : perm === "unsupported"
+          ? "Non supportate su questo dispositivo"
+          : "Non attive";
+
+  return (
+    <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+      <h2 className="text-lg font-black tracking-tight">Sveglie & notifiche</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Attiva le notifiche web per ricevere un promemoria all'ora esatta di
+        ogni farmaco (con foto e note se caricate). Funziona finché l'app è
+        aperta o installata come PWA sul telefono.
+      </p>
+      <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border/50 p-3">
+        <div>
+          <p className="text-sm font-semibold">Notifiche web in-app</p>
+          <p className="text-xs text-muted-foreground">Stato: {status}</p>
+        </div>
+        <Button
+          onClick={ask}
+          disabled={perm === "granted" || perm === "denied" || perm === "unsupported"}
+        >
+          {perm === "granted" ? "Attive" : "Attiva"}
+        </Button>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">
+        Per sveglie affidabili anche ad app chiusa, dalla pagina Terapie usa
+        “Calendario” per esportare l'evento nel calendario nativo del telefono.
+      </p>
+    </section>
   );
 }

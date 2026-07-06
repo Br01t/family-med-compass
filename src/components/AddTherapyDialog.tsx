@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2, PillIcon } from "lucide-react";
+import { Camera, Plus, Trash2, PillIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { fileToCompressedDataUrl } from "@/lib/image-utils";
 import {
   Dialog,
   DialogContent,
@@ -86,6 +87,8 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
   const [open, setOpen] = useState(false);
   const { data, addTherapy, updateTherapy } = useFamilyMed();
   const isEdit = Boolean(editTherapy);
+  const [photoDrug, setPhotoDrug] = useState<string | undefined>(editTherapy?.photoDrug);
+  const [photoPackage, setPhotoPackage] = useState<string | undefined>(editTherapy?.photoPackage);
 
   const defaultValues: FormValues = editTherapy
     ? {
@@ -143,7 +146,11 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
 
   // Reset form when editTherapy changes
   useEffect(() => {
-    if (open) form.reset(defaultValues);
+    if (open) {
+      form.reset(defaultValues);
+      setPhotoDrug(editTherapy?.photoDrug);
+      setPhotoPackage(editTherapy?.photoPackage);
+    }
   }, [open]);
 
   function onSubmit(values: FormValues) {
@@ -171,6 +178,8 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
         lowStockThreshold: values.lowStockThreshold,
         notes: values.notes || undefined,
         reminderIntervals: [15, 30],
+        photoDrug,
+        photoPackage,
       });
       toast.success("Terapia aggiornata", { description: values.name });
     } else {
@@ -196,6 +205,8 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
         reminderIntervals: [15, 30],
         active: true,
         suspended: false,
+        photoDrug,
+        photoPackage,
       });
       toast.success("Terapia aggiunta", { description: values.name });
     }
@@ -557,6 +568,20 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
                 </div>
               </div>
 
+              {/* Foto farmaco + confezione */}
+              <PhotoField
+                label="Foto del farmaco (pastiglia)"
+                value={photoDrug}
+                onChange={setPhotoDrug}
+                inputId="therapy-photo-drug"
+              />
+              <PhotoField
+                label="Foto della confezione"
+                value={photoPackage}
+                onChange={setPhotoPackage}
+                inputId="therapy-photo-package"
+              />
+
               {/* Notes */}
               <FormField
                 control={form.control}
@@ -597,5 +622,89 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PhotoField({
+  label,
+  value,
+  onChange,
+  inputId,
+}: {
+  label: string;
+  value?: string;
+  onChange: (v: string | undefined) => void;
+  inputId: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function handleFile(f: File | undefined) {
+    if (!f) return;
+    setBusy(true);
+    try {
+      const dataUrl = await fileToCompressedDataUrl(f);
+      onChange(dataUrl);
+    } catch (e) {
+      toast.error("Impossibile caricare l'immagine", {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    } finally {
+      setBusy(false);
+      if (ref.current) ref.current.value = "";
+    }
+  }
+
+  return (
+    <div>
+      <p className="mb-2 text-sm font-medium text-foreground">{label}</p>
+      <div className="flex items-center gap-3">
+        {value ? (
+          <div className="relative">
+            <img
+              src={value}
+              alt={label}
+              className="size-20 rounded-xl border border-border/60 object-cover"
+            />
+            <button
+              type="button"
+              onClick={() => onChange(undefined)}
+              className="absolute -right-2 -top-2 grid size-6 place-items-center rounded-full bg-destructive text-white shadow"
+              aria-label="Rimuovi immagine"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        ) : (
+          <div className="grid size-20 place-items-center rounded-xl border border-dashed border-border bg-surface-muted text-muted-foreground">
+            <Camera className="size-6" />
+          </div>
+        )}
+        <div className="flex-1">
+          <input
+            ref={ref}
+            id={inputId}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0])}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={() => ref.current?.click()}
+          >
+            <Camera className="mr-1.5 size-3.5" />
+            {busy ? "Elaborazione…" : value ? "Sostituisci" : "Scatta / carica"}
+          </Button>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            JPG/PNG, ridimensionata a 800px per stare nel dispositivo.
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
