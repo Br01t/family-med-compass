@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2, PillIcon } from "lucide-react";
+import { Camera, Plus, Trash2, PillIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { fileToCompressedDataUrl } from "@/lib/image-utils";
 import {
   Dialog,
   DialogContent,
