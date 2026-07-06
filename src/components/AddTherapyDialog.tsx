@@ -624,3 +624,87 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
     </Dialog>
   );
 }
+
+function PhotoField({
+  label,
+  value,
+  onChange,
+  inputId,
+}: {
+  label: string;
+  value?: string;
+  onChange: (v: string | undefined) => void;
+  inputId: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function handleFile(f: File | undefined) {
+    if (!f) return;
+    setBusy(true);
+    try {
+      const dataUrl = await fileToCompressedDataUrl(f);
+      onChange(dataUrl);
+    } catch (e) {
+      toast.error("Impossibile caricare l'immagine", {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    } finally {
+      setBusy(false);
+      if (ref.current) ref.current.value = "";
+    }
+  }
+
+  return (
+    <div>
+      <p className="mb-2 text-sm font-medium text-foreground">{label}</p>
+      <div className="flex items-center gap-3">
+        {value ? (
+          <div className="relative">
+            <img
+              src={value}
+              alt={label}
+              className="size-20 rounded-xl border border-border/60 object-cover"
+            />
+            <button
+              type="button"
+              onClick={() => onChange(undefined)}
+              className="absolute -right-2 -top-2 grid size-6 place-items-center rounded-full bg-destructive text-white shadow"
+              aria-label="Rimuovi immagine"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        ) : (
+          <div className="grid size-20 place-items-center rounded-xl border border-dashed border-border bg-surface-muted text-muted-foreground">
+            <Camera className="size-6" />
+          </div>
+        )}
+        <div className="flex-1">
+          <input
+            ref={ref}
+            id={inputId}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0])}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={() => ref.current?.click()}
+          >
+            <Camera className="mr-1.5 size-3.5" />
+            {busy ? "Elaborazione…" : value ? "Sostituisci" : "Scatta / carica"}
+          </Button>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            JPG/PNG, ridimensionata a 800px per stare nel dispositivo.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
