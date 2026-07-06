@@ -146,7 +146,7 @@ function TherapiesPage() {
                       </p>
                     )}
 
-                    <div className="mt-4 flex gap-2">
+                    <div className="mt-4 flex flex-wrap gap-2">
                       <AddTherapyDialog
                         editTherapy={t}
                         trigger={
@@ -155,6 +155,20 @@ function TherapiesPage() {
                           </Button>
                         }
                       />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const ics = therapyToIcs(t, p);
+                          downloadIcs(`${t.name.replace(/\s+/g, "_")}.ics`, ics);
+                          toast.success("Evento calendario esportato", {
+                            description: "Apri il file per aggiungerlo al calendario del telefono.",
+                          });
+                        }}
+                      >
+                        <CalendarPlus className="mr-1.5 size-3.5" />
+                        Calendario
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
