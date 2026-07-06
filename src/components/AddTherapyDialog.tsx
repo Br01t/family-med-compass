@@ -568,6 +568,20 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
                 </div>
               </div>
 
+              {/* Foto farmaco + confezione */}
+              <PhotoField
+                label="Foto del farmaco (pastiglia)"
+                value={photoDrug}
+                onChange={setPhotoDrug}
+                inputId="therapy-photo-drug"
+              />
+              <PhotoField
+                label="Foto della confezione"
+                value={photoPackage}
+                onChange={setPhotoPackage}
+                inputId="therapy-photo-package"
+              />
+
               {/* Notes */}
               <FormField
                 control={form.control}
