@@ -18,7 +18,6 @@ export const Route = createFileRoute("/terapie")({
 
 function TherapiesPage() {
   const { data, updateTherapy, deleteTherapy } = useFamilyMed();
-  const [editTherapy, setEditTherapy] = useState<Therapy | null>(null);
 
   return (
     <AppShell
