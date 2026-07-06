@@ -59,20 +59,23 @@ export function NotificationScheduler() {
             minute: "2-digit",
           });
           try {
+            const options: NotificationOptions & {
+              image?: string;
+              vibrate?: number[];
+            } = {
+              body:
+                `${patient.name}: ${t.quantity} unità` +
+                (t.notes ? `\n${t.notes}` : ""),
+              icon: t.photoDrug || "/icons/icon-192.png",
+              badge: "/icons/icon-192.png",
+              image: t.photoPackage || t.photoDrug || undefined,
+              tag: dose.id,
+              requireInteraction: true,
+              vibrate: [200, 100, 200],
+            };
             const n = new Notification(
               `💊 ${t.name} ${t.dosage} — ore ${time}`,
-              {
-                body:
-                  `${patient.name}: ${t.quantity} unità` +
-                  (t.notes ? `\n${t.notes}` : ""),
-                icon: t.photoDrug || "/icons/icon-192.png",
-                badge: "/icons/icon-192.png",
-                image: t.photoPackage || t.photoDrug || undefined,
-                tag: dose.id,
-                requireInteraction: true,
-                // @ts-expect-error vibrate è supportato su Android
-                vibrate: [200, 100, 200],
-              },
+              options,
             );
             n.onclick = () => {
               window.focus();
