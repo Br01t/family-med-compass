@@ -205,6 +205,8 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
         reminderIntervals: [15, 30],
         active: true,
         suspended: false,
+        photoDrug,
+        photoPackage,
       });
       toast.success("Terapia aggiunta", { description: values.name });
     }
