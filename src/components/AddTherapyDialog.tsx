@@ -87,6 +87,8 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
   const [open, setOpen] = useState(false);
   const { data, addTherapy, updateTherapy } = useFamilyMed();
   const isEdit = Boolean(editTherapy);
+  const [photoDrug, setPhotoDrug] = useState<string | undefined>(editTherapy?.photoDrug);
+  const [photoPackage, setPhotoPackage] = useState<string | undefined>(editTherapy?.photoPackage);
 
   const defaultValues: FormValues = editTherapy
     ? {
