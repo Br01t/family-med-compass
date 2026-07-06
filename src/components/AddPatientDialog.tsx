@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useFamilyMed } from "@/lib/store";
 
 const currentYear = new Date().getFullYear();
@@ -32,6 +33,7 @@ const schema = z.object({
     .int()
     .min(1900, "Anno non valido")
     .max(currentYear - 1, "Anno non valido"),
+  assignToAllCaregivers: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -50,24 +52,51 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
     defaultValues: {
       name: "",
       birthYear: undefined,
+      assignToAllCaregivers: false,
     },
   });
 
-  function onSubmit(values: FormValues) {
-    const id = `p_${Date.now()}`;
-    // Assign all caregivers to the new patient by default
-    const caregiverIds = data.caregivers.map((c) => c.id);
-    addPatient({
-      id,
-      name: values.name.trim(),
-      birthYear: values.birthYear,
-      caregiverIds,
-    });
-    toast.success("Paziente aggiunto", {
-      description: `${values.name} è stato aggiunto ai tuoi pazienti.`,
-    });
-    form.reset();
-    setOpen(false);
+  async function onSubmit(values: FormValues) {
+    try {
+      const id = `p_${Date.now()}`;
+      console.log("[AddPatientDialog] Inizio creazione paziente con id:", id);
+      
+      let caregiverIds: string[] = [];
+      
+      if (values.assignToAllCaregivers) {
+        caregiverIds = data.caregivers.map((c) => c.id);
+        console.log("[AddPatientDialog] Assegna a TUTTI i caregiver:", caregiverIds);
+      } else {
+        if (data.currentCaregiverId) {
+          caregiverIds = [data.currentCaregiverId];
+          console.log("[AddPatientDialog] Assegna SOLO al caregiver corrente:", caregiverIds);
+        }
+      }
+
+      const patientData = {
+        id,
+        name: values.name.trim(),
+        birthYear: values.birthYear,
+        caregiverIds,
+        userId: data.currentCaregiverId || undefined,
+      };
+
+      console.log("[AddPatientDialog] Paziente da salvare:", patientData);
+
+      await addPatient(patientData);
+
+      toast.success("Paziente aggiunto", {
+        description: `${values.name} è stato aggiunto ai tuoi pazienti.`,
+      });
+      form.reset();
+      setOpen(false);
+    } catch (error) {
+      console.error("[AddPatientDialog] Errore durante il salvataggio:", error);
+      toast.error("Impossibile salvare il paziente", {
+        description:
+          error instanceof Error ? error.message : "Riprova tra qualche secondo.",
+      });
+    }
   }
 
   return (
@@ -133,9 +162,36 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
               )}
             />
 
-            <div className="rounded-xl border border-border/60 bg-surface-muted p-3 text-xs text-muted-foreground">
-              Il nuovo paziente sarà visibile a tutti i caregiver attualmente registrati.
-            </div>
+            {/* Assegna a tutti i caregiver */}
+            {data.caregivers.length > 1 && (
+              <FormField
+                control={form.control}
+                name="assignToAllCaregivers"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-3 space-y-0 rounded-xl border border-border/60 bg-surface-muted p-3">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        id="assign-all-caregivers"
+                      />
+                    </FormControl>
+                    <FormLabel className="flex-1 cursor-pointer mb-0" htmlFor="assign-all-caregivers">
+                      <span className="text-sm font-semibold">Assegna a tutti i caregiver</span>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Se deselezionato, il paziente sarà visibile solo a te.
+                      </p>
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {data.caregivers.length === 1 && (
+              <div className="rounded-xl border border-border/60 bg-surface-muted p-3 text-xs text-muted-foreground">
+                Il nuovo paziente sarà visibile solo a te.
+              </div>
+            )}
 
             <div className="flex justify-end gap-3">
               <Button

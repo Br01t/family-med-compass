@@ -9,6 +9,7 @@ export type Patient = {
   photo?: string;
   birthYear: number;
   caregiverIds: string[];
+  userId?: string;
 };
 
 export type Caregiver = {

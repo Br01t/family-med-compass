@@ -22,18 +22,9 @@ export const Route = createFileRoute("/")({
 function LandingPage() {
   const navigate = useNavigate();
 
-  const {
-    data,
-    user,
-    userProfile,
-    loadingAuth,
-    setRole,
-    setCurrentPatient,
-  } = useFamilyMed();
+  const { data, user, userProfile, loadingAuth, setRole, setCurrentPatient } = useFamilyMed();
 
-  const patient =
-    data.patients.find((p) => p.id === data.currentPatientId) ??
-    data.patients[0];
+  const patient = data.patients.find((p) => p.id === data.currentPatientId) ?? data.patients[0];
 
   // 🔐 Redirect automatico se già loggato
   useEffect(() => {
@@ -41,10 +32,7 @@ function LandingPage() {
 
     if (user && userProfile) {
       navigate({
-        to:
-          userProfile.role === "paziente"
-            ? "/paziente"
-            : "/caregiver",
+        to: userProfile.role === "paziente" ? "/paziente" : "/caregiver",
         replace: true,
       });
     }
@@ -80,9 +68,7 @@ function LandingPage() {
             <Pill className="size-5" />
           </div>
           <div>
-            <p className="text-lg font-black tracking-tight leading-none">
-              FamilyMed
-            </p>
+            <p className="text-lg font-black tracking-tight leading-none">FamilyMed</p>
             <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
               Demo · dati fittizi
             </p>
@@ -116,8 +102,8 @@ function LandingPage() {
             </h1>
 
             <p className="mt-5 max-w-md text-base text-muted-foreground md:text-lg">
-              Per il paziente: un pulsante grande "Ho preso la medicina".
-              Per i familiari: monitoraggio in tempo reale, alert, scorte e storico.
+              Per il paziente: un pulsante grande "Ho preso la medicina". Per i familiari:
+              monitoraggio in tempo reale, alert, scorte e storico.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -126,7 +112,7 @@ function LandingPage() {
                 className="h-14 px-6 text-base font-bold"
                 onClick={handleEnterAsPatient}
               >
-                <Link to="/login">Accedi</Link>
+                Accedi
                 <ArrowRight className="ml-2 size-5" />
               </Button>
 
@@ -158,16 +144,12 @@ function LandingPage() {
                 <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                   Prossimo farmaco
                 </p>
-                <p className="mt-1 text-5xl font-black tracking-tight text-primary">
-                  16:00
-                </p>
+                <p className="mt-1 text-5xl font-black tracking-tight text-primary">16:00</p>
               </div>
 
               <div className="mt-5 rounded-2xl border-l-8 border-accent bg-card p-5 shadow-card">
                 <p className="text-lg font-black">Cardioaspirina</p>
-                <p className="text-sm text-muted-foreground">
-                  100mg · 1 compressa
-                </p>
+                <p className="text-sm text-muted-foreground">100mg · 1 compressa</p>
                 <div className="mt-4 grid h-14 place-items-center rounded-xl bg-primary text-base font-bold text-primary-foreground shadow-lift">
                   Ho preso la medicina
                 </div>
@@ -202,12 +184,8 @@ function LandingPage() {
               <div className="grid size-11 place-items-center rounded-xl bg-primary-soft text-primary">
                 <f.icon className="size-5" />
               </div>
-              <p className="mt-4 text-lg font-black tracking-tight">
-                {f.title}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {f.body}
-              </p>
+              <p className="mt-4 text-lg font-black tracking-tight">{f.title}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{f.body}</p>
             </div>
           ))}
         </div>

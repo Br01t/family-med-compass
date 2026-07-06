@@ -366,6 +366,127 @@ export function subscribeNotifications(
    WRITE OPS (UNCHANGED BUT SAFE)
 ========================================================= */
 
+export async function addPatientDoc(patient: Patient): Promise<void> {
+  if (!supabase) throw new Error("Supabase non configurato");
+
+  console.log("[addPatientDoc] Tentativo salvataggio paziente:", {
+    id: patient.id,
+    name: patient.name,
+    userId: patient.userId,
+    caregiverIds: patient.caregiverIds,
+  });
+
+  const patientPayload = {
+    id: patient.id,
+    name: patient.name,
+    photo: patient.photo || null,
+    birth_year: patient.birthYear,
+    user_id: patient.userId || null,
+    created_at: new Date().toISOString(),
+  };
+
+  console.log("[addPatientDoc] Payload paziente:", patientPayload);
+
+  const { error: patientError, data: patientData } = await supabase
+    .from("patients")
+    .upsert(patientPayload);
+
+  if (patientError) {
+    console.error("[addPatientDoc] Errore salvataggio paziente:", patientError);
+    throw patientError;
+  }
+
+  console.log("[addPatientDoc] Paziente salvato con successo:", patientData);
+
+  if (patient.caregiverIds?.length) {
+    const relationRows = patient.caregiverIds.map((caregiverId) => ({
+      caregiver_id: caregiverId,
+      patient_id: patient.id,
+    }));
+
+    console.log("[addPatientDoc] Salvataggio relazioni caregiver-paziente:", relationRows);
+
+    const { error: relationError, data: relationData } = await supabase
+      .from("caregiver_patients")
+      .insert(relationRows);
+
+    if (relationError) {
+      console.error("[addPatientDoc] Errore salvataggio relazioni:", relationError);
+      throw relationError;
+    }
+
+    console.log("[addPatientDoc] Relazioni salvate con successo:", relationData);
+  }
+
+  console.log("[addPatientDoc] Paziente completamente salvato");
+}
+
+export async function deletePatientDoc(id: string): Promise<void> {
+  if (!supabase) throw new Error("Supabase non configurato");
+
+  const { error } = await supabase.from("patients").delete().eq("id", id);
+
+  if (error) throw error;
+}
+
+export async function saveTherapyDoc(therapy: Therapy): Promise<void> {
+  if (!supabase) throw new Error("Supabase non configurato");
+
+  const { error } = await supabase.from("therapies").upsert({
+    id: therapy.id,
+    patient_id: therapy.patientId,
+    name: therapy.name,
+    dosage: therapy.dosage,
+    quantity: therapy.quantity,
+    category: therapy.category,
+    color: therapy.color,
+    icon: therapy.icon,
+    notes: therapy.notes,
+    start_date: therapy.startDate,
+    end_date: therapy.endDate,
+    times: therapy.times,
+    recurrence: therapy.recurrence,
+    timeout_minutes: therapy.timeoutMinutes,
+    reminder_intervals: therapy.reminderIntervals,
+    packs: therapy.packs,
+    pills_per_pack: therapy.pillsPerPack,
+    pills_remaining: therapy.pillsRemaining,
+    low_stock_threshold: therapy.lowStockThreshold,
+    active: therapy.active,
+    suspended: therapy.suspended,
+    photo_drug: therapy.photoDrug,
+    photo_package: therapy.photoPackage,
+  });
+
+  if (error) throw error;
+}
+
+export async function saveEventDoc(event: MedicationEvent): Promise<void> {
+  if (!supabase) throw new Error("Supabase non configurato");
+
+  const { error } = await supabase.from("events").upsert({
+    id: event.id,
+    therapy_id: event.therapyId,
+    patient_id: event.patientId,
+    scheduled_at: event.scheduledAt,
+    status: event.status,
+    confirmed_at: event.confirmedAt,
+    confirmed_by: event.confirmedBy,
+    note: event.note,
+    timeline: event.timeline,
+  });
+
+  if (error) throw error;
+}
+
+export async function updateNotificationReadState(id: string, read: boolean): Promise<void> {
+  if (!supabase) throw new Error("Supabase non configurato");
+
+  const { error } = await supabase.from("notifications").update({ read }).eq("id", id);
+
+  if (error) throw error;
+}
+
 export async function saveCaregiverDoc(caregiver: Caregiver): Promise<void> {
   if (!supabase) throw new Error("Supabase non configurato");
 

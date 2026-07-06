@@ -24,22 +24,19 @@ export const Route = createFileRoute("/paziente")({
 
 function PatientPage() {
   const { data, confirmDose, skipDose } = useFamilyMed();
-  if (!data?.patients || data.patients.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Caricamento paziente...</p>
-      </div>
-    );
-  }
-
   const patient =
-    data.patients.find((p) => p.id === data.currentPatientId) ??
-    data.patients[0];
+    data?.patients?.find((p) => p.id === data.currentPatientId) ??
+    data?.patients?.[0];
 
   if (!patient) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Nessun paziente trovato</p>
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <div className="max-w-md rounded-3xl border border-border/60 bg-card p-8 text-center shadow-card">
+          <p className="text-lg font-black tracking-tight">Ancora nessun paziente</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Il tuo profilo sarà pronto appena aggiungi il primo paziente o ricevi l’accesso da un caregiver.
+          </p>
+        </div>
       </div>
     );
   }

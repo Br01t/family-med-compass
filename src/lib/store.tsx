@@ -49,7 +49,7 @@ type Ctx = {
   addTherapy: (t: Therapy) => void;
   updateTherapy: (id: string, patch: Partial<Therapy>) => void;
   deleteTherapy: (id: string) => void;
-  addPatient: (p: Patient) => void;
+  addPatient: (p: Patient) => Promise<void>;
   deletePatient: (id: string) => void;
   markNotificationRead: (id: string) => void;
   markAllRead: () => void;
@@ -82,40 +82,44 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const finalizeAuth = async (u: User | null, profile: UserProfile | null) => {
+      setUser(u);
+      setUserProfile(profile);
+      if (profile) {
+        setLocalData((d) => ({
+          ...d,
+          currentRole: profile.role,
+        }));
+      }
+      setLoadingAuth(false);
+    };
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       const u = session?.user ?? null;
-      setUser(u);
-      if (u) {
-        getUserProfile(u.id).then((profile) => {
-          setUserProfile(profile);
-          if (profile) {
-            setLocalData((d) => ({
-              ...d,
-              currentRole: profile.role,
-            }));
-          }
-        });
+      if (!u) {
+        finalizeAuth(null, null);
+        return;
       }
-      setLoadingAuth(false);
+
+      getUserProfile(u.id)
+        .then((profile) => finalizeAuth(u, profile))
+        .catch(() => finalizeAuth(u, null));
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const u = session?.user ?? null;
-      setUser(u);
-      if (u) {
-        const profile = await getUserProfile(u.id);
-        setUserProfile(profile);
-        if (profile) {
-          setLocalData((d) => ({
-            ...d,
-            currentRole: profile.role,
-          }));
-        }
-      } else {
-        setUserProfile(null);
+      if (!u) {
+        finalizeAuth(null, null);
+        return;
       }
-      setLoadingAuth(false);
+
+      try {
+        const profile = await getUserProfile(u.id, u);
+        finalizeAuth(u, profile);
+      } catch {
+        finalizeAuth(u, null);
+      }
     });
 
     return () => {
@@ -364,9 +368,29 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
   const addPatient = useCallback(
     async (p: Patient) => {
+      console.log("[store.addPatient] Ricevuto paziente:", p);
+      console.log("[store.addPatient] user.id:", user?.id);
+      
       if (user) {
-        await addPatientDoc(p);
+        console.log("[store.addPatient] Utente autenticato, chiamo addPatientDoc");
+        const patientWithUserId = { ...p, userId: user.id };
+        console.log("[store.addPatient] Paziente con userId:", patientWithUserId);
+        
+        try {
+          await addPatientDoc(patientWithUserId);
+          console.log("[store.addPatient] addPatientDoc completato con successo");
+        } catch (error) {
+          console.error("[store.addPatient] Errore in addPatientDoc:", error);
+          throw error;
+        }
+        
+        setPatients((prev) => (prev.some((item) => item.id === p.id) ? prev : [...prev, p]));
+        setLocalData((d) => ({
+          ...d,
+          patients: d.patients.some((item) => item.id === p.id) ? d.patients : [...d.patients, p],
+        }));
       } else {
+        console.log("[store.addPatient] Utente non autenticato, salvataggio locale");
         setLocalData((d) => ({ ...d, patients: [...d.patients, p] }));
       }
     },
@@ -424,9 +448,22 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const logout = useCallback(async () => {
+    setUser(null);
+    setUserProfile(null);
+    setLoadingAuth(true);
+    setPatients([]);
+    setCaregivers([]);
+    setTherapies([]);
+    setEvents([]);
+    setNotifications([]);
+    setCurrentPatientId("");
+    setLocalData(initialData);
+
     if (supabase) {
       await supabase.auth.signOut();
     }
+
+    setLoadingAuth(false);
   }, []);
 
   const value = useMemo<Ctx>(

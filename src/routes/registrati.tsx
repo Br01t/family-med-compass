@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
 import { HeartPulse, Pill, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signUpUser } from "@/lib/auth-service";
+import { signUpUser, formatAuthError } from "@/lib/auth-service";
 import { useFamilyMed } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { type Role } from "@/lib/mock-data";
+import { FeedbackDialog } from "@/components/FeedbackDialog";
 
 export const Route = createFileRoute("/registrati")({
   head: () => ({ meta: [{ title: "Registrati — FamilyMed" }] }),
@@ -24,6 +24,10 @@ function RegisterPage() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("caregiver");
   const [submitting, setSubmitting] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogTitle, setDialogTitle] = useState("");
+  const [dialogDescription, setDialogDescription] = useState("");
+  const [dialogVariant, setDialogVariant] = useState<"success" | "error" | "info">("info");
 
   useEffect(() => {
     if (!loadingAuth && user && userProfile) {
@@ -36,13 +40,20 @@ function RegisterPage() {
     setSubmitting(true);
     try {
       await signUpUser({ email, password, name, role });
-      toast.success("Registrazione completata!", {
-        description: "Controlla la tua email se è richiesta la conferma dell'account.",
-      });
-    } catch (error: any) {
-      toast.error("Errore durante la registrazione", {
-        description: error?.message || "Riprova con un'altra email.",
-      });
+      setDialogVariant("success");
+      setDialogTitle("Registrazione completata");
+      setDialogDescription(
+        "Il tuo account è stato creato. Verifica l'email se serve la conferma, quindi accedi per continuare.",
+      );
+      setDialogOpen(true);
+      setEmail("");
+      setPassword("");
+      setName("");
+    } catch (error: unknown) {
+      setDialogVariant("error");
+      setDialogTitle("Errore durante la registrazione");
+      setDialogDescription(formatAuthError(error));
+      setDialogOpen(true);
     } finally {
       setSubmitting(false);
     }
@@ -67,16 +78,20 @@ function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <Link to="/" className="mb-4 grid size-14 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lift">
+          <Link
+            to="/"
+            className="mb-4 grid size-14 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lift"
+          >
             <Pill className="size-6" />
           </Link>
           <h1 className="text-2xl font-black tracking-tight">Crea il tuo account</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Scegli come vuoi usare FamilyMed.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Scegli come vuoi usare FamilyMed.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 rounded-3xl border border-border/60 bg-card p-6 shadow-card"
+        >
           <div>
             <Label>Ti registri come</Label>
             <div className="mt-2 grid grid-cols-2 gap-2">
@@ -150,6 +165,14 @@ function RegisterPage() {
           </Link>
         </p>
       </div>
+
+      <FeedbackDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title={dialogTitle}
+        description={dialogDescription}
+        variant={dialogVariant}
+      />
     </div>
   );
 }

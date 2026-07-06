@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
 import { Pill } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/lib/supabase";
 import { useFamilyMed } from "@/lib/store";
+import { getUserProfile, signInUser, formatAuthError } from "@/lib/auth-service";
+import { FeedbackDialog } from "@/components/FeedbackDialog";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Accedi — FamilyMed" }] }),
@@ -20,51 +20,68 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  // 🔥 REDIRECT SICURO (anche dopo refresh store)
-  useEffect(() => {
-    if (!loadingAuth && userProfile?.role) {
-      navigate({
-        to: userProfile.role === "paziente" ? "/paziente" : "/caregiver",
-        replace: true,
-      });
-    }
-  }, [loadingAuth, userProfile, navigate]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogTitle, setDialogTitle] = useState("");
+  const [dialogDescription, setDialogDescription] = useState("");
+  const [dialogVariant, setDialogVariant] = useState<"success" | "error" | "info">("info");
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setSubmitting(true);
+    e.preventDefault();
+    setSubmitting(true);
 
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const user = await signInUser({ email, password });
 
-    if (error) throw error;
+      if (!user) {
+        setDialogVariant("error");
+        setDialogTitle("Accesso non completato");
+        setDialogDescription(
+          "Impossibile completare l'accesso. Verifica la tua email e conferma l'account se necessario.",
+        );
+        setDialogOpen(true);
+        return;
+      }
 
-    toast.success("Accesso effettuato!");
+      const fallbackRole =
+        typeof user.user_metadata === "object" && user.user_metadata !== null
+          ? (user.user_metadata as Record<string, unknown>).role
+          : undefined;
 
-    const role = data.user?.user_metadata?.role;
+      const profile = await getUserProfile(user.id);
+      const role =
+        profile?.role === "paziente" || profile?.role === "caregiver"
+          ? profile.role
+          : fallbackRole === "paziente" || fallbackRole === "caregiver"
+            ? fallbackRole
+            : undefined;
 
-    if (!role) {
-      toast.error("Ruolo utente mancante");
-      return;
+      setDialogVariant("success");
+      setDialogTitle("Accesso effettuato");
+      setDialogDescription("Bentornato! Stiamo aprendo la tua area personale.");
+      setDialogOpen(true);
+
+      if (role === "paziente" || role === "caregiver") {
+        navigate({
+          to: role === "paziente" ? "/paziente" : "/caregiver",
+          replace: true,
+        });
+        return;
+      }
+
+      setDialogDescription(
+        "Accesso riuscito, ma non è stato possibile determinare il ruolo. Contatta l'assistenza.",
+      );
+      setDialogVariant("error");
+      setDialogOpen(true);
+    } catch (error: unknown) {
+      setDialogVariant("error");
+      setDialogTitle("Impossibile accedere");
+      setDialogDescription(formatAuthError(error));
+      setDialogOpen(true);
+    } finally {
+      setSubmitting(false);
     }
-
-    navigate({
-      to: role === "paziente" ? "/paziente" : "/caregiver",
-      replace: true,
-    });
-
-  } catch (error: any) {
-    toast.error("Errore durante l'accesso", {
-      description: error?.message || "Verifica email e password.",
-    });
-  } finally {
-    setSubmitting(false);
-  }
-};
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -77,9 +94,7 @@ function LoginPage() {
             <Pill className="size-6" />
           </Link>
 
-          <h1 className="text-2xl font-black tracking-tight">
-            Bentornato su FamilyMed
-          </h1>
+          <h1 className="text-2xl font-black tracking-tight">Bentornato su FamilyMed</h1>
 
           <p className="mt-1 text-sm text-muted-foreground">
             Accedi con le tue credenziali per continuare.
@@ -129,6 +144,15 @@ function LoginPage() {
           </Link>
         </p>
       </div>
+
+      <FeedbackDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title={dialogTitle}
+        description={dialogDescription}
+        variant={dialogVariant}
+        actionLabel="Chiudi"
+      />
     </div>
   );
 }

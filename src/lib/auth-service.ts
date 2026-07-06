@@ -1,5 +1,7 @@
+import { type User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { type Role } from "./mock-data";
+import { addPatientDoc } from "./supabase-service";
 
 export interface UserProfile {
   uid: string;
@@ -12,38 +14,56 @@ export interface UserProfile {
 /**
  * Ottiene il profilo utente dalla tabella public.profiles in base all'UID.
  */
-export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+function getFallbackProfile(user: Partial<User> | null | undefined): UserProfile | null {
+  const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
+  const role = metadata.role;
+
+  if (role !== "paziente" && role !== "caregiver") {
+    return null;
+  }
+
+  return {
+    uid: user?.id ?? "",
+    email: (user?.email as string | undefined) ?? "",
+    name: (metadata.name as string | undefined) ?? user?.email ?? "",
+    role,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export async function getUserProfile(uid: string, fallbackUser?: Partial<User> | null): Promise<UserProfile | null> {
   if (!supabase) return null;
   try {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", uid)
-      .single();
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
 
     if (error) {
-      console.warn("Errore o profilo non trovato per l'utente:", error.message);
-      return null;
+      console.warn("Profilo non disponibile o accesso non consentito:", error.message);
+      return getFallbackProfile(fallbackUser);
     }
 
-    if (data) {
-      return {
-        uid: data.id,
-        email: data.email,
-        name: data.name,
-        role: data.role as Role,
-        createdAt: data.created_at,
-      };
+    if (!data) {
+      return getFallbackProfile(fallbackUser);
     }
+
+    const fallback = getFallbackProfile(fallbackUser);
+
+    return {
+      uid: data.id,
+      email: data.email ?? fallback?.email ?? "",
+      name: data.name ?? fallback?.name ?? "",
+      role: (data.role as Role) ?? fallback?.role ?? "caregiver",
+      createdAt: data.created_at ?? fallback?.createdAt ?? new Date().toISOString(),
+    };
   } catch (error) {
     console.error("Errore nel recupero del profilo utente:", error);
   }
-  return null;
+  return getFallbackProfile(fallbackUser);
 }
 
 /**
  * Registra un nuovo utente con email, password, nome e ruolo desiderato.
  * Solo "paziente" o "caregiver" sono ruoli validi in fase di registrazione.
+ * Se il ruolo è "paziente", crea automaticamente un record nella tabella patients.
  * Il trigger del database configura automaticamente la riga in public.profiles
  * a partire dai metadata passati qui sotto (vedi supabase/schema.sql).
  */
@@ -69,6 +89,40 @@ export async function signUpUser(params: {
   if (error) throw error;
   if (!data.user) throw new Error("Errore durante la creazione dell'account.");
 
+  try {
+    await supabase.from("profiles").upsert(
+      {
+        id: data.user.id,
+        email: params.email,
+        name: params.name,
+        role: params.role,
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
+  } catch (profileError) {
+    console.warn("Profilo non creato automaticamente, continuo con il fallback metadata:", profileError);
+  }
+
+  // Se il ruolo è "paziente", crea automaticamente il record nel DB
+  if (params.role === "paziente") {
+    try {
+      console.log("[signUpUser] Creazione paziente per userId:", data.user.id);
+      await addPatientDoc({
+        id: `p_${data.user.id}`,
+        name: params.name,
+        photo: undefined,
+        birthYear: undefined,
+        caregiverIds: [],
+        userId: data.user.id,
+      });
+      console.log("[signUpUser] Paziente creato con successo");
+    } catch (patientError) {
+      console.warn("Paziente non creato automaticamente:", patientError);
+      // Non bloccare la registrazione se il paziente non viene creato
+    }
+  }
+
   return {
     uid: data.user.id,
     email: params.email,
@@ -78,14 +132,35 @@ export async function signUpUser(params: {
   };
 }
 
+export function formatAuthError(error: unknown): string {
+  if (!error) {
+    return "Si è verificato un errore imprevisto. Riprova più tardi.";
+  }
+
+  const err = error as Record<string, unknown>;
+  const message =
+    (typeof err.message === "string" && err.message) ||
+    (typeof err.error_description === "string" && err.error_description) ||
+    (typeof err.error === "string" && err.error) ||
+    (typeof err.details === "string" && err.details) ||
+    (typeof err.hint === "string" && err.hint) ||
+    "Si è verificato un errore durante l'autenticazione.";
+
+  return message;
+}
+
 /**
  * Effettua il login con email e password.
  */
-export async function signInUser(params: { email: string; password: string }): Promise<void> {
+export async function signInUser(params: {
+  email: string;
+  password: string;
+}): Promise<User | null> {
   if (!supabase) throw new Error("Supabase non inizializzato");
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: params.email,
     password: params.password,
   });
   if (error) throw error;
+  return data.user;
 }

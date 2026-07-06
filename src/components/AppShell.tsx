@@ -1,11 +1,11 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   Bell,
   BookOpen,
   CalendarDays,
-  Home,
   LayoutDashboard,
+  LogOut,
   Package,
   PieChart,
   Pill,
@@ -44,10 +44,19 @@ const nav = [
 ];
 
 function AppSidebar() {
+  const navigate = useNavigate();
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const { data, setRole } = useFamilyMed();
+  const { data, setRole, logout } = useFamilyMed();
   const isActive = (url: string) =>
     url === "/caregiver" ? path === "/caregiver" : path.startsWith(url);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate({ to: "/login", replace: true });
+    }
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -101,18 +110,29 @@ function AppSidebar() {
             <p className="truncate text-xs text-muted-foreground">Caregiver</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full group-data-[collapsible=icon]:hidden"
-          onClick={() => setRole("paziente")}
-          asChild
-        >
-          <Link to="/paziente">
-            <User className="mr-2 size-4" />
-            Vista Paziente
-          </Link>
-        </Button>
+        <div className="space-y-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full group-data-[collapsible=icon]:hidden"
+            onClick={() => setRole("paziente")}
+            asChild
+          >
+            <Link to="/paziente">
+              <User className="mr-2 size-4" />
+              Vista Paziente
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start group-data-[collapsible=icon]:hidden"
+            onClick={handleLogout}
+          >
+            <LogOut className="mr-2 size-4" />
+            Esci
+          </Button>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );
