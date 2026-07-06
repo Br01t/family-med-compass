@@ -139,14 +139,31 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
-    if ("serviceWorker" in navigator && typeof window !== "undefined") {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((reg) => console.log("[SW] Registered:", reg.scope))
-          .catch((err) => console.warn("[SW] Registration failed:", err));
-      });
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    // Non registrare il SW nei preview Lovable / dev / iframe: potrebbe servire
+    // HTML stale e mascherare le modifiche.
+    const host = window.location.hostname;
+    const inIframe = window.self !== window.top;
+    const isPreview =
+      host.startsWith("id-preview--") ||
+      host.startsWith("preview--") ||
+      host.endsWith(".lovableproject.com") ||
+      host.endsWith(".lovableproject-dev.com") ||
+      host.endsWith(".beta.lovable.dev") ||
+      host === "localhost" ||
+      host === "127.0.0.1";
+    if (inIframe || isPreview) {
+      navigator.serviceWorker.getRegistrations().then((regs) =>
+        regs.forEach((r) => r.unregister()),
+      );
+      return;
     }
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => console.log("[SW] Registered:", reg.scope))
+        .catch((err) => console.warn("[SW] Registration failed:", err));
+    });
   }, []);
 
   return (
@@ -155,6 +172,7 @@ function RootComponent() {
         <Outlet />
         <Toaster position="top-center" richColors />
         <InstallBanner />
+        <NotificationScheduler />
       </FamilyMedProvider>
     </QueryClientProvider>
   );
