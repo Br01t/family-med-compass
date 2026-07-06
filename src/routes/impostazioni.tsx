@@ -40,6 +40,8 @@ function SettingsPage() {
           <ToggleRow label="Alert scorte basse" defaultChecked />
         </Card>
 
+        <NotificationsCard />
+
         <Card title="Dati demo">
           <p className="text-sm text-muted-foreground">
             L'MVP salva tutto sul tuo browser (localStorage). Puoi resettare i dati
