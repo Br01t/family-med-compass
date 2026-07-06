@@ -9,7 +9,7 @@ import { useFamilyMed } from "@/lib/store";
 import { recurrenceLabel } from "@/lib/therapy";
 import { downloadIcs, therapyToIcs } from "@/lib/ics";
 import { cn } from "@/lib/utils";
-import type { Therapy } from "@/lib/mock-data";
+
 
 export const Route = createFileRoute("/terapie")({
   head: () => ({ meta: [{ title: "Terapie — FamilyMed" }] }),
