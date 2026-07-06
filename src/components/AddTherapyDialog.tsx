@@ -146,7 +146,11 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
 
   // Reset form when editTherapy changes
   useEffect(() => {
-    if (open) form.reset(defaultValues);
+    if (open) {
+      form.reset(defaultValues);
+      setPhotoDrug(editTherapy?.photoDrug);
+      setPhotoPackage(editTherapy?.photoPackage);
+    }
   }, [open]);
 
   function onSubmit(values: FormValues) {
