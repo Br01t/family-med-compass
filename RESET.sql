@@ -199,6 +199,29 @@ create policy "cp: caregiver can unfollow"
   on public.caregiver_patients for delete to authenticated
   using (caregiver_id = auth.uid());
 
+-- Policy differite (dipendono da caregiver_patients + patients)
+create policy "profiles: caregiver can read followed patients"
+  on public.profiles for select to authenticated
+  using (
+    exists (
+      select 1 from public.caregiver_patients cp
+      join public.patients p on p.id = cp.patient_id
+      where cp.caregiver_id = auth.uid() and p.user_id = profiles.id
+    )
+  );
+
+create policy "caregivers: patient can read linked"
+  on public.caregivers for select to authenticated
+  using (
+    exists (
+      select 1 from public.caregiver_patients cp
+      join public.patients p on p.id = cp.patient_id
+      where cp.caregiver_id = caregivers.id and p.user_id = auth.uid()
+    )
+  );
+
+
+
 -- ============================================================
 -- 7. THERAPIES
 -- ============================================================
