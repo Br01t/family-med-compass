@@ -47,16 +47,9 @@ create policy "profiles: self update"
   on public.profiles for update to authenticated
   using (auth.uid() = id) with check (auth.uid() = id);
 
--- Un caregiver deve poter vedere i profili dei pazienti che segue
-create policy "profiles: caregiver can read followed patients"
-  on public.profiles for select to authenticated
-  using (
-    exists (
-      select 1 from public.caregiver_patients cp
-      join public.patients p on p.id = cp.patient_id
-      where cp.caregiver_id = auth.uid() and p.user_id = profiles.id
-    )
-  );
+-- NB: la policy "caregiver può leggere profili dei pazienti che segue"
+-- è definita più sotto, dopo la creazione di caregiver_patients.
+
 
 -- ============================================================
 -- 3. USER_ROLES (sicurezza: NON su profiles per evitare escalation)
@@ -169,16 +162,9 @@ create policy "caregivers: self update"
   on public.caregivers for update to authenticated
   using (id = auth.uid()) with check (id = auth.uid());
 
--- I pazienti collegati devono poter vedere i propri caregiver
-create policy "caregivers: patient can read linked"
-  on public.caregivers for select to authenticated
-  using (
-    exists (
-      select 1 from public.caregiver_patients cp
-      join public.patients p on p.id = cp.patient_id
-      where cp.caregiver_id = caregivers.id and p.user_id = auth.uid()
-    )
-  );
+-- NB: la policy "paziente può leggere caregivers collegati" è definita
+-- più sotto, dopo la creazione di caregiver_patients.
+
 
 -- ============================================================
 -- 6. CAREGIVER_PATIENTS (link)
@@ -212,6 +198,29 @@ create policy "cp: caregiver can follow"
 create policy "cp: caregiver can unfollow"
   on public.caregiver_patients for delete to authenticated
   using (caregiver_id = auth.uid());
+
+-- Policy differite (dipendono da caregiver_patients + patients)
+create policy "profiles: caregiver can read followed patients"
+  on public.profiles for select to authenticated
+  using (
+    exists (
+      select 1 from public.caregiver_patients cp
+      join public.patients p on p.id = cp.patient_id
+      where cp.caregiver_id = auth.uid() and p.user_id = profiles.id
+    )
+  );
+
+create policy "caregivers: patient can read linked"
+  on public.caregivers for select to authenticated
+  using (
+    exists (
+      select 1 from public.caregiver_patients cp
+      join public.patients p on p.id = cp.patient_id
+      where cp.caregiver_id = caregivers.id and p.user_id = auth.uid()
+    )
+  );
+
+
 
 -- ============================================================
 -- 7. THERAPIES
