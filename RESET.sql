@@ -117,23 +117,8 @@ create policy "patients: insert self or as caregiver"
     or (public.has_role(auth.uid(), 'caregiver') and (owner_user_id is null or owner_user_id = auth.uid()))
   );
 
-create policy "patients: owner or linked caregiver update"
-  on public.patients for update to authenticated
-  using (
-    user_id = auth.uid()
-    or owner_user_id = auth.uid()
-    or exists (select 1 from public.caregiver_patients cp
-               where cp.patient_id = patients.id and cp.caregiver_id = auth.uid())
-  );
-
-create policy "patients: owner or linked caregiver delete"
-  on public.patients for delete to authenticated
-  using (
-    user_id = auth.uid()
-    or owner_user_id = auth.uid()
-    or exists (select 1 from public.caregiver_patients cp
-               where cp.patient_id = patients.id and cp.caregiver_id = auth.uid())
-  );
+-- NB: le policy update/delete che usano caregiver_patients sono definite
+-- più sotto, dopo la creazione della tabella caregiver_patients.
 
 -- ============================================================
 -- 5. CAREGIVERS (metadati opzionali, popolati dal trigger)
@@ -200,6 +185,24 @@ create policy "cp: caregiver can unfollow"
   using (caregiver_id = auth.uid());
 
 -- Policy differite (dipendono da caregiver_patients + patients)
+create policy "patients: owner or linked caregiver update"
+  on public.patients for update to authenticated
+  using (
+    user_id = auth.uid()
+    or owner_user_id = auth.uid()
+    or exists (select 1 from public.caregiver_patients cp
+               where cp.patient_id = patients.id and cp.caregiver_id = auth.uid())
+  );
+
+create policy "patients: owner or linked caregiver delete"
+  on public.patients for delete to authenticated
+  using (
+    user_id = auth.uid()
+    or owner_user_id = auth.uid()
+    or exists (select 1 from public.caregiver_patients cp
+               where cp.patient_id = patients.id and cp.caregiver_id = auth.uid())
+  );
+
 create policy "profiles: caregiver can read followed patients"
   on public.profiles for select to authenticated
   using (
