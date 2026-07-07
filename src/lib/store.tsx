@@ -100,9 +100,19 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
           ...d,
           currentRole: profile.role,
         }));
+        // Backfill user_roles se mancante (utenti creati prima del trigger)
+        if (u && supabase) {
+          supabase
+            .from("user_roles")
+            .upsert({ user_id: u.id, role: profile.role }, { onConflict: "user_id,role" })
+            .then(({ error }) => {
+              if (error) console.warn("[store] backfill user_roles:", error.message);
+            });
+        }
       }
       setLoadingAuth(false);
     };
+
 
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {

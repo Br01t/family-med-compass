@@ -62,7 +62,7 @@ create table public.user_roles (
   unique (user_id, role)
 );
 
-grant select on public.user_roles to authenticated;
+grant select, insert on public.user_roles to authenticated;
 grant all on public.user_roles to service_role;
 
 alter table public.user_roles enable row level security;
@@ -70,6 +70,11 @@ alter table public.user_roles enable row level security;
 create policy "user_roles: self read"
   on public.user_roles for select to authenticated
   using (auth.uid() = user_id);
+
+create policy "user_roles: self insert"
+  on public.user_roles for insert to authenticated
+  with check (auth.uid() = user_id);
+
 
 -- Security-definer function per policy senza ricorsione
 create or replace function public.has_role(_user_id uuid, _role app_role)
