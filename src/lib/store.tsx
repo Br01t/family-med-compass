@@ -347,6 +347,64 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     [user, therapies, events]
   );
 
+  const snoozeDose = useCallback(
+    async ({
+      therapyId,
+      scheduledAt,
+      minutes = 10,
+    }: {
+      therapyId: string;
+      scheduledAt: Date;
+      minutes?: number;
+    }) => {
+      const therapy = therapies.find((t) => t.id === therapyId);
+      if (!therapy) return;
+      const nowIso = new Date().toISOString();
+      const scheduledIso = scheduledAt.toISOString();
+      const snoozedUntil = new Date(Date.now() + minutes * 60_000).toISOString();
+      const existingEvent = events.find(
+        (e) =>
+          e.therapyId === therapyId &&
+          Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000,
+      );
+      const updatedEvent: MedicationEvent = existingEvent
+        ? {
+            ...existingEvent,
+            status: "reminder" as const,
+            timeline: [
+              ...existingEvent.timeline,
+              { at: nowIso, kind: "snoozed", message: `Rimandata di ${minutes} min` },
+            ],
+          }
+        : {
+            id: `e_${therapyId}_${Date.now()}`,
+            therapyId,
+            patientId: therapy.patientId,
+            scheduledAt: scheduledIso,
+            status: "reminder" as const,
+            timeline: [
+              { at: scheduledIso, kind: "scheduled", message: "Dose programmata" },
+              { at: nowIso, kind: "snoozed", message: `Rimandata di ${minutes} min` },
+            ],
+          };
+      if (user) {
+        // La colonna snoozed_until è gestita direttamente in Supabase via update mirato
+        await saveEventDoc(updatedEvent);
+        if (supabase) {
+          await supabase.from("events").update({ status: "snoozed", snoozed_until: snoozedUntil }).eq("id", updatedEvent.id);
+        }
+      } else {
+        setLocalData((d) => {
+          const nextEvents = existingEvent
+            ? d.events.map((e) => (e === existingEvent ? updatedEvent : e))
+            : [...d.events, updatedEvent];
+          return { ...d, events: nextEvents };
+        });
+      }
+    },
+    [user, therapies, events],
+  );
+
   const addTherapy = useCallback(
     async (t: Therapy) => {
       if (user) {
