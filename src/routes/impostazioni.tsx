@@ -196,7 +196,6 @@ function SettingsPage() {
                       <SelectContent>
                         <SelectItem value="caregiver">Caregiver (Famigliare)</SelectItem>
                         <SelectItem value="paziente">Paziente</SelectItem>
-                        <SelectItem value="admin">Amministratore</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
