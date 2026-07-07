@@ -310,22 +310,11 @@ export function subscribeNotifications(
 
   const fetchAndEmit = async () => {
     try {
-      const { data: recipientRefs } = await supabase
-        .from("notification_recipients")
-        .select("notification_id")
-        .eq("user_id", userId);
-
-      const notificationIds = recipientRefs?.map((r) => r.notification_id) || [];
-
-      if (notificationIds.length === 0) {
-        onUpdate([]);
-        return;
-      }
-
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
-        .in("id", notificationIds);
+        .eq("target_user_id", userId)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
@@ -345,6 +334,7 @@ export function subscribeNotifications(
       onUpdate([]);
     }
   };
+
 
   fetchAndEmit();
 
