@@ -25,7 +25,16 @@ left join public.user_roles ur
 where ur.user_id is null
 on conflict do nothing;
 
--- 3. Verifica (opzionale) — deve mostrare una riga per ogni utente
+-- 3. Fix upsert su caregiver_patients (403 42501)
+grant update on public.caregiver_patients to authenticated;
+
+drop policy if exists "cp: caregiver can update own" on public.caregiver_patients;
+create policy "cp: caregiver can update own"
+  on public.caregiver_patients for update to authenticated
+  using (caregiver_id = auth.uid()) with check (caregiver_id = auth.uid());
+
+-- 4. Verifica (opzionale)
 -- select p.email, p.role, ur.role as user_roles_role
 -- from public.profiles p
 -- left join public.user_roles ur on ur.user_id = p.id;
+

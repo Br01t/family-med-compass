@@ -168,7 +168,7 @@ create table public.caregiver_patients (
 );
 create index cp_patient_idx on public.caregiver_patients(patient_id);
 
-grant select, insert, delete on public.caregiver_patients to authenticated;
+grant select, insert, update, delete on public.caregiver_patients to authenticated;
 grant all on public.caregiver_patients to service_role;
 
 alter table public.caregiver_patients enable row level security;
@@ -185,9 +185,14 @@ create policy "cp: caregiver can follow"
   on public.caregiver_patients for insert to authenticated
   with check (caregiver_id = auth.uid() and public.has_role(auth.uid(), 'caregiver'));
 
+create policy "cp: caregiver can update own"
+  on public.caregiver_patients for update to authenticated
+  using (caregiver_id = auth.uid()) with check (caregiver_id = auth.uid());
+
 create policy "cp: caregiver can unfollow"
   on public.caregiver_patients for delete to authenticated
   using (caregiver_id = auth.uid());
+
 
 -- Policy differite (dipendono da caregiver_patients + patients)
 create policy "patients: owner or linked caregiver update"

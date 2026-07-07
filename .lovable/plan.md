@@ -1,51 +1,34 @@
-Rifacimento della vista **/paziente** con focus su chiarezza, timeline giornaliera e stato vuoto.
+## Fix 403 su `caregiver_patients` (upsert)
 
-## Cosa cambia in `src/routes/paziente.tsx`
+### Cause
+`followPatient` in `src/lib/supabase-service.ts` usa `.upsert(...)`. PostgREST richiede sia `INSERT` sia `UPDATE` per l'upsert; su `caregiver_patients` ho concesso solo `select, insert, delete` → 403 con code `42501`.
 
-### 1. Header con logout
-- A sinistra: saluto compatto ("FamilyMed").
-- A destra: pulsante campanella con badge notifiche non lette (link a `/notifiche`) + menu con **Logout** (usa `logout()` già presente nello store, poi redirect a `/login`).
-- Rimosso il link "Modalità caregiver" (non ha senso per un paziente puro).
+### Modifiche
 
-### 2. Hero giornata
-- Saluto "Buongiorno/pomeriggio/sera, {nome}" + data lunga.
-- Barra di progresso: "X di Y dosi completate oggi".
+**1. Client (fix immediato)** — `src/lib/supabase-service.ts`:
+- Sostituisco `.upsert()` con `.insert()` in `followPatient`.
+- Se Postgres torna `23505` (duplicate key), lo ignoro: seguire due volte lo stesso paziente è idempotente, non serve aggiornare nulla.
 
-### 3. Azione attiva "adesso"
-Sezione in evidenza in cima solo se esiste una dose con stato `reminder`/`late` o `scheduled` entro ±15 min:
-- Card grande con nome farmaco, orario, dosaggio, foto scatola se presente.
-- Pulsanti: **Ho preso** (primario grande), **Ritarda 10 min**, **Salta**.
-- Se nessuna dose è "attiva ora", la sezione non appare.
+```ts
+const { error } = await supabase
+  .from("caregiver_patients")
+  .insert({ caregiver_id: caregiverId, patient_id: patientId });
+if (error && error.code !== "23505") throw error;
+```
 
-### 4. Timeline giornaliera
-Lista verticale di tutte le dosi del giorno in ordine cronologico, con indicatore visivo dello stato:
-- Pallino colorato + linea che collega (timeline verticale).
-- Passate: taken (verde ✓), skipped (grigio ✕), missed (rosso).
-- Future: scheduled (neutro con orario).
-- La dose "corrente" evidenziata; le future mostrano solo info (senza pulsanti azione, per evitare conferme anticipate).
+**2. Database (hardening)** — aggiorno `MIGRATION_FIX.sql` e `RESET.sql` con:
+- `GRANT UPDATE ON public.caregiver_patients TO authenticated;`
+- Policy UPDATE self-scoped:
+  ```sql
+  create policy "cp: caregiver can update own"
+    on public.caregiver_patients for update to authenticated
+    using (caregiver_id = auth.uid()) with check (caregiver_id = auth.uid());
+  ```
 
-### 5. Riassunto terapie attive
-Sezione "Le mie terapie" con card compatta per ogni `therapy` attiva del paziente:
-- Nome, dosaggio, frequenza in linguaggio naturale (es. "2 volte al giorno · 8:00, 20:00"), pillole rimanenti con warning se sotto soglia.
-- Tap → naviga a `/terapie` (dettaglio esistente).
+Così anche un futuro `.upsert()` funziona, ma le modifiche restano confinate alle proprie righe.
 
-### 6. Stato vuoto
-Quando `therapies.length === 0`:
-- Card centrale amichevole: illustrazione/emoji, titolo "Nessuna terapia assegnata", testo "Quando un caregiver ti assegnerà una cura, la troverai qui. Nel frattempo puoi rilassarti."
-- Link secondario a `/notifiche` e `/impostazioni`.
+### Azioni richieste all'utente
+Rieseguire **`MIGRATION_FIX.sql`** in Supabase SQL Editor (idempotente, safe).
 
-Quando ci sono terapie ma zero dosi oggi (es. terapia a giorni alterni):
-- Messaggio "Oggi non hai medicine da prendere" nella sezione timeline, ma le terapie restano visibili sotto.
-
-### 7. Fix logica esistente
-- Il fallback attuale `data?.patients?.[0]` funziona male per un paziente loggato: uso `patients.find(p => p.userId === user.id)` come primaria, con fallback `currentPatientId`.
-- Se `user` è loggato come `paziente` ma `patient` non esiste ancora (recovery in corso nello store), mostra skeleton invece del blocco "Ancora nessun paziente".
-
-## File toccati
-- `src/routes/paziente.tsx` — riscritto secondo la struttura sopra.
-- Nessuna modifica a store, servizi, DB o altre route.
-
-## Fuori scope
-- Nessun cambio a schema DB, edge function, notifiche push.
-- Nessun cambio a `/caregiver` o altre route.
-- Nessun refactor dello store.
+### Fuori scope
+Nessun refactor del flusso UI, nessun cambio a terapie o notifiche.
