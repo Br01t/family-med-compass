@@ -1,0 +1,23 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "familymed"
+main = ".output/server/index.mjs"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Serve gli asset statici (JS/CSS/immagini/manifest/sw.js) generati dalla build
+[assets]
+directory = ".output/public"
+binding = "ASSETS"
+
+# Variabili d'ambiente non sensibili.
+# I secret (chiavi Supabase, VAPID_PRIVATE_KEY, ecc.) impostali con:
+#   wrangler secret put VITE_SUPABASE_URL
+#   wrangler secret put VITE_SUPABASE_PUBLISHABLE_KEY
+#   wrangler secret put VAPID_PUBLIC_KEY
+#   wrangler secret put VAPID_PRIVATE_KEY
+#   wrangler secret put VAPID_SUBJECT
+[vars]
+NODE_ENV = "production"
+
+[observability]
+enabled = true
