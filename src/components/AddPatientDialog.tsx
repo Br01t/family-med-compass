@@ -33,8 +33,9 @@ const schema = z.object({
     .int()
     .min(1900, "Anno non valido")
     .max(currentYear - 1, "Anno non valido"),
-  assignToAllCaregivers: z.boolean().default(false),
+  assignToAllCaregivers: z.boolean(),
 });
+
 
 type FormValues = z.infer<typeof schema>;
 
@@ -59,29 +60,18 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
   async function onSubmit(values: FormValues) {
     try {
       const id = `p_${Date.now()}`;
-      console.log("[AddPatientDialog] Inizio creazione paziente con id:", id);
-      
-      let caregiverIds: string[] = [];
-      
-      if (values.assignToAllCaregivers) {
-        caregiverIds = data.caregivers.map((c) => c.id);
-        console.log("[AddPatientDialog] Assegna a TUTTI i caregiver:", caregiverIds);
-      } else {
-        if (data.currentCaregiverId) {
-          caregiverIds = [data.currentCaregiverId];
-          console.log("[AddPatientDialog] Assegna SOLO al caregiver corrente:", caregiverIds);
-        }
-      }
+      const caregiverIds: string[] = data.currentCaregiverId
+        ? [data.currentCaregiverId]
+        : [];
 
       const patientData = {
         id,
         name: values.name.trim(),
         birthYear: values.birthYear,
         caregiverIds,
-        userId: data.currentCaregiverId || undefined,
+        // Il paziente creato dal caregiver NON ha un userId (nessun account paziente collegato).
+        userId: undefined,
       };
-
-      console.log("[AddPatientDialog] Paziente da salvare:", patientData);
 
       await addPatient(patientData);
 
@@ -98,6 +88,7 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
       });
     }
   }
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
