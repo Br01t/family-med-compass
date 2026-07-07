@@ -326,7 +326,10 @@ export function subscribeNotifications(
         (data || []).map((n) => ({
           id: n.id,
           createdAt: n.created_at,
+          kind: n.kind ?? "info",
           patientId: n.patient_id,
+          therapyId: n.therapy_id,
+          eventId: n.event_id,
           severity: n.severity,
           title: n.title,
           message: n.message,

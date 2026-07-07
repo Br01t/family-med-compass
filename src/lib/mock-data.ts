@@ -75,10 +75,25 @@ export type MedicationEvent = {
   timeline: { at: string; kind: string; message: string }[];
 };
 
+export type NotificationKind =
+  | "reminder"
+  | "reminder_pre"
+  | "due"
+  | "reminder_post"
+  | "missed"
+  | "taken"
+  | "snoozed"
+  | "skipped"
+  | "low_stock"
+  | "info";
+
 export type Notification = {
   id: string;
   createdAt: string;
+  kind: NotificationKind;
   patientId?: string;
+  therapyId?: string;
+  eventId?: string;
   severity: "info" | "warning" | "alert";
   title: string;
   message: string;
