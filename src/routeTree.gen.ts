@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TerapieRouteImport } from './routes/terapie'
+import { Route as StoricoReportRouteImport } from './routes/storico-report'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ScorteRouteImport } from './routes/scorte'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -17,6 +18,7 @@ import { Route as RegistratiRouteImport } from './routes/registrati'
 import { Route as PazienteRouteImport } from './routes/paziente'
 import { Route as NotificheRouteImport } from './routes/notifiche'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LeMieTerapieRouteImport } from './routes/le-mie-terapie'
 import { Route as ImpostazioniRouteImport } from './routes/impostazioni'
 import { Route as GuidaRouteImport } from './routes/guida'
 import { Route as CaregiverRouteImport } from './routes/caregiver'
@@ -27,6 +29,11 @@ import { Route as PazientiIdRouteImport } from './routes/pazienti.$id'
 const TerapieRoute = TerapieRouteImport.update({
   id: '/terapie',
   path: '/terapie',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoricoReportRoute = StoricoReportRouteImport.update({
+  id: '/storico-report',
+  path: '/storico-report',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -62,6 +69,11 @@ const NotificheRoute = NotificheRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeMieTerapieRoute = LeMieTerapieRouteImport.update({
+  id: '/le-mie-terapie',
+  path: '/le-mie-terapie',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImpostazioniRoute = ImpostazioniRouteImport.update({
@@ -100,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/caregiver': typeof CaregiverRoute
   '/guida': typeof GuidaRoute
   '/impostazioni': typeof ImpostazioniRoute
+  '/le-mie-terapie': typeof LeMieTerapieRoute
   '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
@@ -107,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/storico-report': typeof StoricoReportRoute
   '/terapie': typeof TerapieRoute
   '/pazienti/$id': typeof PazientiIdRoute
   '/pazienti/': typeof PazientiIndexRoute
@@ -116,6 +130,7 @@ export interface FileRoutesByTo {
   '/caregiver': typeof CaregiverRoute
   '/guida': typeof GuidaRoute
   '/impostazioni': typeof ImpostazioniRoute
+  '/le-mie-terapie': typeof LeMieTerapieRoute
   '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
@@ -123,6 +138,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/storico-report': typeof StoricoReportRoute
   '/terapie': typeof TerapieRoute
   '/pazienti/$id': typeof PazientiIdRoute
   '/pazienti': typeof PazientiIndexRoute
@@ -133,6 +149,7 @@ export interface FileRoutesById {
   '/caregiver': typeof CaregiverRoute
   '/guida': typeof GuidaRoute
   '/impostazioni': typeof ImpostazioniRoute
+  '/le-mie-terapie': typeof LeMieTerapieRoute
   '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
@@ -140,6 +157,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/storico-report': typeof StoricoReportRoute
   '/terapie': typeof TerapieRoute
   '/pazienti/$id': typeof PazientiIdRoute
   '/pazienti/': typeof PazientiIndexRoute
@@ -151,6 +169,7 @@ export interface FileRouteTypes {
     | '/caregiver'
     | '/guida'
     | '/impostazioni'
+    | '/le-mie-terapie'
     | '/login'
     | '/notifiche'
     | '/paziente'
@@ -158,6 +177,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/scorte'
     | '/sitemap.xml'
+    | '/storico-report'
     | '/terapie'
     | '/pazienti/$id'
     | '/pazienti/'
@@ -167,6 +187,7 @@ export interface FileRouteTypes {
     | '/caregiver'
     | '/guida'
     | '/impostazioni'
+    | '/le-mie-terapie'
     | '/login'
     | '/notifiche'
     | '/paziente'
@@ -174,6 +195,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/scorte'
     | '/sitemap.xml'
+    | '/storico-report'
     | '/terapie'
     | '/pazienti/$id'
     | '/pazienti'
@@ -183,6 +205,7 @@ export interface FileRouteTypes {
     | '/caregiver'
     | '/guida'
     | '/impostazioni'
+    | '/le-mie-terapie'
     | '/login'
     | '/notifiche'
     | '/paziente'
@@ -190,6 +213,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/scorte'
     | '/sitemap.xml'
+    | '/storico-report'
     | '/terapie'
     | '/pazienti/$id'
     | '/pazienti/'
@@ -200,6 +224,7 @@ export interface RootRouteChildren {
   CaregiverRoute: typeof CaregiverRoute
   GuidaRoute: typeof GuidaRoute
   ImpostazioniRoute: typeof ImpostazioniRoute
+  LeMieTerapieRoute: typeof LeMieTerapieRoute
   LoginRoute: typeof LoginRoute
   NotificheRoute: typeof NotificheRoute
   PazienteRoute: typeof PazienteRoute
@@ -207,6 +232,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   ScorteRoute: typeof ScorteRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  StoricoReportRoute: typeof StoricoReportRoute
   TerapieRoute: typeof TerapieRoute
   PazientiIdRoute: typeof PazientiIdRoute
   PazientiIndexRoute: typeof PazientiIndexRoute
@@ -219,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/terapie'
       fullPath: '/terapie'
       preLoaderRoute: typeof TerapieRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/storico-report': {
+      id: '/storico-report'
+      path: '/storico-report'
+      fullPath: '/storico-report'
+      preLoaderRoute: typeof StoricoReportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -268,6 +301,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/le-mie-terapie': {
+      id: '/le-mie-terapie'
+      path: '/le-mie-terapie'
+      fullPath: '/le-mie-terapie'
+      preLoaderRoute: typeof LeMieTerapieRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/impostazioni': {
@@ -320,6 +360,7 @@ const rootRouteChildren: RootRouteChildren = {
   CaregiverRoute: CaregiverRoute,
   GuidaRoute: GuidaRoute,
   ImpostazioniRoute: ImpostazioniRoute,
+  LeMieTerapieRoute: LeMieTerapieRoute,
   LoginRoute: LoginRoute,
   NotificheRoute: NotificheRoute,
   PazienteRoute: PazienteRoute,
@@ -327,6 +368,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   ScorteRoute: ScorteRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  StoricoReportRoute: StoricoReportRoute,
   TerapieRoute: TerapieRoute,
   PazientiIdRoute: PazientiIdRoute,
   PazientiIndexRoute: PazientiIndexRoute,
