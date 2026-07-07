@@ -23,7 +23,7 @@ export const Route = createFileRoute("/paziente")({
 });
 
 function PatientPage() {
-  const { data, confirmDose, skipDose } = useFamilyMed();
+  const { data, confirmDose, skipDose, snoozeDose } = useFamilyMed();
   const patient =
     data?.patients?.find((p) => p.id === data.currentPatientId) ??
     data?.patients?.[0];
