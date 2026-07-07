@@ -65,7 +65,7 @@ function LandingPage() {
           <div>
             <p className="text-lg font-black tracking-tight leading-none">FamilyMed</p>
             <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
-              Demo · dati fittizi
+              ❤️
             </p>
           </div>
         </div>
