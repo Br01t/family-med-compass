@@ -254,7 +254,7 @@ function PatientPage() {
                 Le mie terapie
               </h2>
               <Link
-                to="/terapie"
+                to="/le-mie-terapie"
                 className="text-xs font-semibold text-primary hover:underline"
               >
                 Vedi tutto
@@ -266,7 +266,7 @@ function PatientPage() {
                 return (
                   <Link
                     key={t.id}
-                    to="/terapie"
+                    to="/le-mie-terapie"
                     className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-card transition hover:border-primary/60"
                   >
                     <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary">

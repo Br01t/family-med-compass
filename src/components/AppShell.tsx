@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import {
   Bell,
   BookOpen,
-  CalendarDays,
   LayoutDashboard,
   LogOut,
   Package,
@@ -35,9 +34,8 @@ const nav = [
   { title: "Dashboard", url: "/caregiver", icon: LayoutDashboard },
   { title: "Pazienti", url: "/pazienti", icon: Users },
   { title: "Terapie", url: "/terapie", icon: Pill },
-  { title: "Storico", url: "/storico", icon: CalendarDays },
+  { title: "Storico & Report", url: "/storico-report", icon: PieChart },
   { title: "Scorte", url: "/scorte", icon: Package },
-  { title: "Report", url: "/report", icon: PieChart },
   { title: "Notifiche", url: "/notifiche", icon: Bell },
   { title: "Guida", url: "/guida", icon: BookOpen },
   { title: "Impostazioni", url: "/impostazioni", icon: Settings },
