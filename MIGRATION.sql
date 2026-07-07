@@ -44,20 +44,30 @@ begin
   v_name := coalesce(new.raw_user_meta_data->>'name', new.email);
   v_role := coalesce(new.raw_user_meta_data->>'role', 'caregiver');
 
-  insert into public.profiles (id, email, name, role)
-  values (new.id, new.email, v_name, v_role)
-  on conflict (id) do nothing;
+  -- Ogni insert è isolato: un fallimento non blocca la registrazione
+  begin
+    insert into public.profiles (id, email, name, role)
+    values (new.id, new.email, v_name, v_role)
+    on conflict (id) do nothing;
+  exception when others then null;
+  end;
 
   if v_role = 'paziente' then
-    insert into public.patients (id, name, user_id)
-    values ('p_' || new.id::text, v_name, new.id)
-    on conflict (id) do nothing;
+    begin
+      insert into public.patients (id, name, user_id)
+      values ('p_' || new.id::text, v_name, new.id)
+      on conflict (id) do nothing;
+    exception when others then null;
+    end;
   end if;
 
   if v_role = 'caregiver' then
-    insert into public.caregivers (id, name)
-    values (new.id, v_name)
-    on conflict (id) do nothing;
+    begin
+      insert into public.caregivers (id, name)
+      values (new.id, v_name)
+      on conflict (id) do nothing;
+    exception when others then null;
+    end;
   end if;
 
   return new;
