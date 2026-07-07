@@ -475,12 +475,48 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     setLoadingAuth(false);
   }, []);
 
+  // ---- Open patient list + follow / unfollow --------------------
+  const [allPatients, setAllPatients] = useState<Patient[]>([]);
+
+  const refreshAllPatients = useCallback(async () => {
+    const list = await fetchAllPatients();
+    setAllPatients(list);
+  }, []);
+
+  useEffect(() => {
+    if (user && userProfile?.role === "caregiver") {
+      refreshAllPatients();
+    } else {
+      setAllPatients([]);
+    }
+  }, [user, userProfile, refreshAllPatients, patients]);
+
+  const followPatient = useCallback(
+    async (patientId: string) => {
+      if (!user) return;
+      await followPatientDoc(user.id, patientId);
+    },
+    [user],
+  );
+
+  const unfollowPatient = useCallback(
+    async (patientId: string) => {
+      if (!user) return;
+      await unfollowPatientDoc(user.id, patientId);
+    },
+    [user],
+  );
+
   const value = useMemo<Ctx>(
     () => ({
       data,
       user,
       userProfile,
       loadingAuth,
+      allPatients,
+      refreshAllPatients,
+      followPatient,
+      unfollowPatient,
       setRole,
       setCurrentPatient,
       confirmDose,
@@ -500,6 +536,10 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       user,
       userProfile,
       loadingAuth,
+      allPatients,
+      refreshAllPatients,
+      followPatient,
+      unfollowPatient,
       setRole,
       setCurrentPatient,
       confirmDose,
@@ -515,6 +555,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       logout,
     ]
   );
+
 
   return <FamilyMedContext.Provider value={value}>{children}</FamilyMedContext.Provider>;
 }
