@@ -9,6 +9,7 @@ import { fileToCompressedDataUrl } from "@/lib/image-utils";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -266,6 +267,9 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
           <DialogTitle className="text-xl font-black tracking-tight">
             {isEdit ? `Modifica: ${editTherapy?.name}` : "Nuova terapia"}
           </DialogTitle>
+          <DialogDescription>
+            Assegna paziente, terapia, foto, frequenza, durata e avvisi.
+          </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="flex-1 overflow-auto pr-3">
