@@ -10,11 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TerapieRouteImport } from './routes/terapie'
-import { Route as StoricoRouteImport } from './routes/storico'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ScorteRouteImport } from './routes/scorte'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as ReportRouteImport } from './routes/report'
 import { Route as RegistratiRouteImport } from './routes/registrati'
 import { Route as PazienteRouteImport } from './routes/paziente'
 import { Route as NotificheRouteImport } from './routes/notifiche'
@@ -31,11 +29,6 @@ const TerapieRoute = TerapieRouteImport.update({
   path: '/terapie',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StoricoRoute = StoricoRouteImport.update({
-  id: '/storico',
-  path: '/storico',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -49,11 +42,6 @@ const ScorteRoute = ScorteRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReportRoute = ReportRouteImport.update({
-  id: '/report',
-  path: '/report',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegistratiRoute = RegistratiRouteImport.update({
@@ -116,11 +104,9 @@ export interface FileRoutesByFullPath {
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
   '/registrati': typeof RegistratiRoute
-  '/report': typeof ReportRoute
   '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/storico': typeof StoricoRoute
   '/terapie': typeof TerapieRoute
   '/pazienti/$id': typeof PazientiIdRoute
   '/pazienti/': typeof PazientiIndexRoute
@@ -134,11 +120,9 @@ export interface FileRoutesByTo {
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
   '/registrati': typeof RegistratiRoute
-  '/report': typeof ReportRoute
   '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/storico': typeof StoricoRoute
   '/terapie': typeof TerapieRoute
   '/pazienti/$id': typeof PazientiIdRoute
   '/pazienti': typeof PazientiIndexRoute
@@ -153,11 +137,9 @@ export interface FileRoutesById {
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
   '/registrati': typeof RegistratiRoute
-  '/report': typeof ReportRoute
   '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/storico': typeof StoricoRoute
   '/terapie': typeof TerapieRoute
   '/pazienti/$id': typeof PazientiIdRoute
   '/pazienti/': typeof PazientiIndexRoute
@@ -173,11 +155,9 @@ export interface FileRouteTypes {
     | '/notifiche'
     | '/paziente'
     | '/registrati'
-    | '/report'
     | '/reset-password'
     | '/scorte'
     | '/sitemap.xml'
-    | '/storico'
     | '/terapie'
     | '/pazienti/$id'
     | '/pazienti/'
@@ -191,11 +171,9 @@ export interface FileRouteTypes {
     | '/notifiche'
     | '/paziente'
     | '/registrati'
-    | '/report'
     | '/reset-password'
     | '/scorte'
     | '/sitemap.xml'
-    | '/storico'
     | '/terapie'
     | '/pazienti/$id'
     | '/pazienti'
@@ -209,11 +187,9 @@ export interface FileRouteTypes {
     | '/notifiche'
     | '/paziente'
     | '/registrati'
-    | '/report'
     | '/reset-password'
     | '/scorte'
     | '/sitemap.xml'
-    | '/storico'
     | '/terapie'
     | '/pazienti/$id'
     | '/pazienti/'
@@ -228,11 +204,9 @@ export interface RootRouteChildren {
   NotificheRoute: typeof NotificheRoute
   PazienteRoute: typeof PazienteRoute
   RegistratiRoute: typeof RegistratiRoute
-  ReportRoute: typeof ReportRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ScorteRoute: typeof ScorteRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
-  StoricoRoute: typeof StoricoRoute
   TerapieRoute: typeof TerapieRoute
   PazientiIdRoute: typeof PazientiIdRoute
   PazientiIndexRoute: typeof PazientiIndexRoute
@@ -245,13 +219,6 @@ declare module '@tanstack/react-router' {
       path: '/terapie'
       fullPath: '/terapie'
       preLoaderRoute: typeof TerapieRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/storico': {
-      id: '/storico'
-      path: '/storico'
-      fullPath: '/storico'
-      preLoaderRoute: typeof StoricoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -273,13 +240,6 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/report': {
-      id: '/report'
-      path: '/report'
-      fullPath: '/report'
-      preLoaderRoute: typeof ReportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/registrati': {
@@ -364,11 +324,9 @@ const rootRouteChildren: RootRouteChildren = {
   NotificheRoute: NotificheRoute,
   PazienteRoute: PazienteRoute,
   RegistratiRoute: RegistratiRoute,
-  ReportRoute: ReportRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ScorteRoute: ScorteRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
-  StoricoRoute: StoricoRoute,
   TerapieRoute: TerapieRoute,
   PazientiIdRoute: PazientiIdRoute,
   PazientiIndexRoute: PazientiIndexRoute,
