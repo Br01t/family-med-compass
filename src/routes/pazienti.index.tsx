@@ -38,7 +38,7 @@ function PatientsListPage() {
                   <div className="min-w-0">
                     <p className="truncate text-lg font-black">{p.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date().getFullYear() - p.birthYear} anni ·{" "}
+                      {p.birthYear ? new Date().getFullYear() - p.birthYear : "?"} anni ·{" "}
                       {p.caregiverIds.length} caregiver
                     </p>
                   </div>
