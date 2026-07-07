@@ -3,23 +3,15 @@
 -- Copia il contenuto in Supabase Studio → SQL Editor → Run.
 
 -- =========================================================
--- ENUM ruolo
--- =========================================================
-do $$
-begin
-  if not exists (select 1 from pg_type where typname = 'app_role') then
-    create type public.app_role as enum ('paziente', 'caregiver', 'admin', 'medico');
-  end if;
-end$$;
-
--- =========================================================
 -- profiles
+-- NOTA: role è text, non enum, per evitare problemi con ALTER TYPE ADD VALUE
+-- che non può essere eseguito dentro transazioni.
 -- =========================================================
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
   name text,
-  role public.app_role not null default 'caregiver',
+  role text not null default 'caregiver',
   created_at timestamptz not null default now()
 );
 
@@ -45,15 +37,39 @@ create policy "profiles: self update"
 
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_name text;
+  v_role text;
 begin
-  insert into public.profiles (id, email, name, role)
-  values (
-    new.id,
-    new.email,
-    coalesce(new.raw_user_meta_data->>'name', new.email),
-    coalesce((new.raw_user_meta_data->>'role')::public.app_role, 'caregiver')
-  )
-  on conflict (id) do nothing;
+  v_name := coalesce(new.raw_user_meta_data->>'name', new.email);
+  v_role := coalesce(new.raw_user_meta_data->>'role', 'caregiver');
+
+  -- Ogni insert è isolato: un fallimento non blocca la registrazione
+  begin
+    insert into public.profiles (id, email, name, role)
+    values (new.id, new.email, v_name, v_role)
+    on conflict (id) do nothing;
+  exception when others then null;
+  end;
+
+  if v_role = 'paziente' then
+    begin
+      insert into public.patients (id, name, user_id)
+      values ('p_' || new.id::text, v_name, new.id)
+      on conflict (id) do nothing;
+    exception when others then null;
+    end;
+  end if;
+
+  if v_role = 'caregiver' then
+    begin
+      insert into public.caregivers (id, name)
+      values (new.id, v_name)
+      on conflict (id) do nothing;
+    exception when others then null;
+    end;
+  end if;
+
   return new;
 end;
 $$;

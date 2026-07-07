@@ -1,0 +1,67 @@
+A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <StartClient ref={function ref}>
+      <Await promise={Promise}>
+        <AwaitInner promise={Promise}>
+          <RouterProvider router={{...}}>
+            <RouterContextProvider router={{...}}>
+              <Matches>
+                <SafeFragment fallback={null}>
+                  <Transitioner>
+                  <MatchesInner>
+                    <CatchBoundary getResetKey={function getResetKey} errorComponent={function ErrorComponent} ...>
+                      <CatchBoundaryImpl getResetKey={function getResetKey} onCatch={function}>
+                        <MatchImpl matchId="__root__/">
+                          <MatchView router={{...}} matchId="__root__/" resetKey={0} matchState={{routeId:"_...", ...}}>
+                            <RootShell>
+                              <html
+                                lang="it"
++                               data-tsd-source="/src/routes/__root.tsx:142:10"
+-                               data-tsd-source="/src/routes/__root.tsx:126:5"
+                                ref={function ref}
+                              >
+                                <head
++                                 data-tsd-source="/src/routes/__root.tsx:143:7"
+-                                 data-tsd-source="/src/routes/__root.tsx:127:7"
+                                  ref={function ref}
+                                >
+                                <body
++                                 data-tsd-source="/src/routes/__root.tsx:146:7"
+-                                 data-tsd-source="/src/routes/__root.tsx:130:7"
+                                  ref={function ref}
+                                >
+
+(anonymous) @ react-dom_client.js?v=e8aa01f9:3085
+qdwadqkpobtxivlypbio.supabase.co/rest/v1/patients?select=*&order=created_at.desc:1  Failed to load resource: the server responded with a status of 400 ()
+supabase-service.ts:523 fetchAllPatients: Object
+(anonymous) @ supabase-service.ts:523
+qdwadqkpobtxivlypbio.supabase.co/rest/v1/patients?select=*&order=created_at.desc:1  Failed to load resource: the server responded with a status of 400 ()
+supabase-service.ts:523 fetchAllPatients: Object
+(anonymous) @ supabase-service.ts:523
+qdwadqkpobtxivlypbio.supabase.co/rest/v1/patients?select=*&order=created_at.desc:1  Failed to load resource: the server responded with a status of 400 ()
+supabase-service.ts:523 fetchAllPatients: Object
+(anonymous) @ supabase-service.ts:523
+qdwadqkpobtxivlypbio.supabase.co/rest/v1/patients?select=*&order=created_at.desc:1  Failed to load resource: the server responded with a status of 400 ()
+supabase-service.ts:523 fetchAllPatients: Object
+(anonymous) @ supabase-service.ts:523
+qdwadqkpobtxivlypbio.supabase.co/rest/v1/patients?select=*&order=created_at.desc:1  Failed to load resource: the server responded with a status of 400 ()
+supabase-service.ts:523 fetchAllPatients: Object
+(anonymous) @ supabase-service.ts:523
+qdwadqkpobtxivlypbio.supabase.co/rest/v1/patients?select=*&order=created_at.desc:1  Failed to load resource: the server responded with a status of 400 ()
+supabase-service.ts:523 fetchAllPatients: Object
+(anonymous) @ supabase-service.ts:523
+qdwadqkpobtxivlypbio.supabase.co/rest/v1/patients?select=*&order=created_at.desc:1  Failed to load resource: the server responded with a status of 400 ()
+supabase-service.ts:523 fetchAllPatients: Object
+(anonymous) @ supabase-service.ts:523
+auth-service.ts:78  POST https://qdwadqkpobtxivlypbio.supabase.co/auth/v1/signup 500 (Internal Server Error)

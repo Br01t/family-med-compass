@@ -107,7 +107,6 @@ export async function signUpUser(params: {
   // Se il ruolo è "paziente", crea automaticamente il record nel DB
   if (params.role === "paziente") {
     try {
-      console.log("[signUpUser] Creazione paziente per userId:", data.user.id);
       await addPatientDoc({
         id: `p_${data.user.id}`,
         name: params.name,
@@ -116,10 +115,22 @@ export async function signUpUser(params: {
         caregiverIds: [],
         userId: data.user.id,
       });
-      console.log("[signUpUser] Paziente creato con successo");
     } catch (patientError) {
-      console.warn("Paziente non creato automaticamente:", patientError);
-      // Non bloccare la registrazione se il paziente non viene creato
+      // Non blocchiamo la registrazione: il trigger Supabase o il recovery al login
+      // provvederanno a creare il record paziente automaticamente.
+      console.error("[signUpUser] Creazione paziente fallita (sarà recuperata al login):", patientError);
+    }
+  }
+
+  // Se il ruolo è "caregiver", crea il record nella tabella caregivers
+  if (params.role === "caregiver") {
+    try {
+      await supabase.from("caregivers").insert({
+        id: data.user.id,
+        name: params.name,
+      });
+    } catch {
+      // Il record potrebbe già esistere via trigger — non blocchiamo
     }
   }
 

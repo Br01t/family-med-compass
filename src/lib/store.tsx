@@ -154,6 +154,16 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
           }
           return prev;
         });
+      } else if (userProfile.role === "paziente") {
+        // Recovery: il record paziente non esiste ancora, crealo ora
+        addPatientDoc({
+          id: `p_${user.id}`,
+          name: userProfile.name || user.email || "Paziente",
+          photo: undefined,
+          birthYear: undefined,
+          caregiverIds: [],
+          userId: user.id,
+        }).catch((err) => console.warn("[store] Recovery paziente fallito:", err));
       }
     });
 
