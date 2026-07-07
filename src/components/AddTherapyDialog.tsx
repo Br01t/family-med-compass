@@ -193,7 +193,7 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
           times: values.times.map((t) => t.value),
           recurrence,
           startDate: values.startDate,
-          endDate: values.endDate,
+          endDate: values.noEndDate ? undefined : (values.endDate || undefined),
           timeoutMinutes: values.timeoutMinutes,
           pillsPerPack: values.pillsPerPack,
           packs: values.packs,
@@ -218,7 +218,7 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
           times: values.times.map((t) => t.value),
           recurrence,
           startDate: values.startDate,
-          endDate: values.endDate,
+          endDate: values.noEndDate ? undefined : (values.endDate || undefined),
           timeoutMinutes: values.timeoutMinutes,
           pillsPerPack: values.pillsPerPack,
           packs: values.packs,
@@ -563,17 +563,48 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
                 <FormField
                   control={form.control}
                   name="endDate"
-                  render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Data fine terapia</FormLabel>
-                      <FormControl>
-                        <Input id="therapy-end-date-input" type="date" {...field} value={field.value ?? ""} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const noEnd = form.watch("noEndDate");
+                    return (
+                      <FormItem>
+                        <FormLabel>Data fine (opzionale)</FormLabel>
+                        <FormControl>
+                          <Input
+                            id="therapy-end-date-input"
+                            type="date"
+                            {...field}
+                            value={field.value ?? ""}
+                            disabled={noEnd}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
               </div>
+              <FormField
+                control={form.control}
+                name="noEndDate"
+                render={({ field }) => (
+                  <label className="flex cursor-pointer items-center gap-2 text-sm">
+                    <input
+                      id="therapy-no-end-date"
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={!!field.value}
+                      onChange={(e) => {
+                        field.onChange(e.target.checked);
+                        if (e.target.checked) form.setValue("endDate", "");
+                      }}
+                    />
+                    <span className="font-medium">
+                      Terapia senza scadenza (a tempo indeterminato)
+                    </span>
+                  </label>
+                )}
+              />
+
 
               {/* Stock */}
               <div className="rounded-xl border border-border/60 bg-surface-muted p-4">
