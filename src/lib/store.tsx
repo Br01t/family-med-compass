@@ -31,13 +31,21 @@ import {
   deleteTherapyDoc,
   saveEventDoc,
   updateNotificationReadState,
+  fetchAllPatients,
+  followPatient as followPatientDoc,
+  unfollowPatient as unfollowPatientDoc,
 } from "./supabase-service";
+
 
 type Ctx = {
   data: FamilyMedData;
   user: User | null;
   userProfile: UserProfile | null;
   loadingAuth: boolean;
+  allPatients: Patient[];
+  refreshAllPatients: () => Promise<void>;
+  followPatient: (patientId: string) => Promise<void>;
+  unfollowPatient: (patientId: string) => Promise<void>;
   setRole: (role: Role) => void;
   setCurrentPatient: (id: string) => void;
   confirmDose: (params: {
@@ -56,6 +64,7 @@ type Ctx = {
   resetDemoData: () => void;
   logout: () => Promise<void>;
 };
+
 
 const FamilyMedContext = createContext<Ctx | null>(null);
 
