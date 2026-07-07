@@ -1,60 +1,46 @@
-// FamilyMed Service Worker — Cache-first for assets, Network-first for pages
-const CACHE_NAME = "familymed-v1";
-const STATIC_CACHE = "familymed-static-v1";
+// FamilyMed Service Worker — cache app shell + Web Push
+const CACHE_NAME = "familymed-v2";
+const STATIC_CACHE = "familymed-static-v2";
 
-// Pages to pre-cache for offline access
 const PAGES_TO_CACHE = [
   "/",
   "/caregiver",
   "/paziente",
   "/pazienti",
   "/terapie",
-  "/storico",
   "/scorte",
-  "/report",
+  "/storico-report",
   "/notifiche",
   "/impostazioni",
   "/guida",
+  "/le-mie-terapie",
 ];
 
-// Install: pre-cache app shell pages
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(PAGES_TO_CACHE).catch((err) => {
-          console.warn("[SW] Some pages failed to pre-cache:", err);
-        });
-      })
+      .then((cache) => cache.addAll(PAGES_TO_CACHE).catch(() => {}))
       .then(() => self.skipWaiting()),
   );
 });
 
-// Activate: clean up old caches
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
       .then((keys) =>
         Promise.all(
-          keys
-            .filter((k) => k !== CACHE_NAME && k !== STATIC_CACHE)
-            .map((k) => caches.delete(k)),
+          keys.filter((k) => k !== CACHE_NAME && k !== STATIC_CACHE).map((k) => caches.delete(k)),
         ),
       )
       .then(() => self.clients.claim()),
   );
 });
 
-// Fetch strategy:
-// - Static assets (JS, CSS, fonts, images): Cache First
-// - HTML pages & API: Network First with cache fallback
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
-
-  // Skip non-GET requests and cross-origin requests (except Google Fonts)
   if (request.method !== "GET") return;
   if (
     url.origin !== self.location.origin &&
@@ -63,12 +49,9 @@ self.addEventListener("fetch", (event) => {
   ) {
     return;
   }
-
-  // Cache First for static assets
   const isStaticAsset =
     url.pathname.match(/\.(js|css|woff2?|ttf|otf|png|jpg|jpeg|svg|ico|webp)$/) ||
     url.hostname.includes("fonts.");
-
   if (isStaticAsset) {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -83,8 +66,6 @@ self.addEventListener("fetch", (event) => {
     );
     return;
   }
-
-  // Network First for HTML navigation (with offline fallback)
   if (request.mode === "navigate" || request.headers.get("accept")?.includes("text/html")) {
     event.respondWith(
       fetch(request)
@@ -95,14 +76,50 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() => {
-          return caches.match(request).then((cached) => {
-            if (cached) return cached;
-            // Fallback: serve root (SPA shell)
-            return caches.match("/");
-          });
-        }),
+        .catch(() =>
+          caches.match(request).then((cached) => cached || caches.match("/")),
+        ),
     );
-    return;
   }
+});
+
+// ============ Web Push ============
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "FamilyMed", body: event.data?.text() ?? "" };
+  }
+  const title = data.title || "FamilyMed";
+  const options = {
+    body: data.body || "",
+    icon: data.icon || "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    image: data.image,
+    tag: data.tag,
+    data: { url: data.url || "/notifiche", isAlarm: !!data.isAlarm },
+    requireInteraction: !!data.requireInteraction || !!data.isAlarm,
+    vibrate: data.isAlarm ? [500, 200, 500, 200, 500, 200, 500] : [200, 100, 200],
+    silent: false,
+    renotify: true,
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/notifiche";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
+      for (const win of wins) {
+        if ("focus" in win) {
+          win.focus();
+          if ("navigate" in win) win.navigate(url);
+          return;
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    }),
+  );
 });

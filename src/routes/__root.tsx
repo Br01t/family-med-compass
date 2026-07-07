@@ -15,6 +15,7 @@ import { FamilyMedProvider } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
 import { InstallBanner } from "../components/InstallBanner";
 import { NotificationScheduler } from "../components/NotificationScheduler";
+import { AlarmRinger } from "../components/AlarmRinger";
 
 function NotFoundComponent() {
   return (
@@ -173,6 +174,7 @@ function RootComponent() {
         <Toaster position="top-center" richColors />
         <InstallBanner />
         <NotificationScheduler />
+        <AlarmRinger />
       </FamilyMedProvider>
     </QueryClientProvider>
   );

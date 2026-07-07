@@ -326,7 +326,10 @@ export function subscribeNotifications(
         (data || []).map((n) => ({
           id: n.id,
           createdAt: n.created_at,
+          kind: n.kind ?? "info",
           patientId: n.patient_id,
+          therapyId: n.therapy_id,
+          eventId: n.event_id,
           severity: n.severity,
           title: n.title,
           message: n.message,
@@ -568,4 +571,49 @@ export async function unfollowPatient(caregiverId: string, patientId: string): P
     .eq("caregiver_id", caregiverId)
     .eq("patient_id", patientId);
   if (error) throw error;
+}
+
+/* =========================================================
+   INSERT NOTIFICATION (client-side, per notificare caregiver)
+========================================================= */
+
+export async function insertNotificationDoc(input: {
+  targetUserId: string;
+  kind: string;
+  severity: "info" | "warning" | "alert";
+  title: string;
+  message: string;
+  patientId?: string;
+  therapyId?: string;
+  eventId?: string;
+  doseKey?: string;
+}): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.from("notifications").insert({
+    target_user_id: input.targetUserId,
+    kind: input.kind,
+    severity: input.severity,
+    title: input.title,
+    message: input.message,
+    patient_id: input.patientId,
+    therapy_id: input.therapyId,
+    event_id: input.eventId,
+    dose_key: input.doseKey,
+  });
+  if (error && error.code !== "23505") {
+    console.warn("[insertNotificationDoc]", error.message);
+  }
+}
+
+export async function fetchCaregiverIdsForPatient(patientId: string): Promise<string[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("caregiver_patients")
+    .select("caregiver_id")
+    .eq("patient_id", patientId);
+  if (error) {
+    console.warn("[fetchCaregiverIdsForPatient]", error.message);
+    return [];
+  }
+  return (data ?? []).map((r) => r.caregiver_id);
 }

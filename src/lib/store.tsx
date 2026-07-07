@@ -35,8 +35,68 @@ import {
   fetchAllPatients,
   followPatient as followPatientDoc,
   unfollowPatient as unfollowPatientDoc,
+  insertNotificationDoc,
+  fetchCaregiverIdsForPatient,
 } from "./supabase-service";
+import { sendPushToUser } from "./push-subscription";
 
+
+async function notifyCaregiversAboutDose(input: {
+  patientId: string;
+  therapyId: string;
+  eventId: string;
+  scheduledAt: Date;
+  kind: "taken" | "snoozed" | "skipped";
+  therapyName: string;
+  patientName: string;
+  actor?: string;
+  minutes?: number;
+}) {
+  const caregivers = await fetchCaregiverIdsForPatient(input.patientId);
+  if (caregivers.length === 0) return;
+  const scheduledLabel = input.scheduledAt.toLocaleTimeString("it-IT", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const spec = {
+    taken: {
+      severity: "info" as const,
+      title: `${input.patientName} ha confermato ${input.therapyName}`,
+      message: `Ha preso la dose delle ${scheduledLabel}.`,
+    },
+    snoozed: {
+      severity: "warning" as const,
+      title: `${input.patientName} ha rimandato ${input.therapyName}`,
+      message: `Dose delle ${scheduledLabel} rimandata di ${input.minutes ?? 10} min.`,
+    },
+    skipped: {
+      severity: "warning" as const,
+      title: `${input.patientName} ha saltato ${input.therapyName}`,
+      message: `Ha rifiutato la dose delle ${scheduledLabel}.`,
+    },
+  }[input.kind];
+
+  for (const cg of caregivers) {
+    await insertNotificationDoc({
+      targetUserId: cg,
+      kind: input.kind,
+      severity: spec.severity,
+      title: spec.title,
+      message: spec.message,
+      patientId: input.patientId,
+      therapyId: input.therapyId,
+      eventId: input.eventId,
+      doseKey: `${input.therapyId}@${input.scheduledAt.toISOString()}@${input.kind}`,
+    });
+    void sendPushToUser({
+      targetUserId: cg,
+      title: spec.title,
+      body: spec.message,
+      url: "/notifiche",
+      tag: `${input.eventId}-${input.kind}`,
+    });
+  }
+}
 
 type Ctx = {
   data: FamilyMedData;
@@ -294,6 +354,16 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         await saveEventDoc(updatedEvent);
         const updatedPills = Math.max(0, therapy.pillsRemaining - therapy.quantity);
         await saveTherapyDoc({ ...therapy, pillsRemaining: updatedPills });
+        await notifyCaregiversAboutDose({
+          patientId: therapy.patientId,
+          therapyId: therapy.id,
+          eventId: updatedEvent.id,
+          scheduledAt,
+          kind: "taken",
+          therapyName: therapy.name,
+          patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
+          actor: confirmedBy,
+        });
       } else {
         setLocalData((d) => {
           const nextEvents = existingEvent
@@ -306,7 +376,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [user, therapies, events]
+    [user, therapies, events, patients]
   );
 
   const skipDose = useCallback(
@@ -346,6 +416,15 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
       if (user) {
         await saveEventDoc(updatedEvent);
+        await notifyCaregiversAboutDose({
+          patientId: therapy.patientId,
+          therapyId: therapy.id,
+          eventId: updatedEvent.id,
+          scheduledAt,
+          kind: "skipped",
+          therapyName: therapy.name,
+          patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
+        });
       } else {
         setLocalData((d) => {
           const nextEvents = existingEvent
@@ -355,7 +434,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [user, therapies, events]
+    [user, therapies, events, patients]
   );
 
   const snoozeDose = useCallback(
@@ -404,6 +483,16 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         if (supabase) {
           await supabase.from("events").update({ status: "snoozed", snoozed_until: snoozedUntil }).eq("id", updatedEvent.id);
         }
+        await notifyCaregiversAboutDose({
+          patientId: therapy.patientId,
+          therapyId: therapy.id,
+          eventId: updatedEvent.id,
+          scheduledAt,
+          kind: "snoozed",
+          therapyName: therapy.name,
+          patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
+          minutes,
+        });
       } else {
         setLocalData((d) => {
           const nextEvents = existingEvent
@@ -413,7 +502,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [user, therapies, events],
+    [user, therapies, events, patients],
   );
 
   const addTherapy = useCallback(

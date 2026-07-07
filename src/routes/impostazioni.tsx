@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFamilyMed } from "@/lib/store";
 import { requestNotificationPermission } from "@/components/NotificationScheduler";
+import { subscribeToPush } from "@/lib/push-subscription";
 import { type Role } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/impostazioni")({
@@ -299,11 +300,14 @@ function ToggleRow({
 }
 
 function NotificationsCard() {
+  const { user } = useFamilyMed();
   const [perm, setPerm] = useState<NotificationPermission | "unsupported">(
     typeof window !== "undefined" && "Notification" in window
       ? Notification.permission
       : "unsupported",
   );
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushOk, setPushOk] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
@@ -318,13 +322,29 @@ function NotificationsCard() {
       toast.success("Notifiche attive", {
         description: "Riceverai un promemoria all'orario di ogni farmaco.",
       });
-      new Notification("FamilyMed", {
-        body: "Le notifiche dei farmaci sono attive ✅",
-        icon: "/icons/icon-192.png",
-      });
     } else if (p === "denied") {
       toast.error("Notifiche bloccate", {
         description: "Abilitale dalle impostazioni del browser per riceverle.",
+      });
+    }
+  }
+
+  async function enablePush() {
+    if (!user) {
+      toast.error("Devi essere autenticato per attivare le push.");
+      return;
+    }
+    setPushBusy(true);
+    const res = await subscribeToPush(user.id);
+    setPushBusy(false);
+    if (res.ok) {
+      setPushOk(true);
+      toast.success("Push attive su questo dispositivo", {
+        description: "Riceverai una notifica anche ad app chiusa.",
+      });
+    } else {
+      toast.error("Push non attivate", {
+        description: res.reason ?? "Riprova o abilita le notifiche del browser.",
       });
     }
   }
@@ -340,27 +360,43 @@ function NotificationsCard() {
 
   return (
     <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
-      <h2 className="text-lg font-black tracking-tight">Sveglie & notifiche</h2>
+      <h2 className="text-lg font-black tracking-tight">Sveglie & notifiche push</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Attiva le notifiche web per ricevere un promemoria all'ora esatta di
-        ogni farmaco (con foto e note se caricate). Funziona finché l'app è
-        aperta o installata come PWA sul telefono.
+        Attiva le notifiche per ricevere promemoria all'orario esatto di ogni farmaco,
+        con foto e suoni. Le push server-side arrivano anche ad app chiusa se installi FamilyMed come PWA.
       </p>
-      <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border/50 p-3">
-        <div>
-          <p className="text-sm font-semibold">Notifiche web in-app</p>
-          <p className="text-xs text-muted-foreground">Stato: {status}</p>
+      <div className="mt-4 space-y-3">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 p-3">
+          <div>
+            <p className="text-sm font-semibold">Permesso notifiche browser</p>
+            <p className="text-xs text-muted-foreground">Stato: {status}</p>
+          </div>
+          <Button
+            onClick={ask}
+            disabled={perm === "granted" || perm === "denied" || perm === "unsupported"}
+          >
+            {perm === "granted" ? "Attive" : "Attiva"}
+          </Button>
         </div>
-        <Button
-          onClick={ask}
-          disabled={perm === "granted" || perm === "denied" || perm === "unsupported"}
-        >
-          {perm === "granted" ? "Attive" : "Attiva"}
-        </Button>
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 p-3">
+          <div>
+            <p className="text-sm font-semibold">Push su questo dispositivo</p>
+            <p className="text-xs text-muted-foreground">
+              {pushOk ? "Registrate ✓" : "Consente le notifiche anche ad app chiusa"}
+            </p>
+          </div>
+          <Button
+            onClick={enablePush}
+            disabled={pushBusy || perm !== "granted" || !user}
+            variant={pushOk ? "outline" : "default"}
+          >
+            {pushBusy ? "Registrazione…" : pushOk ? "Ok" : "Attiva push"}
+          </Button>
+        </div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Per sveglie affidabili anche ad app chiusa, dalla pagina Terapie usa
-        “Calendario” per esportare l'evento nel calendario nativo del telefono.
+        Suggerimento: installa FamilyMed come app dal tuo browser (menu → "Aggiungi a schermata Home")
+        per ricevere le notifiche in modo affidabile anche a schermo bloccato.
       </p>
     </section>
   );
