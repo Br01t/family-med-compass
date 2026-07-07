@@ -389,11 +389,23 @@ export async function addPatientDoc(patient: Patient): Promise<void> {
 
   const { error: patientError, data: patientData } = await supabase
     .from("patients")
-    .upsert(patientPayload);
+    .insert(patientPayload);
 
   if (patientError) {
-    console.error("[addPatientDoc] Errore salvataggio paziente:", patientError);
-    throw patientError;
+    // Se il record esiste già (conflict su PK), prova con update
+    if (patientError.code === "23505") {
+      const { error: updateError } = await supabase
+        .from("patients")
+        .update({ name: patientPayload.name, user_id: patientPayload.user_id })
+        .eq("id", patientPayload.id);
+      if (updateError) {
+        console.error("[addPatientDoc] Errore update paziente:", updateError);
+        throw updateError;
+      }
+    } else {
+      console.error("[addPatientDoc] Errore salvataggio paziente:", patientError);
+      throw patientError;
+    }
   }
 
   console.log("[addPatientDoc] Paziente salvato con successo:", patientData);

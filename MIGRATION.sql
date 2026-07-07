@@ -45,15 +45,31 @@ create policy "profiles: self update"
 
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_role public.app_role;
+  v_name text;
 begin
+  v_name := coalesce(new.raw_user_meta_data->>'name', new.email);
+  v_role := coalesce((new.raw_user_meta_data->>'role')::public.app_role, 'caregiver');
+
   insert into public.profiles (id, email, name, role)
-  values (
-    new.id,
-    new.email,
-    coalesce(new.raw_user_meta_data->>'name', new.email),
-    coalesce((new.raw_user_meta_data->>'role')::public.app_role, 'caregiver')
-  )
+  values (new.id, new.email, v_name, v_role)
   on conflict (id) do nothing;
+
+  -- Se il ruolo è paziente, crea automaticamente il record nella tabella patients
+  if v_role = 'paziente' then
+    insert into public.patients (id, name, user_id)
+    values ('p_' || new.id::text, v_name, new.id)
+    on conflict (id) do nothing;
+  end if;
+
+  -- Se il ruolo è caregiver, crea automaticamente il record nella tabella caregivers
+  if v_role = 'caregiver' then
+    insert into public.caregivers (id, name)
+    values (new.id, v_name)
+    on conflict (id) do nothing;
+  end if;
+
   return new;
 end;
 $$;
