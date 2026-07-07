@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import {
   Bell,
   BookOpen,
-  CalendarDays,
+  LayoutDashboard,
   LayoutDashboard,
   LogOut,
   Package,
