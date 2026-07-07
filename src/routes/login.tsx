@@ -135,6 +135,38 @@ function LoginPage() {
           <Button type="submit" className="w-full" disabled={submitting}>
             {submitting ? "Accesso in corso..." : "Accedi"}
           </Button>
+
+          <button
+            type="button"
+            onClick={async () => {
+              if (!email) {
+                setDialogVariant("info");
+                setDialogTitle("Serve la tua email");
+                setDialogDescription("Inserisci l'email qui sopra, poi clicca di nuovo su 'Password dimenticata'.");
+                setDialogOpen(true);
+                return;
+              }
+              try {
+                const { supabase } = await import("@/lib/supabase");
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                  redirectTo: `${window.location.origin}/reset-password`,
+                });
+                if (error) throw error;
+                setDialogVariant("success");
+                setDialogTitle("Email inviata");
+                setDialogDescription("Controlla la posta e clicca sul link per reimpostare la password.");
+                setDialogOpen(true);
+              } catch (err) {
+                setDialogVariant("error");
+                setDialogTitle("Impossibile inviare l'email");
+                setDialogDescription(formatAuthError(err));
+                setDialogOpen(true);
+              }
+            }}
+            className="w-full text-center text-xs font-semibold text-muted-foreground hover:text-primary hover:underline"
+          >
+            Password dimenticata?
+          </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
