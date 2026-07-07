@@ -297,6 +297,16 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         await saveEventDoc(updatedEvent);
         const updatedPills = Math.max(0, therapy.pillsRemaining - therapy.quantity);
         await saveTherapyDoc({ ...therapy, pillsRemaining: updatedPills });
+        await notifyCaregiversAboutDose({
+          patientId: therapy.patientId,
+          therapyId: therapy.id,
+          eventId: updatedEvent.id,
+          scheduledAt,
+          kind: "taken",
+          therapyName: therapy.name,
+          patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
+          actor: confirmedBy,
+        });
       } else {
         setLocalData((d) => {
           const nextEvents = existingEvent
@@ -309,7 +319,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [user, therapies, events]
+    [user, therapies, events, patients]
   );
 
   const skipDose = useCallback(
