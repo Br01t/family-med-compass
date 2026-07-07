@@ -12,27 +12,13 @@ begin
   end if;
 end$$;
 
--- Aggiunge i valori mancanti all'enum se non esistono già
--- (necessario se l'enum era stato creato con una versione precedente)
-do $$
-begin
-  if not exists (select 1 from pg_enum where enumlabel = 'paziente'
-    and enumtypid = (select oid from pg_type where typname = 'app_role')) then
-    alter type public.app_role add value 'paziente';
-  end if;
-  if not exists (select 1 from pg_enum where enumlabel = 'caregiver'
-    and enumtypid = (select oid from pg_type where typname = 'app_role')) then
-    alter type public.app_role add value 'caregiver';
-  end if;
-  if not exists (select 1 from pg_enum where enumlabel = 'admin'
-    and enumtypid = (select oid from pg_type where typname = 'app_role')) then
-    alter type public.app_role add value 'admin';
-  end if;
-  if not exists (select 1 from pg_enum where enumlabel = 'medico'
-    and enumtypid = (select oid from pg_type where typname = 'app_role')) then
-    alter type public.app_role add value 'medico';
-  end if;
-end$$;
+-- Aggiunge i valori mancanti all'enum se non esistono già.
+-- NOTA: ALTER TYPE ADD VALUE non può stare in un blocco DO $$ o transazione,
+-- deve essere eseguito come statement standalone.
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'paziente';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'caregiver';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'admin';
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'medico';
 
 -- =========================================================
 -- profiles
