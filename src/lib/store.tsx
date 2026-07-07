@@ -54,6 +54,7 @@ type Ctx = {
     confirmedBy: string;
   }) => void;
   skipDose: (params: { therapyId: string; scheduledAt: Date }) => void;
+  snoozeDose: (params: { therapyId: string; scheduledAt: Date; minutes?: number }) => void;
   addTherapy: (t: Therapy) => void;
   updateTherapy: (id: string, patch: Partial<Therapy>) => void;
   deleteTherapy: (id: string) => void;
