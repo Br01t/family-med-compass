@@ -13,6 +13,7 @@ import { Route as TerapieRouteImport } from './routes/terapie'
 import { Route as StoricoRouteImport } from './routes/storico'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ScorteRouteImport } from './routes/scorte'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportRouteImport } from './routes/report'
 import { Route as RegistratiRouteImport } from './routes/registrati'
 import { Route as PazienteRouteImport } from './routes/paziente'
@@ -43,6 +44,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const ScorteRoute = ScorteRouteImport.update({
   id: '/scorte',
   path: '/scorte',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportRoute = ReportRouteImport.update({
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/paziente': typeof PazienteRoute
   '/registrati': typeof RegistratiRoute
   '/report': typeof ReportRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/storico': typeof StoricoRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/paziente': typeof PazienteRoute
   '/registrati': typeof RegistratiRoute
   '/report': typeof ReportRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/storico': typeof StoricoRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/paziente': typeof PazienteRoute
   '/registrati': typeof RegistratiRoute
   '/report': typeof ReportRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/storico': typeof StoricoRoute
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/paziente'
     | '/registrati'
     | '/report'
+    | '/reset-password'
     | '/scorte'
     | '/sitemap.xml'
     | '/storico'
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
     | '/paziente'
     | '/registrati'
     | '/report'
+    | '/reset-password'
     | '/scorte'
     | '/sitemap.xml'
     | '/storico'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/paziente'
     | '/registrati'
     | '/report'
+    | '/reset-password'
     | '/scorte'
     | '/sitemap.xml'
     | '/storico'
@@ -217,6 +229,7 @@ export interface RootRouteChildren {
   PazienteRoute: typeof PazienteRoute
   RegistratiRoute: typeof RegistratiRoute
   ReportRoute: typeof ReportRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ScorteRoute: typeof ScorteRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StoricoRoute: typeof StoricoRoute
@@ -253,6 +266,13 @@ declare module '@tanstack/react-router' {
       path: '/scorte'
       fullPath: '/scorte'
       preLoaderRoute: typeof ScorteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/report': {
@@ -345,6 +365,7 @@ const rootRouteChildren: RootRouteChildren = {
   PazienteRoute: PazienteRoute,
   RegistratiRoute: RegistratiRoute,
   ReportRoute: ReportRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ScorteRoute: ScorteRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StoricoRoute: StoricoRoute,
@@ -355,13 +376,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

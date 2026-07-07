@@ -23,7 +23,7 @@ export const Route = createFileRoute("/paziente")({
 });
 
 function PatientPage() {
-  const { data, confirmDose, skipDose } = useFamilyMed();
+  const { data, confirmDose, skipDose, snoozeDose } = useFamilyMed();
   const patient =
     data?.patients?.find((p) => p.id === data.currentPatientId) ??
     data?.patients?.[0];
@@ -179,18 +179,33 @@ function PatientPage() {
                   Ho preso la medicina
                 </button>
 
-                <button
-                  onClick={() => {
-                    skipDose({
-                      therapyId: dose.therapy.id,
-                      scheduledAt: dose.scheduledAt,
-                    });
-                    toast(`Dose saltata`, { description: dose.therapy.name });
-                  }}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-muted-foreground hover:text-foreground"
-                >
-                  <X className="size-4" /> Salta questa dose
-                </button>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      snoozeDose({
+                        therapyId: dose.therapy.id,
+                        scheduledAt: dose.scheduledAt,
+                        minutes: 10,
+                      });
+                      toast(`Ritarda di 10 min`, { description: dose.therapy.name });
+                    }}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-sm font-semibold text-foreground hover:bg-secondary"
+                  >
+                    <Clock className="size-4" /> Ritarda 10 min
+                  </button>
+                  <button
+                    onClick={() => {
+                      skipDose({
+                        therapyId: dose.therapy.id,
+                        scheduledAt: dose.scheduledAt,
+                      });
+                      toast(`Dose saltata`, { description: dose.therapy.name });
+                    }}
+                    className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="size-4" /> Salta
+                  </button>
+                </div>
               </article>
             );
           })}

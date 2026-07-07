@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
 import { useFamilyMed } from "@/lib/store";
 import { getDosesForPatientOnDate } from "@/lib/therapy";
+import { notificationService } from "@/lib/services/notifications";
 
-const FIRED_KEY = "familymed:firedNotifications:v1";
+const FIRED_KEY = "familymed:firedNotifications:v2";
 
 function loadFired(): Set<string> {
   if (typeof window === "undefined") return new Set();
@@ -15,78 +16,75 @@ function loadFired(): Set<string> {
   }
 }
 function saveFired(fired: Set<string>) {
-  // Mantiene solo gli ultimi ~500 per non crescere all'infinito
   const arr = Array.from(fired).slice(-500);
   window.localStorage.setItem(FIRED_KEY, JSON.stringify(arr));
 }
 
-export async function requestNotificationPermission(): Promise<NotificationPermission> {
-  if (typeof window === "undefined" || !("Notification" in window)) return "denied";
-  if (Notification.permission === "granted" || Notification.permission === "denied") {
-    return Notification.permission;
-  }
-  return await Notification.requestPermission();
+// Ri-esportato per retro-compatibilità con /impostazioni
+export async function requestNotificationPermission() {
+  return notificationService.requestPermission();
 }
 
 /**
- * Scheduler in-app per notifiche web dei farmaci.
- * Attivo finché l'app è aperta (o installata come PWA e con la tab viva).
- * Ogni 30s ispeziona le dosi del paziente corrente e mostra una notifica
- * quando l'ora programmata è entro ±90s e non è ancora stata mostrata.
+ * Scheduler in-app.
+ * - Reminder T-10 min: notifica silenziosa "Tra 10 min: X"
+ * - Al T-0 (±90s): notifica con suono e requireInteraction
+ * Lavora finché la tab è aperta o l'app è in PWA. La copertura
+ * "app chiusa" è gestita dall'edge function server-side.
  */
 export function NotificationScheduler() {
   const { data } = useFamilyMed();
   const firedRef = useRef<Set<string>>(loadFired());
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (!notificationService.isSupported()) return;
 
     const tick = () => {
-      if (Notification.permission !== "granted") return;
+      if (notificationService.getPermission() !== "granted") return;
       const now = new Date();
       for (const patient of data.patients) {
         const doses = getDosesForPatientOnDate(data, patient.id, now, now);
         for (const dose of doses) {
           if (dose.status === "taken" || dose.status === "skipped") continue;
-          const diff = dose.scheduledAt.getTime() - now.getTime();
-          // finestra: da -60s a +90s attorno all'ora esatta
-          if (diff > 90_000 || diff < -60_000) continue;
-          if (firedRef.current.has(dose.id)) continue;
-
           const t = dose.therapy;
+          const diff = dose.scheduledAt.getTime() - now.getTime();
           const time = dose.scheduledAt.toLocaleTimeString("it-IT", {
-            hour: "2-digit",
-            minute: "2-digit",
+            hour: "2-digit", minute: "2-digit",
           });
-          try {
-            const options: NotificationOptions & {
-              image?: string;
-              vibrate?: number[];
-            } = {
-              body:
-                `${patient.name}: ${t.quantity} unità` +
-                (t.notes ? `\n${t.notes}` : ""),
-              icon: t.photoDrug || "/icons/icon-192.png",
-              badge: "/icons/icon-192.png",
-              image: t.photoPackage || t.photoDrug || undefined,
-              tag: dose.id,
-              requireInteraction: true,
-              vibrate: [200, 100, 200],
-            };
-            const n = new Notification(
-              `💊 ${t.name} ${t.dosage} — ore ${time}`,
-              options,
-            );
-            n.onclick = () => {
-              window.focus();
-              window.location.href = "/paziente";
-              n.close();
-            };
-          } catch (e) {
-            console.warn("[Notif] errore:", e);
+
+          // Reminder 10 min prima
+          const reminderKey = `${dose.id}#reminder`;
+          if (diff <= 10 * 60_000 && diff > 8 * 60_000 && !firedRef.current.has(reminderKey)) {
+            void notificationService.notify({
+              id: reminderKey,
+              title: `⏰ Tra 10 min: ${t.name}`,
+              body: `${patient.name} — ${t.dosage} alle ${time}`,
+              icon: t.photoDrug,
+              image: t.photoPackage,
+              requireInteraction: false,
+              playSound: false,
+              onClickUrl: "/paziente",
+            });
+            firedRef.current.add(reminderKey);
+            saveFired(firedRef.current);
           }
-          firedRef.current.add(dose.id);
-          saveFired(firedRef.current);
+
+          // Notifica "è ora" ±90s
+          const dueKey = `${dose.id}#due`;
+          if (diff <= 90_000 && diff >= -60_000 && !firedRef.current.has(dueKey)) {
+            void notificationService.notify({
+              id: dueKey,
+              title: `💊 ${t.name} — ore ${time}`,
+              body: `${patient.name}: ${t.quantity ?? 1} unità${t.notes ? `\n${t.notes}` : ""}`,
+              icon: t.photoDrug,
+              image: t.photoPackage,
+              requireInteraction: true,
+              playSound: true,
+              onClickUrl: "/paziente",
+            });
+            firedRef.current.add(dueKey);
+            saveFired(firedRef.current);
+          }
         }
       }
     };
