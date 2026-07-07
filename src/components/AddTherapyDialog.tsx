@@ -153,68 +153,79 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
     }
   }, [open]);
 
-  function onSubmit(values: FormValues) {
+  async function onSubmit(values: FormValues) {
     const pillsRemaining = values.pillsPerPack * values.packs;
     const recurrence =
       values.recurrenceKind === "every_x_days"
         ? { kind: "every_x_days" as const, x: values.everyXDays ?? 2 }
         : { kind: values.recurrenceKind as "daily" | "weekdays" | "weekend" };
 
-    if (isEdit && editTherapy) {
-      updateTherapy(editTherapy.id, {
-        patientId: values.patientId,
-        name: values.name,
-        dosage: values.dosage,
-        quantity: values.quantity,
-        category: values.category,
-        times: values.times.map((t) => t.value),
-        recurrence,
-        startDate: values.startDate,
-        endDate: values.endDate || undefined,
-        timeoutMinutes: values.timeoutMinutes,
-        pillsPerPack: values.pillsPerPack,
-        packs: values.packs,
-        pillsRemaining,
-        lowStockThreshold: values.lowStockThreshold,
-        notes: values.notes || undefined,
-        reminderIntervals: [15, 30],
-        photoDrug,
-        photoPackage,
-      });
-      toast.success("Terapia aggiornata", { description: values.name });
-    } else {
-      addTherapy({
-        id: `t_${Date.now()}`,
-        patientId: values.patientId,
-        name: values.name,
-        dosage: values.dosage,
-        quantity: values.quantity,
-        category: values.category,
-        color: "primary",
-        icon: "pill",
-        times: values.times.map((t) => t.value),
-        recurrence,
-        startDate: values.startDate,
-        endDate: values.endDate || undefined,
-        timeoutMinutes: values.timeoutMinutes,
-        pillsPerPack: values.pillsPerPack,
-        packs: values.packs,
-        pillsRemaining,
-        lowStockThreshold: values.lowStockThreshold,
-        notes: values.notes || undefined,
-        reminderIntervals: [15, 30],
-        active: true,
-        suspended: false,
-        photoDrug,
-        photoPackage,
-      });
-      toast.success("Terapia aggiunta", { description: values.name });
-    }
+    try {
+      if (isEdit && editTherapy) {
+        await updateTherapy(editTherapy.id, {
+          patientId: values.patientId,
+          name: values.name,
+          dosage: values.dosage,
+          quantity: values.quantity,
+          category: values.category,
+          times: values.times.map((t) => t.value),
+          recurrence,
+          startDate: values.startDate,
+          endDate: values.endDate || undefined,
+          timeoutMinutes: values.timeoutMinutes,
+          pillsPerPack: values.pillsPerPack,
+          packs: values.packs,
+          pillsRemaining,
+          lowStockThreshold: values.lowStockThreshold,
+          notes: values.notes || undefined,
+          reminderIntervals: [15, 30],
+          photoDrug,
+          photoPackage,
+        });
+        toast.success("Terapia aggiornata", { description: values.name });
+      } else {
+        await addTherapy({
+          id: `t_${Date.now()}`,
+          patientId: values.patientId,
+          name: values.name,
+          dosage: values.dosage,
+          quantity: values.quantity,
+          category: values.category,
+          color: "primary",
+          icon: "pill",
+          times: values.times.map((t) => t.value),
+          recurrence,
+          startDate: values.startDate,
+          endDate: values.endDate || undefined,
+          timeoutMinutes: values.timeoutMinutes,
+          pillsPerPack: values.pillsPerPack,
+          packs: values.packs,
+          pillsRemaining,
+          lowStockThreshold: values.lowStockThreshold,
+          notes: values.notes || undefined,
+          reminderIntervals: [15, 30],
+          active: true,
+          suspended: false,
+          photoDrug,
+          photoPackage,
+        });
+        toast.success("Terapia aggiunta", { description: values.name });
+      }
 
-    form.reset();
-    setOpen(false);
-    onClose?.();
+      form.reset();
+      setOpen(false);
+      onClose?.();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Errore sconosciuto";
+      console.error("[AddTherapyDialog] salvataggio fallito:", err);
+      toast.error("Impossibile salvare la terapia", {
+        description: msg.includes("row-level security")
+          ? "Permessi mancanti: non risulti collegato a questo paziente. Vai in Pazienti e clicca Segui."
+          : msg,
+      });
+    }
   }
+
 
   const handleOpenChange = (v: boolean) => {
     setOpen(v);
