@@ -153,36 +153,11 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
               )}
             />
 
-            {/* Assegna a tutti i caregiver */}
-            {data.caregivers.length > 1 && (
-              <FormField
-                control={form.control}
-                name="assignToAllCaregivers"
-                render={({ field }) => (
-                  <FormItem className="flex items-center gap-3 space-y-0 rounded-xl border border-border/60 bg-surface-muted p-3">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        id="assign-all-caregivers"
-                      />
-                    </FormControl>
-                    <FormLabel className="flex-1 cursor-pointer mb-0" htmlFor="assign-all-caregivers">
-                      <span className="text-sm font-semibold">Assegna a tutti i caregiver</span>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Se deselezionato, il paziente sarà visibile solo a te.
-                      </p>
-                    </FormLabel>
-                  </FormItem>
-                )}
-              />
-            )}
+            <div className="rounded-xl border border-border/60 bg-surface-muted p-3 text-xs text-muted-foreground">
+              Il nuovo paziente verrà collegato al tuo account. Potrai gestirne
+              terapie e scorte anche senza un account paziente separato.
+            </div>
 
-            {data.caregivers.length === 1 && (
-              <div className="rounded-xl border border-border/60 bg-surface-muted p-3 text-xs text-muted-foreground">
-                Il nuovo paziente sarà visibile solo a te.
-              </div>
-            )}
 
             <div className="flex justify-end gap-3">
               <Button
