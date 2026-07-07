@@ -255,6 +255,7 @@ create table public.therapies (
   timeout_minutes integer default 10,  -- minuti oltre l'orario per marcare "missed"
   snooze_minutes integer default 10,
   reminder_intervals integer[] default '{10}'::integer[], -- minuti prima dell'assunzione
+  post_reminder_minutes integer default 5,     -- minuti dopo l'orario per il reminder POST
   packs integer default 0,
   pills_per_pack integer default 0,
   pills_remaining integer default 0,
@@ -409,8 +410,22 @@ create unique index notifications_dose_key_idx
   on public.notifications(target_user_id, dose_key) where dose_key is not null;
 create index notifications_target_idx on public.notifications(target_user_id, read);
 
-grant select, update on public.notifications to authenticated;
+grant select, insert, update on public.notifications to authenticated;
 grant all on public.notifications to service_role;
+
+create policy "notifications: insert if linked to patient"
+  on public.notifications for insert to authenticated
+  with check (
+    patient_id is null or exists (
+      select 1 from public.patients p
+      where p.id = patient_id and (
+        p.user_id = auth.uid()
+        or p.owner_user_id = auth.uid()
+        or exists (select 1 from public.caregiver_patients cp
+                   where cp.patient_id = p.id and cp.caregiver_id = auth.uid())
+      )
+    )
+  );
 
 alter table public.notifications enable row level security;
 
