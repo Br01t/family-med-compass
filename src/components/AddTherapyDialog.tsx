@@ -262,12 +262,15 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
         )}
       </DialogTrigger>
 
-      <DialogContent className="flex flex-col sm:max-w-2xl max-h-[90vh]">
+      <DialogContent
+        aria-describedby="therapy-dialog-description"
+        className="flex flex-col sm:max-w-2xl max-h-[90vh]"
+      >
         <DialogHeader className="shrink-0">
           <DialogTitle className="text-xl font-black tracking-tight">
             {isEdit ? `Modifica: ${editTherapy?.name}` : "Nuova terapia"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="therapy-dialog-description">
             Assegna paziente, terapia, foto, frequenza, durata e avvisi.
           </DialogDescription>
         </DialogHeader>
