@@ -529,8 +529,7 @@ export async function fetchAllPatients(): Promise<Patient[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("patients")
-    .select("*")
-    .order("created_at", { ascending: false });
+    .select("*");
   if (error) {
     console.error("fetchAllPatients:", error);
     return [];

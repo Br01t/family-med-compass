@@ -12,6 +12,28 @@ begin
   end if;
 end$$;
 
+-- Aggiunge i valori mancanti all'enum se non esistono già
+-- (necessario se l'enum era stato creato con una versione precedente)
+do $$
+begin
+  if not exists (select 1 from pg_enum where enumlabel = 'paziente'
+    and enumtypid = (select oid from pg_type where typname = 'app_role')) then
+    alter type public.app_role add value 'paziente';
+  end if;
+  if not exists (select 1 from pg_enum where enumlabel = 'caregiver'
+    and enumtypid = (select oid from pg_type where typname = 'app_role')) then
+    alter type public.app_role add value 'caregiver';
+  end if;
+  if not exists (select 1 from pg_enum where enumlabel = 'admin'
+    and enumtypid = (select oid from pg_type where typname = 'app_role')) then
+    alter type public.app_role add value 'admin';
+  end if;
+  if not exists (select 1 from pg_enum where enumlabel = 'medico'
+    and enumtypid = (select oid from pg_type where typname = 'app_role')) then
+    alter type public.app_role add value 'medico';
+  end if;
+end$$;
+
 -- =========================================================
 -- profiles
 -- =========================================================
@@ -48,9 +70,17 @@ returns trigger language plpgsql security definer set search_path = public as $$
 declare
   v_role public.app_role;
   v_name text;
+  v_role_text text;
 begin
-  v_name := coalesce(new.raw_user_meta_data->>'name', new.email);
-  v_role := coalesce((new.raw_user_meta_data->>'role')::public.app_role, 'caregiver');
+  v_name      := coalesce(new.raw_user_meta_data->>'name', new.email);
+  v_role_text := coalesce(new.raw_user_meta_data->>'role', 'caregiver');
+
+  -- Cast difensivo: se il valore non è nell'enum usa 'caregiver' come fallback
+  begin
+    v_role := v_role_text::public.app_role;
+  exception when invalid_text_representation or others then
+    v_role := 'caregiver'::public.app_role;
+  end;
 
   insert into public.profiles (id, email, name, role)
   values (new.id, new.email, v_name, v_role)
