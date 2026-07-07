@@ -416,6 +416,15 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
       if (user) {
         await saveEventDoc(updatedEvent);
+        await notifyCaregiversAboutDose({
+          patientId: therapy.patientId,
+          therapyId: therapy.id,
+          eventId: updatedEvent.id,
+          scheduledAt,
+          kind: "skipped",
+          therapyName: therapy.name,
+          patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
+        });
       } else {
         setLocalData((d) => {
           const nextEvents = existingEvent
@@ -425,7 +434,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [user, therapies, events]
+    [user, therapies, events, patients]
   );
 
   const snoozeDose = useCallback(
@@ -474,6 +483,16 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         if (supabase) {
           await supabase.from("events").update({ status: "snoozed", snoozed_until: snoozedUntil }).eq("id", updatedEvent.id);
         }
+        await notifyCaregiversAboutDose({
+          patientId: therapy.patientId,
+          therapyId: therapy.id,
+          eventId: updatedEvent.id,
+          scheduledAt,
+          kind: "snoozed",
+          therapyName: therapy.name,
+          patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
+          minutes,
+        });
       } else {
         setLocalData((d) => {
           const nextEvents = existingEvent
@@ -483,7 +502,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [user, therapies, events],
+    [user, therapies, events, patients],
   );
 
   const addTherapy = useCallback(
