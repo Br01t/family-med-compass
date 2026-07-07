@@ -199,7 +199,9 @@ export function subscribeTherapies(
           times: t.times,
           recurrence: t.recurrence,
           timeoutMinutes: t.timeout_minutes,
-          reminderIntervals: t.reminder_intervals,
+          reminderIntervals: Array.isArray(t.reminder_intervals) && t.reminder_intervals.length > 0
+            ? t.reminder_intervals.map((value) => Math.abs(Number(value))).filter((value) => value > 0)
+            : [10],
           packs: t.packs,
           pillsPerPack: t.pills_per_pack,
           pillsRemaining: t.pills_remaining,

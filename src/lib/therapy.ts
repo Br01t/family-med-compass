@@ -52,7 +52,7 @@ function computeStatus(
   const minutesFromScheduled = (now.getTime() - scheduledAt.getTime()) / 60000;
   if (minutesFromScheduled < 0) {
     const minutesUntilScheduled = Math.abs(minutesFromScheduled);
-    const reminderBefore = Math.abs(reminderIntervals[0] ?? 10);
+    const reminderBefore = Math.abs(reminderIntervals?.[0] ?? 10);
     return minutesUntilScheduled <= reminderBefore ? "reminder" : "scheduled";
   }
   if (minutesFromScheduled >= timeoutMinutes) return "late";
