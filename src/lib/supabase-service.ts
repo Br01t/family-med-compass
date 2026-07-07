@@ -434,7 +434,21 @@ export async function deletePatientDoc(id: string): Promise<void> {
 export async function saveTherapyDoc(therapy: Therapy): Promise<void> {
   if (!supabase) throw new Error("Supabase non configurato");
 
-  const { error } = await supabase.from("therapies").upsert({
+  const { error } = await supabase.from("therapies").upsert(toTherapyPayload(therapy));
+
+  if (error) throw error;
+}
+
+export async function createTherapyDoc(therapy: Therapy): Promise<void> {
+  if (!supabase) throw new Error("Supabase non configurato");
+
+  const { error } = await supabase.from("therapies").insert(toTherapyPayload(therapy));
+
+  if (error) throw error;
+}
+
+function toTherapyPayload(therapy: Therapy) {
+  return {
     id: therapy.id,
     patient_id: therapy.patientId,
     name: therapy.name,
@@ -458,9 +472,7 @@ export async function saveTherapyDoc(therapy: Therapy): Promise<void> {
     suspended: therapy.suspended,
     photo_drug: therapy.photoDrug,
     photo_package: therapy.photoPackage,
-  });
-
-  if (error) throw error;
+  };
 }
 
 export async function saveEventDoc(event: MedicationEvent): Promise<void> {

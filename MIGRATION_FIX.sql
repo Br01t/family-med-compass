@@ -33,7 +33,18 @@ create policy "cp: caregiver can update own"
   on public.caregiver_patients for update to authenticated
   using (caregiver_id = auth.uid()) with check (caregiver_id = auth.uid());
 
--- 4. Verifica (opzionale)
+-- 4. Allinea reminder terapie: valori positivi = minuti prima dell'assunzione
+alter table public.therapies
+  alter column reminder_intervals set default '{10}'::integer[];
+
+update public.therapies
+set reminder_intervals = array(
+  select abs(value)::integer
+  from unnest(reminder_intervals) as value
+)
+where reminder_intervals is not null;
+
+-- 5. Verifica (opzionale)
 -- select p.email, p.role, ur.role as user_roles_role
 -- from public.profiles p
 -- left join public.user_roles ur on ur.user_id = p.id;

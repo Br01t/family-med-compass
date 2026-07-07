@@ -50,10 +50,12 @@ function computeStatus(
   if (event?.status === "taken") return "taken";
   if (event?.status === "skipped") return "skipped";
   const minutesFromScheduled = (now.getTime() - scheduledAt.getTime()) / 60000;
-  if (minutesFromScheduled < 0) return "scheduled";
+  if (minutesFromScheduled < 0) {
+    const minutesUntilScheduled = Math.abs(minutesFromScheduled);
+    const reminderBefore = Math.abs(reminderIntervals[0] ?? 10);
+    return minutesUntilScheduled <= reminderBefore ? "reminder" : "scheduled";
+  }
   if (minutesFromScheduled >= timeoutMinutes) return "late";
-  const firstReminder = reminderIntervals[0] ?? 15;
-  if (minutesFromScheduled >= firstReminder) return "reminder";
   return "due";
 }
 
