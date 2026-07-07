@@ -7,10 +7,11 @@ export type Patient = {
   id: string;
   name: string;
   photo?: string;
-  birthYear: number;
+  birthYear?: number;
   caregiverIds: string[];
   userId?: string;
 };
+
 
 export type Caregiver = {
   id: string;
