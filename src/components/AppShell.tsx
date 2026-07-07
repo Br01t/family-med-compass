@@ -9,7 +9,7 @@ import {
   PieChart,
   Pill,
   Settings,
-  User,
+  
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,7 +44,7 @@ const nav = [
 function AppSidebar() {
   const navigate = useNavigate();
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const { data, setRole, logout } = useFamilyMed();
+  const { data, logout } = useFamilyMed();
   const isActive = (url: string) =>
     url === "/caregiver" ? path === "/caregiver" : path.startsWith(url);
 
@@ -110,18 +110,6 @@ function AppSidebar() {
         </div>
         <div className="space-y-2">
           <Button
-            variant="outline"
-            size="sm"
-            className="w-full group-data-[collapsible=icon]:hidden"
-            onClick={() => setRole("paziente")}
-            asChild
-          >
-            <Link to="/paziente">
-              <User className="mr-2 size-4" />
-              Vista Paziente
-            </Link>
-          </Button>
-          <Button
             variant="ghost"
             size="sm"
             className="w-full justify-start group-data-[collapsible=icon]:hidden"
@@ -131,6 +119,7 @@ function AppSidebar() {
             Esci
           </Button>
         </div>
+
       </SidebarFooter>
     </Sidebar>
   );

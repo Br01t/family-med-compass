@@ -38,26 +38,21 @@ function LandingPage() {
     }
   }, [user, userProfile, loadingAuth, navigate]);
 
-  const handleEnterAsPatient = () => {
+  const handleEnter = () => {
     if (!user) {
       navigate({ to: "/login" });
       return;
     }
-
-    setRole("paziente");
-    setCurrentPatient(patient.id);
-    navigate({ to: "/paziente" });
-  };
-
-  const handleEnterAsCaregiver = () => {
-    if (!user) {
-      navigate({ to: "/login" });
-      return;
+    if (userProfile?.role === "paziente") {
+      setRole("paziente");
+      setCurrentPatient(patient.id);
+      navigate({ to: "/paziente" });
+    } else {
+      setRole("caregiver");
+      navigate({ to: "/caregiver" });
     }
-
-    setRole("caregiver");
-    navigate({ to: "/caregiver" });
   };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -110,21 +105,13 @@ function LandingPage() {
               <Button
                 size="lg"
                 className="h-14 px-6 text-base font-bold"
-                onClick={handleEnterAsPatient}
+                onClick={handleEnter}
               >
-                Accedi
+                {user ? "Entra" : "Accedi"}
                 <ArrowRight className="ml-2 size-5" />
               </Button>
-
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-14 px-6 text-base font-bold"
-                onClick={handleEnterAsCaregiver}
-              >
-                Vista Caregiver
-              </Button>
             </div>
+
 
             <p className="mt-4 text-xs text-muted-foreground">
               L'app ricorda la tua scelta. Puoi cambiarla in qualsiasi momento.
