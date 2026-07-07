@@ -277,7 +277,7 @@ function PatientCard({ patientId }: { patientId: string }) {
         <div className="min-w-0">
           <p className="truncate text-lg font-black tracking-tight">{patient.name}</p>
           <p className="text-xs text-muted-foreground">
-            {now.getFullYear() - patient.birthYear} anni
+            {patient.birthYear ? now.getFullYear() - patient.birthYear : "?"} anni
           </p>
         </div>
         <div className="shrink-0 text-right">

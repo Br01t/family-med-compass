@@ -33,8 +33,9 @@ const schema = z.object({
     .int()
     .min(1900, "Anno non valido")
     .max(currentYear - 1, "Anno non valido"),
-  assignToAllCaregivers: z.boolean().default(false),
+  assignToAllCaregivers: z.boolean(),
 });
+
 
 type FormValues = z.infer<typeof schema>;
 
@@ -59,29 +60,18 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
   async function onSubmit(values: FormValues) {
     try {
       const id = `p_${Date.now()}`;
-      console.log("[AddPatientDialog] Inizio creazione paziente con id:", id);
-      
-      let caregiverIds: string[] = [];
-      
-      if (values.assignToAllCaregivers) {
-        caregiverIds = data.caregivers.map((c) => c.id);
-        console.log("[AddPatientDialog] Assegna a TUTTI i caregiver:", caregiverIds);
-      } else {
-        if (data.currentCaregiverId) {
-          caregiverIds = [data.currentCaregiverId];
-          console.log("[AddPatientDialog] Assegna SOLO al caregiver corrente:", caregiverIds);
-        }
-      }
+      const caregiverIds: string[] = data.currentCaregiverId
+        ? [data.currentCaregiverId]
+        : [];
 
       const patientData = {
         id,
         name: values.name.trim(),
         birthYear: values.birthYear,
         caregiverIds,
-        userId: data.currentCaregiverId || undefined,
+        // Il paziente creato dal caregiver NON ha un userId (nessun account paziente collegato).
+        userId: undefined,
       };
-
-      console.log("[AddPatientDialog] Paziente da salvare:", patientData);
 
       await addPatient(patientData);
 
@@ -98,6 +88,7 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
       });
     }
   }
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -162,36 +153,11 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
               )}
             />
 
-            {/* Assegna a tutti i caregiver */}
-            {data.caregivers.length > 1 && (
-              <FormField
-                control={form.control}
-                name="assignToAllCaregivers"
-                render={({ field }) => (
-                  <FormItem className="flex items-center gap-3 space-y-0 rounded-xl border border-border/60 bg-surface-muted p-3">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        id="assign-all-caregivers"
-                      />
-                    </FormControl>
-                    <FormLabel className="flex-1 cursor-pointer mb-0" htmlFor="assign-all-caregivers">
-                      <span className="text-sm font-semibold">Assegna a tutti i caregiver</span>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Se deselezionato, il paziente sarà visibile solo a te.
-                      </p>
-                    </FormLabel>
-                  </FormItem>
-                )}
-              />
-            )}
+            <div className="rounded-xl border border-border/60 bg-surface-muted p-3 text-xs text-muted-foreground">
+              Il nuovo paziente verrà collegato al tuo account. Potrai gestirne
+              terapie e scorte anche senza un account paziente separato.
+            </div>
 
-            {data.caregivers.length === 1 && (
-              <div className="rounded-xl border border-border/60 bg-surface-muted p-3 text-xs text-muted-foreground">
-                Il nuovo paziente sarà visibile solo a te.
-              </div>
-            )}
 
             <div className="flex justify-end gap-3">
               <Button

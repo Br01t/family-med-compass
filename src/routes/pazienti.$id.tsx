@@ -56,7 +56,7 @@ function PatientDetail() {
   return (
     <AppShell
       title={patient.name}
-      subtitle={`${now.getFullYear() - patient.birthYear} anni · Aderenza ${adherence}%`}
+      subtitle={`${patient.birthYear ? now.getFullYear() - patient.birthYear : "?"} anni · Aderenza ${adherence}%`}
       actions={
         <Button variant="outline" size="sm" asChild>
           <Link to="/pazienti">
