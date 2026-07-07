@@ -27,6 +27,7 @@ import {
   subscribeNotifications,
   addPatientDoc,
   deletePatientDoc,
+  createTherapyDoc,
   saveTherapyDoc,
   deleteTherapyDoc,
   saveEventDoc,
@@ -418,7 +419,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
   const addTherapy = useCallback(
     async (t: Therapy) => {
       if (user) {
-        await saveTherapyDoc(t);
+        await createTherapyDoc(t);
       } else {
         setLocalData((d) => ({ ...d, therapies: [...d.therapies, t] }));
       }

@@ -9,6 +9,7 @@ import { fileToCompressedDataUrl } from "@/lib/image-utils";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -62,18 +63,20 @@ const schema = z.object({
   recurrenceKind: z.enum(["daily", "weekdays", "weekend", "every_x_days"]),
   everyXDays: z.number().optional(),
   startDate: z.string().min(1, "Data inizio obbligatoria"),
-  endDate: z.string().optional(),
+  endDate: z.string().min(1, "Inserisci la data fine della terapia"),
+  reminderBeforeMinutes: z.number().min(1).max(1440),
   timeoutMinutes: z.number().min(5).max(480),
   pillsPerPack: z.number().min(1),
   packs: z.number().min(1),
   lowStockThreshold: z.number().min(1),
-  notes: z.string().optional(),
+  notes: z.string().min(1, "Inserisci una descrizione o istruzione"),
 });
 
 type FormValues = z.infer<typeof schema>;
 
 interface AddTherapyDialogProps {
   trigger?: React.ReactNode;
+  initialPatientId?: string;
   /** If provided, opens in edit mode pre-filled with this therapy */
   editTherapy?: Therapy;
   onClose?: () => void;
@@ -83,7 +86,7 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDialogProps) {
+export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClose }: AddTherapyDialogProps) {
   const [open, setOpen] = useState(false);
   const { data, addTherapy, updateTherapy } = useFamilyMed();
   const isEdit = Boolean(editTherapy);
@@ -109,6 +112,7 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
             : undefined,
         startDate: editTherapy.startDate,
         endDate: editTherapy.endDate ?? "",
+        reminderBeforeMinutes: Math.abs(editTherapy.reminderIntervals?.[0] ?? 10),
         timeoutMinutes: editTherapy.timeoutMinutes,
         pillsPerPack: editTherapy.pillsPerPack,
         packs: editTherapy.packs,
@@ -116,7 +120,7 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
         notes: editTherapy.notes ?? "",
       }
     : {
-        patientId: data.patients[0]?.id ?? "",
+        patientId: initialPatientId ?? data.patients[0]?.id ?? "",
         name: "",
         dosage: "",
         quantity: 1,
@@ -125,6 +129,7 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
         recurrenceKind: "daily",
         startDate: todayIso(),
         endDate: "",
+        reminderBeforeMinutes: 10,
         timeoutMinutes: 60,
         pillsPerPack: 30,
         packs: 1,
@@ -154,6 +159,20 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
   }, [open]);
 
   async function onSubmit(values: FormValues) {
+    if (data.patients.length === 0) {
+      toast.error("Nessun paziente assegnato", {
+        description: "Prima collega o crea un paziente, poi assegna la terapia.",
+      });
+      return;
+    }
+
+    if (!photoDrug || !photoPackage) {
+      toast.error("Foto terapia mancanti", {
+        description: "Carica la foto del farmaco e della confezione.",
+      });
+      return;
+    }
+
     const pillsRemaining = values.pillsPerPack * values.packs;
     const recurrence =
       values.recurrenceKind === "every_x_days"
@@ -171,14 +190,14 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
           times: values.times.map((t) => t.value),
           recurrence,
           startDate: values.startDate,
-          endDate: values.endDate || undefined,
+          endDate: values.endDate,
           timeoutMinutes: values.timeoutMinutes,
           pillsPerPack: values.pillsPerPack,
           packs: values.packs,
           pillsRemaining,
           lowStockThreshold: values.lowStockThreshold,
-          notes: values.notes || undefined,
-          reminderIntervals: [15, 30],
+          notes: values.notes.trim(),
+          reminderIntervals: [values.reminderBeforeMinutes],
           photoDrug,
           photoPackage,
         });
@@ -196,14 +215,14 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
           times: values.times.map((t) => t.value),
           recurrence,
           startDate: values.startDate,
-          endDate: values.endDate || undefined,
+          endDate: values.endDate,
           timeoutMinutes: values.timeoutMinutes,
           pillsPerPack: values.pillsPerPack,
           packs: values.packs,
           pillsRemaining,
           lowStockThreshold: values.lowStockThreshold,
-          notes: values.notes || undefined,
-          reminderIntervals: [15, 30],
+          notes: values.notes.trim(),
+          reminderIntervals: [values.reminderBeforeMinutes],
           active: true,
           suspended: false,
           photoDrug,
@@ -243,11 +262,17 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
         )}
       </DialogTrigger>
 
-      <DialogContent className="flex flex-col sm:max-w-2xl max-h-[90vh]">
+      <DialogContent
+        aria-describedby="therapy-dialog-description"
+        className="flex flex-col sm:max-w-2xl max-h-[90vh]"
+      >
         <DialogHeader className="shrink-0">
           <DialogTitle className="text-xl font-black tracking-tight">
             {isEdit ? `Modifica: ${editTherapy?.name}` : "Nuova terapia"}
           </DialogTitle>
+          <DialogDescription id="therapy-dialog-description">
+            Assegna paziente, terapia, foto, frequenza, durata e avvisi.
+          </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="flex-1 overflow-auto pr-3">
@@ -258,13 +283,18 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
               className="mt-2 space-y-5 pb-4"
             >
               {/* Patient */}
+              {data.patients.length === 0 && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  Non hai ancora pazienti assegnati: collega un paziente prima di creare una terapia.
+                </div>
+              )}
               <FormField
                 control={form.control}
                 name="patientId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Paziente</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={data.patients.length === 0}>
                       <FormControl>
                         <SelectTrigger id="therapy-patient-select">
                           <SelectValue placeholder="Seleziona paziente" />
@@ -363,7 +393,7 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
 
               {/* Times */}
               <FormItem>
-                <FormLabel>Orari di assunzione</FormLabel>
+                <p className="text-sm font-medium text-foreground">Orari di assunzione</p>
                 <div className="space-y-2">
                   {timeFields.map((timeField, index) => (
                     <div key={timeField.id} className="flex items-center gap-2">
@@ -466,17 +496,46 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
                   name="timeoutMinutes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Timeout (minuti)</FormLabel>
+                      <FormLabel>Avviso post se non confermata dopo</FormLabel>
                       <FormControl>
                         <Input
                           id="therapy-timeout-input"
                           type="number"
                           min={5}
                           max={480}
+                          placeholder="60"
                           {...field}
                           onChange={(e) => field.onChange(Number(e.target.value))}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="reminderBeforeMinutes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Avviso prima della dose</FormLabel>
+                      <Select
+                        onValueChange={(value) => field.onChange(Number(value))}
+                        value={String(field.value)}
+                      >
+                        <FormControl>
+                          <SelectTrigger id="therapy-reminder-before-select">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="5">5 minuti prima</SelectItem>
+                          <SelectItem value="10">10 minuti prima</SelectItem>
+                          <SelectItem value="15">15 minuti prima</SelectItem>
+                          <SelectItem value="30">30 minuti prima</SelectItem>
+                          <SelectItem value="60">1 ora prima</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -503,7 +562,7 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
                   name="endDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Data fine (opzionale)</FormLabel>
+                    <FormLabel>Data fine terapia</FormLabel>
                       <FormControl>
                         <Input id="therapy-end-date-input" type="date" {...field} value={field.value ?? ""} />
                       </FormControl>
@@ -599,13 +658,13 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Note (opzionale)</FormLabel>
+                    <FormLabel>Descrizione e istruzioni</FormLabel>
                     <FormControl>
                       <Textarea
                         id="therapy-notes-input"
                         placeholder="es. Assumere dopo i pasti, non con il caffè..."
                         className="resize-none"
-                        rows={2}
+                        rows={3}
                         {...field}
                         value={field.value ?? ""}
                       />
@@ -627,7 +686,7 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
           >
             Annulla
           </Button>
-          <Button type="submit" form="therapy-form" id="save-therapy-btn">
+          <Button type="submit" form="therapy-form" id="save-therapy-btn" disabled={data.patients.length === 0}>
             {isEdit ? "Salva modifiche" : "Aggiungi terapia"}
           </Button>
         </div>

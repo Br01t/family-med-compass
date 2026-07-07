@@ -1,34 +1,32 @@
-## Fix 403 su `caregiver_patients` (upsert)
+Piano di intervento:
 
-### Cause
-`followPatient` in `src/lib/supabase-service.ts` usa `.upsert(...)`. PostgREST richiede sia `INSERT` sia `UPDATE` per l'upsert; su `caregiver_patients` ho concesso solo `select, insert, delete` → 403 con code `42501`.
+1. Correggere il crash del form terapia
+   - Sostituire l’uso errato di `FormLabel` fuori da `FormField` nella sezione “Orari di assunzione”.
+   - Verificare che tutte le altre label del dialog siano dentro il contesto corretto.
 
-### Modifiche
+2. Rendere completa la creazione terapia lato caregiver
+   - Mantenere obbligatori: paziente, nome farmaco, dosaggio/descrizione, quantità, orari, frequenza, durata, scorte e foto.
+   - Rendere più chiari i campi “durata” e “frequenza” nel dialog.
+   - Salvare correttamente foto farmaco e foto confezione insieme alla terapia.
+   - Bloccare il salvataggio con messaggio chiaro se non ci sono pazienti assegnati.
 
-**1. Client (fix immediato)** — `src/lib/supabase-service.ts`:
-- Sostituisco `.upsert()` con `.insert()` in `followPatient`.
-- Se Postgres torna `23505` (duplicate key), lo ignoro: seguire due volte lo stesso paziente è idempotente, non serve aggiornare nulla.
+3. Gestire gli avvisi collegati alla terapia
+   - Aggiungere nel form un campo esplicito per l’avviso prima dell’assunzione, es. 10/15/30/60 minuti prima.
+   - Salvare questo valore in `reminderIntervals` con semantica coerente: minuti prima dell’orario.
+   - Usare `timeoutMinutes` come finestra post-assunzione: se il paziente non conferma entro quel tempo, l’assunzione diventa “non confermata/in ritardo”.
 
-```ts
-const { error } = await supabase
-  .from("caregiver_patients")
-  .insert({ caregiver_id: caregiverId, patient_id: patientId });
-if (error && error.code !== "23505") throw error;
-```
+4. Allineare notifiche e timeline paziente
+   - Aggiornare la logica locale delle notifiche per usare il valore scelto dal caregiver, non un valore fisso.
+   - Mantenere la notifica “è ora” all’orario esatto della dose.
+   - Mantenere l’avviso post se la dose non viene confermata entro il timeout.
+   - Aggiornare anche lo scheduler server-side per rispettare il reminder configurato sulla terapia invece del valore fisso a 10 minuti.
 
-**2. Database (hardening)** — aggiorno `MIGRATION_FIX.sql` e `RESET.sql` con:
-- `GRANT UPDATE ON public.caregiver_patients TO authenticated;`
-- Policy UPDATE self-scoped:
-  ```sql
-  create policy "cp: caregiver can update own"
-    on public.caregiver_patients for update to authenticated
-    using (caregiver_id = auth.uid()) with check (caregiver_id = auth.uid());
-  ```
+5. Migliorare salvataggio e aggiornamento terapia
+   - Evitare che la creazione nuova dipenda da un upsert non necessario quando possibile.
+   - Lasciare l’update per la modifica terapia.
+   - Restituire errori leggibili se il caregiver non è collegato al paziente o se mancano permessi.
 
-Così anche un futuro `.upsert()` funziona, ma le modifiche restano confinate alle proprie righe.
-
-### Azioni richieste all'utente
-Rieseguire **`MIGRATION_FIX.sql`** in Supabase SQL Editor (idempotente, safe).
-
-### Fuori scope
-Nessun refactor del flusso UI, nessun cambio a terapie o notifiche.
+6. Verifica finale
+   - Aprire il dialog “Nuova terapia” senza crash.
+   - Creare una terapia con paziente, nome, descrizione/dosaggio, frequenza, durata, foto e avvisi.
+   - Verificare che la terapia compaia nella vista paziente con timeline, riepilogo e azioni all’orario corretto.

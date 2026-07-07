@@ -44,7 +44,7 @@ export type Therapy = {
   times: string[]; // ["08:00","13:00"]
   recurrence: Recurrence;
   timeoutMinutes: number;
-  reminderIntervals: number[]; // minutes after scheduled time
+  reminderIntervals: number[]; // minuti prima dell'orario programmato
   packs: number;
   pillsPerPack: number;
   pillsRemaining: number;

@@ -27,7 +27,7 @@ export async function requestNotificationPermission() {
 
 /**
  * Scheduler in-app.
- * - Reminder T-10 min: notifica silenziosa "Tra 10 min: X"
+ * - Reminder configurato: notifica silenziosa prima dell'orario
  * - Al T-0 (±90s): notifica con suono e requireInteraction
  * Lavora finché la tab è aperta o l'app è in PWA. La copertura
  * "app chiusa" è gestita dall'edge function server-side.
@@ -52,12 +52,17 @@ export function NotificationScheduler() {
             hour: "2-digit", minute: "2-digit",
           });
 
-          // Reminder 10 min prima
+          // Reminder configurato prima della dose
+          const reminderBeforeMinutes = Math.abs(t.reminderIntervals?.[0] ?? 10);
           const reminderKey = `${dose.id}#reminder`;
-          if (diff <= 10 * 60_000 && diff > 8 * 60_000 && !firedRef.current.has(reminderKey)) {
+          if (
+            diff <= reminderBeforeMinutes * 60_000 &&
+            diff > Math.max(0, reminderBeforeMinutes - 2) * 60_000 &&
+            !firedRef.current.has(reminderKey)
+          ) {
             void notificationService.notify({
               id: reminderKey,
-              title: `⏰ Tra 10 min: ${t.name}`,
+              title: `⏰ Tra ${reminderBeforeMinutes} min: ${t.name}`,
               body: `${patient.name} — ${t.dosage} alle ${time}`,
               icon: t.photoDrug,
               image: t.photoPackage,

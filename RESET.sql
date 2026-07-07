@@ -254,7 +254,7 @@ create table public.therapies (
   recurrence jsonb not null default '{"kind":"daily"}'::jsonb,
   timeout_minutes integer default 10,  -- minuti oltre l'orario per marcare "missed"
   snooze_minutes integer default 10,
-  reminder_intervals integer[] default '{-10}'::integer[], -- minuti prima; -10 = reminder 10min prima
+  reminder_intervals integer[] default '{10}'::integer[], -- minuti prima dell'assunzione
   packs integer default 0,
   pills_per_pack integer default 0,
   pills_remaining integer default 0,
