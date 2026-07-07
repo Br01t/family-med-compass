@@ -16,20 +16,33 @@ FamilyMed è una app TanStack Start che builda in output Cloudflare (Worker + as
   bunx wrangler login
   ```
 
-## 2. Configura le variabili d'ambiente (secret)
+## 2. Configura le variabili d'ambiente
 
-Impostale una volta sola con `wrangler secret put NOME` (te le chiede da terminale):
+### 2a. `.env` locale (OBBLIGATORIO prima del build)
+
+Vite inlinea le `VITE_*` **dentro il bundle JS al momento del build**. Se manca il `.env`, il sito deployato punta ai placeholder e vedrai errori tipo `ERR_NAME_NOT_RESOLVED` verso `placeholder-project.supabase.co`.
+
+Crea `.env` nella root del progetto:
 
 ```bash
-bunx wrangler secret put VITE_SUPABASE_URL
-bunx wrangler secret put VITE_SUPABASE_PUBLISHABLE_KEY
-bunx wrangler secret put VITE_SUPABASE_PROJECT_ID
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
+VITE_SUPABASE_PROJECT_ID=<project-ref>
+```
+
+Questi valori sono pubblici (publishable key + URL), ma aggiungi comunque `.env` al `.gitignore`.
+
+### 2b. Secret runtime del Worker (server-side)
+
+Servono solo per SSR / server functions, NON per il codice client:
+
+```bash
+bunx wrangler secret put SUPABASE_URL
+bunx wrangler secret put SUPABASE_PUBLISHABLE_KEY
 bunx wrangler secret put VAPID_PUBLIC_KEY
 bunx wrangler secret put VAPID_PRIVATE_KEY
 bunx wrangler secret put VAPID_SUBJECT
 ```
-
-Le stesse `VITE_SUPABASE_*` devono essere presenti anche in un file `.env` locale al momento del `bun run build`, perché Vite le inlinea nel bundle client.
 
 ## 3. Build & deploy
 
