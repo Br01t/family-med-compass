@@ -41,6 +41,63 @@ import {
 import { sendPushToUser } from "./push-subscription";
 
 
+async function notifyCaregiversAboutDose(input: {
+  patientId: string;
+  therapyId: string;
+  eventId: string;
+  scheduledAt: Date;
+  kind: "taken" | "snoozed" | "skipped";
+  therapyName: string;
+  patientName: string;
+  actor?: string;
+  minutes?: number;
+}) {
+  const caregivers = await fetchCaregiverIdsForPatient(input.patientId);
+  if (caregivers.length === 0) return;
+  const scheduledLabel = input.scheduledAt.toLocaleTimeString("it-IT", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const spec = {
+    taken: {
+      severity: "info" as const,
+      title: `${input.patientName} ha confermato ${input.therapyName}`,
+      message: `Ha preso la dose delle ${scheduledLabel}.`,
+    },
+    snoozed: {
+      severity: "warning" as const,
+      title: `${input.patientName} ha rimandato ${input.therapyName}`,
+      message: `Dose delle ${scheduledLabel} rimandata di ${input.minutes ?? 10} min.`,
+    },
+    skipped: {
+      severity: "warning" as const,
+      title: `${input.patientName} ha saltato ${input.therapyName}`,
+      message: `Ha rifiutato la dose delle ${scheduledLabel}.`,
+    },
+  }[input.kind];
+
+  for (const cg of caregivers) {
+    await insertNotificationDoc({
+      targetUserId: cg,
+      kind: input.kind,
+      severity: spec.severity,
+      title: spec.title,
+      message: spec.message,
+      patientId: input.patientId,
+      therapyId: input.therapyId,
+      eventId: input.eventId,
+      doseKey: `${input.therapyId}@${input.scheduledAt.toISOString()}@${input.kind}`,
+    });
+    void sendPushToUser({
+      targetUserId: cg,
+      title: spec.title,
+      body: spec.message,
+      url: "/notifiche",
+      tag: `${input.eventId}-${input.kind}`,
+    });
+  }
+}
+
 type Ctx = {
   data: FamilyMedData;
   user: User | null;
