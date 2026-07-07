@@ -4,7 +4,6 @@ import {
   Bell,
   BookOpen,
   LayoutDashboard,
-  LayoutDashboard,
   LogOut,
   Package,
   PieChart,
