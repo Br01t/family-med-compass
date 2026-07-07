@@ -3,31 +3,15 @@
 -- Copia il contenuto in Supabase Studio → SQL Editor → Run.
 
 -- =========================================================
--- ENUM ruolo
--- =========================================================
-do $$
-begin
-  if not exists (select 1 from pg_type where typname = 'app_role') then
-    create type public.app_role as enum ('paziente', 'caregiver', 'admin', 'medico');
-  end if;
-end$$;
-
--- Aggiunge i valori mancanti all'enum se non esistono già.
--- NOTA: ALTER TYPE ADD VALUE non può stare in un blocco DO $$ o transazione,
--- deve essere eseguito come statement standalone.
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'paziente';
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'caregiver';
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'admin';
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'medico';
-
--- =========================================================
 -- profiles
+-- NOTA: role è text, non enum, per evitare problemi con ALTER TYPE ADD VALUE
+-- che non può essere eseguito dentro transazioni.
 -- =========================================================
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
   name text,
-  role public.app_role not null default 'caregiver',
+  role text not null default 'caregiver',
   created_at timestamptz not null default now()
 );
 
@@ -54,32 +38,22 @@ create policy "profiles: self update"
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
-  v_role public.app_role;
   v_name text;
-  v_role_text text;
+  v_role text;
 begin
-  v_name      := coalesce(new.raw_user_meta_data->>'name', new.email);
-  v_role_text := coalesce(new.raw_user_meta_data->>'role', 'caregiver');
-
-  -- Cast difensivo: se il valore non è nell'enum usa 'caregiver' come fallback
-  begin
-    v_role := v_role_text::public.app_role;
-  exception when invalid_text_representation or others then
-    v_role := 'caregiver'::public.app_role;
-  end;
+  v_name := coalesce(new.raw_user_meta_data->>'name', new.email);
+  v_role := coalesce(new.raw_user_meta_data->>'role', 'caregiver');
 
   insert into public.profiles (id, email, name, role)
   values (new.id, new.email, v_name, v_role)
   on conflict (id) do nothing;
 
-  -- Se il ruolo è paziente, crea automaticamente il record nella tabella patients
   if v_role = 'paziente' then
     insert into public.patients (id, name, user_id)
     values ('p_' || new.id::text, v_name, new.id)
     on conflict (id) do nothing;
   end if;
 
-  -- Se il ruolo è caregiver, crea automaticamente il record nella tabella caregivers
   if v_role = 'caregiver' then
     insert into public.caregivers (id, name)
     values (new.id, v_name)
