@@ -2,7 +2,9 @@
   "name": "FamilyMed — Terapia condivisa",
   "short_name": "FamilyMed",
   "description": "Promemoria in un tap per il paziente, monitoraggio in tempo reale per la famiglia.",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#f7f3ea",
@@ -20,7 +22,13 @@
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icons/apple-touch-icon.png",

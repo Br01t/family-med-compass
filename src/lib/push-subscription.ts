@@ -80,3 +80,41 @@ export async function sendPushToUser(payload: {
     console.warn("[push] send failed:", err);
   }
 }
+
+/** Ritorna true se il browser corrente ha una subscription registrata sul server per `userId`. */
+export async function isSubscribedOnThisDevice(userId: string): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+  if (!supabase) return false;
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) return false;
+  const sub = await reg.pushManager.getSubscription();
+  if (!sub) return false;
+  const { data, error } = await supabase
+    .from("push_subscriptions")
+    .select("endpoint")
+    .eq("user_id", userId)
+    .eq("endpoint", sub.endpoint)
+    .maybeSingle();
+  if (error) return false;
+  return !!data;
+}
+
+/** Rimuove la subscription sia dal browser che dal server. */
+export async function unsubscribeFromPush(userId: string): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const reg = await navigator.serviceWorker.getRegistration();
+  const sub = await reg?.pushManager.getSubscription();
+  if (sub) {
+    if (supabase) {
+      await supabase
+        .from("push_subscriptions")
+        .delete()
+        .eq("user_id", userId)
+        .eq("endpoint", sub.endpoint);
+    }
+    await sub.unsubscribe();
+  }
+  return true;
+}
+
