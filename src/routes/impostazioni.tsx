@@ -6,12 +6,11 @@ import { signUpUser } from "@/lib/auth-service";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFamilyMed } from "@/lib/store";
 import { requestNotificationPermission } from "@/components/NotificationScheduler";
-import { subscribeToPush } from "@/lib/push-subscription";
+import { subscribeToPush, isSubscribedOnThisDevice, unsubscribeFromPush, sendPushToUser } from "@/lib/push-subscription";
 import { type Role } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/impostazioni")({
@@ -20,10 +19,9 @@ export const Route = createFileRoute("/impostazioni")({
 });
 
 function SettingsPage() {
-  const { data, user, userProfile, loadingAuth, logout, resetDemoData } = useFamilyMed();
+  const { user, userProfile, loadingAuth, logout } = useFamilyMed();
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
-  
-  // Form states
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -35,22 +33,13 @@ function SettingsPage() {
     if (!supabase) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       toast.success("Accesso effettuato con successo!");
-      setEmail("");
-      setPassword("");
+      setEmail(""); setPassword("");
     } catch (error: any) {
-      console.error(error);
-      toast.error("Errore durante l'accesso", {
-        description: error.message || "Verifica le credenziali.",
-      });
-    } finally {
-      setSubmitting(false);
-    }
+      toast.error("Errore durante l'accesso", { description: error.message });
+    } finally { setSubmitting(false); }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -58,27 +47,19 @@ function SettingsPage() {
     setSubmitting(true);
     try {
       await signUpUser({ email, password, name, role });
-      toast.success("Registrazione completata con successo!");
-      setEmail("");
-      setPassword("");
-      setName("");
+      toast.success("Registrazione completata!");
+      setEmail(""); setPassword(""); setName("");
     } catch (error: any) {
-      console.error(error);
-      toast.error("Errore durante la registrazione", {
-        description: error.message || "Riprova con un'altra email.",
-      });
-    } finally {
-      setSubmitting(false);
-    }
+      toast.error("Errore durante la registrazione", { description: error.message });
+    } finally { setSubmitting(false); }
   };
 
   return (
-    <AppShell title="Impostazioni" subtitle="Preferenze account e sistema">
+    <AppShell title="Impostazioni" subtitle="Account, installazione e notifiche">
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Gestione Profilo / Autenticazione */}
+        {/* Profilo & Account */}
         <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
           <h2 className="text-lg font-black tracking-tight">Profilo & Account</h2>
-          
           {loadingAuth ? (
             <div className="py-8 text-center text-sm text-muted-foreground">Caricamento account...</div>
           ) : user && userProfile ? (
@@ -86,15 +67,10 @@ function SettingsPage() {
               <Field label="Nome" value={userProfile.name} />
               <Field label="Email" value={userProfile.email} />
               <Field label="Ruolo" value={userProfile.role} capitalize />
-              <Field label="UID Supabase" value={user.id} />
-              
               <Button
                 variant="destructive"
                 className="w-full mt-2"
-                onClick={async () => {
-                  await logout();
-                  toast.info("Sessione chiusa.");
-                }}
+                onClick={async () => { await logout(); toast.info("Sessione chiusa."); }}
               >
                 Disconnetti
               </Button>
@@ -102,302 +78,299 @@ function SettingsPage() {
           ) : (
             <div className="mt-4">
               <div className="flex gap-2 p-1 bg-muted rounded-xl mb-4">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("login")}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                    activeTab === "login" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
-                  }`}
-                >
+                <button type="button" onClick={() => setActiveTab("login")}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === "login" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}>
                   Accedi
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("register")}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                    activeTab === "register" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
-                  }`}
-                >
+                <button type="button" onClick={() => setActiveTab("register")}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === "register" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}>
                   Registrati
                 </button>
               </div>
-
               {activeTab === "login" ? (
                 <form onSubmit={handleLogin} className="space-y-3">
-                  <div>
-                    <Label htmlFor="login-email">Email</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      placeholder="nome@esempio.it"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="login-password">Password</Label>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="mt-1"
-                    />
-                  </div>
-                  <Button type="submit" className="w-full mt-2" disabled={submitting}>
-                    {submitting ? "Accesso in corso..." : "Accedi"}
-                  </Button>
+                  <div><Label htmlFor="login-email">Email</Label>
+                    <Input id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-1" /></div>
+                  <div><Label htmlFor="login-password">Password</Label>
+                    <Input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="mt-1" /></div>
+                  <Button type="submit" className="w-full mt-2" disabled={submitting}>{submitting ? "Accesso..." : "Accedi"}</Button>
                 </form>
               ) : (
                 <form onSubmit={handleRegister} className="space-y-3">
-                  <div>
-                    <Label htmlFor="reg-name">Nome completo</Label>
-                    <Input
-                      id="reg-name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
-                      placeholder="Mario Rossi"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="reg-email">Email</Label>
-                    <Input
-                      id="reg-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      placeholder="nome@esempio.it"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="reg-password">Password</Label>
-                    <Input
-                      id="reg-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      placeholder="Almeno 6 caratteri"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="reg-role">Ruolo account</Label>
+                  <div><Label htmlFor="reg-name">Nome completo</Label>
+                    <Input id="reg-name" value={name} onChange={(e) => setName(e.target.value)} required className="mt-1" /></div>
+                  <div><Label htmlFor="reg-email">Email</Label>
+                    <Input id="reg-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-1" /></div>
+                  <div><Label htmlFor="reg-password">Password</Label>
+                    <Input id="reg-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Almeno 6 caratteri" className="mt-1" /></div>
+                  <div><Label htmlFor="reg-role">Ruolo</Label>
                     <Select value={role} onValueChange={(v) => setRoleState(v as Role)}>
-                      <SelectTrigger id="reg-role" className="mt-1">
-                        <SelectValue placeholder="Seleziona ruolo" />
-                      </SelectTrigger>
+                      <SelectTrigger id="reg-role" className="mt-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="caregiver">Caregiver (Famigliare)</SelectItem>
                         <SelectItem value="paziente">Paziente</SelectItem>
                       </SelectContent>
-                    </Select>
-                  </div>
-                  <Button type="submit" className="w-full mt-2" disabled={submitting}>
-                    {submitting ? "Creazione in corso..." : "Registrati e Accedi"}
-                  </Button>
+                    </Select></div>
+                  <Button type="submit" className="w-full mt-2" disabled={submitting}>{submitting ? "Creazione..." : "Registrati e Accedi"}</Button>
                 </form>
               )}
             </div>
           )}
         </section>
 
-        <Card title="Sistema">
-          <Field label="Fuso orario" value={data.settings.timezone} />
-          <Field label="Lingua" value="Italiano" />
-          <Field label="Tema" value={data.settings.theme} capitalize />
-          <Field label="Volume reminder" value={`${data.settings.reminderVolume}%`} />
-        </Card>
+        <InstallCard />
+        <PushCard />
 
-        <Card title="Preferenze notifiche">
-          <ToggleRow label="Push notifications" defaultChecked />
-          <ToggleRow label="Email" defaultChecked />
-          <ToggleRow label="WhatsApp Business" defaultChecked />
-          <ToggleRow label="Alert timeout terapia" defaultChecked />
-          <ToggleRow label="Alert scorte basse" defaultChecked />
-        </Card>
-
-        <NotificationsCard />
-
-        <Card title="Database & Dati">
-          {user ? (
-            <p className="text-sm text-green-600 dark:text-green-400 font-semibold">
-              ✓ Sei connesso a Supabase PostgreSQL in tempo reale. I tuoi dati sono sincronizzati sul cloud.
-            </p>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground">
-                Attualmente stai usando la modalità demo locale. Puoi caricare i dati demo predefiniti sul browser.
-              </p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => {
-                  resetDemoData();
-                  toast.success("Dati demo ripristinati");
-                }}
-              >
-                Ripristina dati iniziali
-              </Button>
-            </>
-          )}
-        </Card>
+        <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+          <h2 className="text-lg font-black tracking-tight">Sincronizzazione</h2>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {user
+              ? "✓ Dati sincronizzati sul cloud in tempo reale. Ogni azione è condivisa istantaneamente tra paziente e caregiver."
+              : "Accedi per sincronizzare i tuoi dati sul cloud."}
+          </p>
+        </section>
       </div>
     </AppShell>
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+/* ---------------- Installa app ---------------- */
+
+function InstallCard() {
+  const [installed, setInstalled] = useState(false);
+  const [deferred, setDeferred] = useState<any>(null);
+  const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const standalone =
+      window.matchMedia?.("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true;
+    setInstalled(standalone);
+    const ua = window.navigator.userAgent;
+    setIsIOS(/iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream);
+
+    const onPrompt = (e: Event) => { e.preventDefault(); setDeferred(e); };
+    const onInstalled = () => { setInstalled(true); setDeferred(null); };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  async function install() {
+    if (!deferred) return;
+    deferred.prompt();
+    const { outcome } = await deferred.userChoice;
+    if (outcome === "accepted") toast.success("App installata!");
+    setDeferred(null);
+  }
+
   return (
     <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
-      <h2 className="text-lg font-black tracking-tight">{title}</h2>
-      <div className="mt-4 space-y-3">{children}</div>
+      <h2 className="text-lg font-black tracking-tight">Installa app</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Installa FamilyMed sul telefono per usarla come una vera app e ricevere notifiche anche a schermo bloccato.
+      </p>
+      <div className="mt-4">
+        {installed ? (
+          <div className="rounded-xl border border-green-500/40 bg-green-500/10 p-3 text-sm font-semibold text-green-700 dark:text-green-400">
+            ✓ App installata su questo dispositivo
+          </div>
+        ) : deferred ? (
+          <Button onClick={install} className="w-full">Installa FamilyMed</Button>
+        ) : isIOS ? (
+          <div className="rounded-xl border border-border/50 bg-muted/40 p-3 text-sm">
+            <p className="font-semibold">Su iPhone/iPad:</p>
+            <ol className="mt-2 list-decimal pl-5 text-muted-foreground space-y-1">
+              <li>Tocca <b>Condividi</b> nella barra di Safari</li>
+              <li>Scegli <b>Aggiungi alla schermata Home</b></li>
+              <li>Conferma con <b>Aggiungi</b></li>
+            </ol>
+            <p className="mt-2 text-xs text-muted-foreground">Le notifiche push su iOS funzionano solo dopo l'installazione (iOS 16.4+).</p>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border/50 bg-muted/40 p-3 text-sm text-muted-foreground">
+            Apri questa pagina dal browser del telefono e usa il menu <b>"Installa app"</b> o <b>"Aggiungi a schermata Home"</b>.
+          </div>
+        )}
+      </div>
     </section>
   );
 }
 
-function Field({
-  label,
-  value,
-  capitalize,
-}: {
-  label: string;
-  value: string;
-  capitalize?: boolean;
-}) {
-  return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-3 border-b border-border/50 pb-2 last:border-0">
-      <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-        {label}
-      </span>
-      <span className={`truncate text-right text-sm font-semibold ${capitalize ? "capitalize" : ""}`}>
-        {value}
-      </span>
-    </div>
-  );
-}
+/* ---------------- Notifiche push ---------------- */
 
-function ToggleRow({
-  label,
-  defaultChecked,
-}: {
-  label: string;
-  defaultChecked?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-border/50 p-3">
-      <Label className="text-sm font-semibold">{label}</Label>
-      <Switch defaultChecked={defaultChecked} />
-    </div>
-  );
-}
-
-function NotificationsCard() {
+function PushCard() {
   const { user } = useFamilyMed();
   const [perm, setPerm] = useState<NotificationPermission | "unsupported">(
-    typeof window !== "undefined" && "Notification" in window
-      ? Notification.permission
-      : "unsupported",
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported",
   );
-  const [pushBusy, setPushBusy] = useState(false);
-  const [pushOk, setPushOk] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-    const id = window.setInterval(() => setPerm(Notification.permission), 2000);
+    if (typeof window === "undefined") return;
+    setInstalled(
+      window.matchMedia?.("(display-mode: standalone)").matches ||
+        (window.navigator as any).standalone === true,
+    );
+    const id = window.setInterval(() => {
+      if ("Notification" in window) setPerm(Notification.permission);
+    }, 2000);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    isSubscribedOnThisDevice(user.id).then(setSubscribed);
+  }, [user, perm]);
 
   async function ask() {
     const p = await requestNotificationPermission();
     setPerm(p);
-    if (p === "granted") {
-      toast.success("Notifiche attive", {
-        description: "Riceverai un promemoria all'orario di ogni farmaco.",
-      });
-    } else if (p === "denied") {
-      toast.error("Notifiche bloccate", {
-        description: "Abilitale dalle impostazioni del browser per riceverle.",
-      });
-    }
+    if (p === "granted") toast.success("Notifiche attive");
+    else if (p === "denied") toast.error("Notifiche bloccate dal browser");
   }
 
-  async function enablePush() {
-    if (!user) {
-      toast.error("Devi essere autenticato per attivare le push.");
-      return;
-    }
-    setPushBusy(true);
+  async function enable() {
+    if (!user) return;
+    setBusy(true);
     const res = await subscribeToPush(user.id);
-    setPushBusy(false);
+    setBusy(false);
     if (res.ok) {
-      setPushOk(true);
-      toast.success("Push attive su questo dispositivo", {
-        description: "Riceverai una notifica anche ad app chiusa.",
-      });
+      setSubscribed(true);
+      toast.success("Dispositivo registrato per le push");
     } else {
-      toast.error("Push non attivate", {
-        description: res.reason ?? "Riprova o abilita le notifiche del browser.",
-      });
+      toast.error("Registrazione fallita", { description: res.reason });
     }
   }
 
-  const status =
-    perm === "granted"
-      ? "Attive"
-      : perm === "denied"
-        ? "Bloccate dal browser"
-        : perm === "unsupported"
-          ? "Non supportate su questo dispositivo"
-          : "Non attive";
+  async function disable() {
+    if (!user) return;
+    setBusy(true);
+    await unsubscribeFromPush(user.id);
+    setBusy(false);
+    setSubscribed(false);
+    toast.info("Dispositivo disconnesso dalle push");
+  }
+
+  async function testPush() {
+    if (!user) return;
+    setTesting(true);
+    await sendPushToUser({
+      targetUserId: user.id,
+      title: "Notifica di test — FamilyMed",
+      body: "Se vedi questo messaggio, le push funzionano anche ad app chiusa.",
+      url: "/notifiche",
+      tag: "test-" + Date.now(),
+      requireInteraction: false,
+    });
+    setTesting(false);
+    toast.success("Test inviato", { description: "Chiudi l'app e attendi qualche secondo." });
+  }
+
+  const iosNeedsInstall =
+    typeof window !== "undefined" &&
+    /iPad|iPhone|iPod/.test(window.navigator.userAgent) &&
+    !installed;
 
   return (
     <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
-      <h2 className="text-lg font-black tracking-tight">Sveglie & notifiche push</h2>
+      <h2 className="text-lg font-black tracking-tight">Notifiche push & sveglie</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Attiva le notifiche per ricevere promemoria all'orario esatto di ogni farmaco,
-        con foto e suoni. Le push server-side arrivano anche ad app chiusa se installi FamilyMed come PWA.
+        Configura le notifiche per ricevere i promemoria all'orario esatto, anche con app chiusa e schermo bloccato.
       </p>
-      <div className="mt-4 space-y-3">
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 p-3">
+
+      <ol className="mt-4 space-y-3">
+        <Step
+          n={1}
+          done={installed}
+          title="Installa l'app"
+          desc={installed ? "PWA installata ✓" : "Aggiungi FamilyMed alla schermata Home (vedi card sopra)."}
+          warning={iosNeedsInstall ? "Su iOS le push funzionano SOLO dopo l'installazione." : undefined}
+        />
+        <Step
+          n={2}
+          done={perm === "granted"}
+          title="Concedi il permesso notifiche"
+          desc={
+            perm === "granted" ? "Permesso concesso ✓" :
+            perm === "denied" ? "Permesso negato. Sbloccalo dalle impostazioni del browser." :
+            perm === "unsupported" ? "Non supportato su questo browser." :
+            "Necessario per mostrare gli avvisi."
+          }
+          action={
+            perm !== "granted" && perm !== "unsupported" ? (
+              <Button size="sm" onClick={ask} disabled={perm === "denied"}>Attiva</Button>
+            ) : null
+          }
+        />
+        <Step
+          n={3}
+          done={subscribed}
+          title="Registra questo dispositivo"
+          desc={
+            !user ? "Devi essere autenticato." :
+            subscribed ? "Dispositivo registrato sul server ✓" :
+            "Attiva le push server-side (funzionano ad app chiusa)."
+          }
+          action={
+            user && perm === "granted" ? (
+              subscribed ? (
+                <Button size="sm" variant="outline" onClick={disable} disabled={busy}>Disattiva</Button>
+              ) : (
+                <Button size="sm" onClick={enable} disabled={busy}>{busy ? "..." : "Registra"}</Button>
+              )
+            ) : null
+          }
+        />
+      </ol>
+
+      {subscribed && (
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/40 p-3">
           <div>
-            <p className="text-sm font-semibold">Permesso notifiche browser</p>
-            <p className="text-xs text-muted-foreground">Stato: {status}</p>
+            <p className="text-sm font-semibold">Prova una notifica</p>
+            <p className="text-xs text-muted-foreground">Verifica che arrivi anche con l'app chiusa.</p>
           </div>
-          <Button
-            onClick={ask}
-            disabled={perm === "granted" || perm === "denied" || perm === "unsupported"}
-          >
-            {perm === "granted" ? "Attive" : "Attiva"}
+          <Button size="sm" variant="outline" onClick={testPush} disabled={testing}>
+            {testing ? "Invio..." : "Invia test"}
           </Button>
         </div>
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 p-3">
-          <div>
-            <p className="text-sm font-semibold">Push su questo dispositivo</p>
-            <p className="text-xs text-muted-foreground">
-              {pushOk ? "Registrate ✓" : "Consente le notifiche anche ad app chiusa"}
-            </p>
-          </div>
-          <Button
-            onClick={enablePush}
-            disabled={pushBusy || perm !== "granted" || !user}
-            variant={pushOk ? "outline" : "default"}
-          >
-            {pushBusy ? "Registrazione…" : pushOk ? "Ok" : "Attiva push"}
-          </Button>
-        </div>
-      </div>
-      <p className="mt-3 text-xs text-muted-foreground">
-        Suggerimento: installa FamilyMed come app dal tuo browser (menu → "Aggiungi a schermata Home")
-        per ricevere le notifiche in modo affidabile anche a schermo bloccato.
-      </p>
+      )}
     </section>
+  );
+}
+
+function Step({
+  n, done, title, desc, action, warning,
+}: {
+  n: number; done: boolean; title: string; desc: string; action?: React.ReactNode; warning?: string;
+}) {
+  return (
+    <li className="flex items-start gap-3 rounded-xl border border-border/50 p-3">
+      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${done ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"}`}>
+        {done ? "✓" : n}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+        {warning && <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-semibold">{warning}</p>}
+      </div>
+      {action}
+    </li>
+  );
+}
+
+function Field({ label, value, capitalize }: { label: string; value: string; capitalize?: boolean }) {
+  return (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-3 border-b border-border/50 pb-2 last:border-0">
+      <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
+      <span className={`truncate text-right text-sm font-semibold ${capitalize ? "capitalize" : ""}`}>{value}</span>
+    </div>
   );
 }
