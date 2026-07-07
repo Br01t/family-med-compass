@@ -27,7 +27,7 @@ export async function requestNotificationPermission() {
 
 /**
  * Scheduler in-app.
- * - Reminder T-10 min: notifica silenziosa "Tra 10 min: X"
+ * - Reminder configurato: notifica silenziosa prima dell'orario
  * - Al T-0 (±90s): notifica con suono e requireInteraction
  * Lavora finché la tab è aperta o l'app è in PWA. La copertura
  * "app chiusa" è gestita dall'edge function server-side.

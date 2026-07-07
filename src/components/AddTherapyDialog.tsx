@@ -75,6 +75,7 @@ type FormValues = z.infer<typeof schema>;
 
 interface AddTherapyDialogProps {
   trigger?: React.ReactNode;
+  initialPatientId?: string;
   /** If provided, opens in edit mode pre-filled with this therapy */
   editTherapy?: Therapy;
   onClose?: () => void;
@@ -84,7 +85,7 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDialogProps) {
+export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClose }: AddTherapyDialogProps) {
   const [open, setOpen] = useState(false);
   const { data, addTherapy, updateTherapy } = useFamilyMed();
   const isEdit = Boolean(editTherapy);
@@ -118,7 +119,7 @@ export function AddTherapyDialog({ trigger, editTherapy, onClose }: AddTherapyDi
         notes: editTherapy.notes ?? "",
       }
     : {
-        patientId: data.patients[0]?.id ?? "",
+        patientId: initialPatientId ?? data.patients[0]?.id ?? "",
         name: "",
         dosage: "",
         quantity: 1,

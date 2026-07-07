@@ -43,6 +43,7 @@ function TherapiesPage() {
                   </div>
                 </div>
                 <AddTherapyDialog
+                  initialPatientId={p.id}
                   trigger={
                     <Button variant="outline" size="sm" id={`add-therapy-${p.id}`}>
                       <Plus className="mr-1.5 size-3.5" /> Terapia
@@ -110,7 +111,7 @@ function TherapiesPage() {
                       <Row label="Categoria">{t.category}</Row>
                       <Row label="Timeout">{t.timeoutMinutes} min</Row>
                       <Row label="Reminder">
-                        {t.reminderIntervals.map((r) => `+${r}m`).join(", ")}
+                        {t.reminderIntervals.map((r) => `${Math.abs(r)} min prima`).join(", ")}
                       </Row>
                       <Row label="Scorta">
                         <span
