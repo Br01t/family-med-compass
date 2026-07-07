@@ -538,12 +538,11 @@ export async function followPatient(caregiverId: string, patientId: string): Pro
   if (!supabase) throw new Error("Supabase non configurato");
   const { error } = await supabase
     .from("caregiver_patients")
-    .upsert(
-      { caregiver_id: caregiverId, patient_id: patientId },
-      { onConflict: "caregiver_id,patient_id" },
-    );
-  if (error) throw error;
+    .insert({ caregiver_id: caregiverId, patient_id: patientId });
+  // 23505 = duplicate key: già seguito, idempotente
+  if (error && error.code !== "23505") throw error;
 }
+
 
 export async function unfollowPatient(caregiverId: string, patientId: string): Promise<void> {
   if (!supabase) throw new Error("Supabase non configurato");
