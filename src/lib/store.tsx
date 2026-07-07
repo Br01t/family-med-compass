@@ -590,6 +590,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       setCurrentPatient,
       confirmDose,
       skipDose,
+      snoozeDose,
       addTherapy,
       updateTherapy,
       deleteTherapy,
