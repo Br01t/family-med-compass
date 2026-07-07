@@ -508,3 +508,48 @@ export async function deleteTherapyDoc(id: string): Promise<void> {
 
   if (error) throw error;
 }
+
+/* =========================================================
+   OPEN PATIENT LIST + FOLLOW / UNFOLLOW
+========================================================= */
+
+export async function fetchAllPatients(): Promise<Patient[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("patients")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("fetchAllPatients:", error);
+    return [];
+  }
+  return (data || []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    birthYear: p.birth_year,
+    photo: p.photo,
+    caregiverIds: [],
+    userId: p.user_id,
+  }));
+}
+
+export async function followPatient(caregiverId: string, patientId: string): Promise<void> {
+  if (!supabase) throw new Error("Supabase non configurato");
+  const { error } = await supabase
+    .from("caregiver_patients")
+    .upsert(
+      { caregiver_id: caregiverId, patient_id: patientId },
+      { onConflict: "caregiver_id,patient_id" },
+    );
+  if (error) throw error;
+}
+
+export async function unfollowPatient(caregiverId: string, patientId: string): Promise<void> {
+  if (!supabase) throw new Error("Supabase non configurato");
+  const { error } = await supabase
+    .from("caregiver_patients")
+    .delete()
+    .eq("caregiver_id", caregiverId)
+    .eq("patient_id", patientId);
+  if (error) throw error;
+}
