@@ -9,7 +9,7 @@ import {
   PieChart,
   Pill,
   Settings,
-  User,
+  
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
