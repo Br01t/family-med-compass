@@ -1,1 +1,10 @@
 project_id = "acnkryjihmhwgwnostvs"
+
+[functions.push-sender]
+verify_jwt = false
+
+[functions.dose-scheduler]
+verify_jwt = false
+
+[functions.dose-action]
+verify_jwt = false

@@ -46,7 +46,7 @@ async function notifyCaregiversAboutDose(input: {
   therapyId: string;
   eventId: string;
   scheduledAt: Date;
-  kind: "taken" | "snoozed" | "skipped";
+  kind: "taken" | "taken_after_snooze" | "snoozed" | "skipped";
   therapyName: string;
   patientName: string;
   actor?: string;
@@ -63,6 +63,11 @@ async function notifyCaregiversAboutDose(input: {
       severity: "info" as const,
       title: `${input.patientName} ha confermato ${input.therapyName}`,
       message: `Ha preso la dose delle ${scheduledLabel}.`,
+    },
+    taken_after_snooze: {
+      severity: "info" as const,
+      title: `${input.patientName} ha confermato ${input.therapyName} (dopo rimando)`,
+      message: `Dose delle ${scheduledLabel} confermata dopo il rimando.`,
     },
     snoozed: {
       severity: "warning" as const,
@@ -95,7 +100,7 @@ async function notifyCaregiversAboutDose(input: {
       body: spec.message,
       url: "/notifiche",
       tag: `${input.eventId}-${input.kind}`,
-      requireInteraction: input.kind !== "taken",
+      requireInteraction: input.kind !== "taken" && input.kind !== "taken_after_snooze",
     });
   }
 }
@@ -365,7 +370,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
           therapyId: therapy.id,
           eventId: updatedEvent.id,
           scheduledAt,
-          kind: "taken",
+          kind: existingEvent?.status === "snoozed" ? "taken_after_snooze" : "taken",
           therapyName: therapy.name,
           patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
           actor: confirmedBy,

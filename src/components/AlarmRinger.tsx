@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertOctagon, Check, Clock, X } from "lucide-react";
+import { AlertOctagon, Check, Clock } from "lucide-react";
 import { useFamilyMed } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { getPrimedAlarmAudioContext } from "@/lib/alarm-audio";
 
 type AlarmNotif = {
   id: string;
+  kind: "due" | "final_due";
   title: string;
   message: string | null;
   therapy_id: string | null;
@@ -46,9 +47,10 @@ export function AlarmRinger() {
         },
         (payload) => {
           const n = payload.new as any;
-          if (n.kind === "due") {
+          if (n.kind === "due" || n.kind === "final_due") {
             setAlarm({
               id: n.id,
+              kind: n.kind,
               title: n.title,
               message: n.message,
               therapy_id: n.therapy_id,
@@ -70,11 +72,12 @@ export function AlarmRinger() {
   useEffect(() => {
     if (!user || !isPatient || alarm) return;
     const due = data.notifications.find(
-      (n) => n.kind === "due" && !n.read && (!n.targetUserId || n.targetUserId === user.id),
+      (n) => (n.kind === "due" || n.kind === "final_due") && !n.read && (!n.targetUserId || n.targetUserId === user.id),
     );
     if (!due) return;
     setAlarm({
       id: due.id,
+      kind: due.kind as "due" | "final_due",
       title: due.title,
       message: due.message,
       therapy_id: due.therapyId ?? null,
@@ -198,7 +201,9 @@ export function AlarmRinger() {
       <div className="w-full max-w-md rounded-3xl border-4 border-primary bg-card p-6 shadow-2xl animate-pulse-slow">
         <div className="flex items-center justify-center gap-3">
           <AlertOctagon className="size-8 text-primary animate-bounce" />
-          <p className="text-sm font-black uppercase tracking-widest text-primary">È ora del farmaco</p>
+          <p className="text-sm font-black uppercase tracking-widest text-primary">
+            {alarm.kind === "final_due" ? "Ultima chiamata" : "È ora del farmaco"}
+          </p>
         </div>
 
         {therapy?.photoDrug && (
@@ -225,22 +230,21 @@ export function AlarmRinger() {
           <Button size="lg" className="h-14 text-lg font-bold" onClick={() => handleAction("confirm")}>
             <Check className="mr-2 size-6" /> Ho preso il farmaco
           </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            className="h-12 font-semibold"
-            onClick={() => handleAction("snooze")}
-          >
-            <Clock className="mr-2 size-5" /> Rimanda di {therapy?.snoozeMinutes ?? 10} min
-          </Button>
-          <Button
-            size="lg"
-            variant="ghost"
-            className="h-10 text-sm text-muted-foreground"
-            onClick={() => handleAction("skip")}
-          >
-            <X className="mr-2 size-4" /> Salta questa dose
-          </Button>
+          {alarm.kind === "due" && (
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-12 font-semibold"
+              onClick={() => handleAction("snooze")}
+            >
+              <Clock className="mr-2 size-5" /> Rimanda di {therapy?.snoozeMinutes ?? 10} min
+            </Button>
+          )}
+          {alarm.kind === "final_due" && (
+            <p className="text-center text-xs text-muted-foreground">
+              Non è più possibile rimandare questa dose.
+            </p>
+          )}
         </div>
       </div>
     </div>
