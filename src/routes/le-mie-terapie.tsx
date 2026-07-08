@@ -214,6 +214,23 @@ function MyTherapiesPage() {
                       <p className="italic">{t.notes}</p>
                     </div>
                   )}
+
+                  <div className="mt-4 flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const ics = therapyToIcs(t, patient);
+                        downloadIcs(`${t.name.replace(/\s+/g, "_")}.ics`, ics);
+                        toast.success("Evento calendario esportato", {
+                          description: "Apri il file per aggiungerlo al calendario del telefono.",
+                        });
+                      }}
+                    >
+                      <CalendarPlus className="mr-1.5 size-3.5" />
+                      Aggiungi al calendario
+                    </Button>
+                  </div>
                 </article>
               );
             })}
