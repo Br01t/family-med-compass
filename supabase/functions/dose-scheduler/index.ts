@@ -3,8 +3,8 @@
 // Compiti:
 //   1. Per ogni terapia attiva/non sospesa, genera in public.events le dosi mancanti fino a +24h.
 //   2. Marca "missed" le dosi pending scadute oltre timeout + snooze.
-//   3. Inserisce notifiche "reminder" configurate prima e "due" all'orario al paziente.
-//   4. Inserisce notifiche "missed" ai caregiver.
+//   3. Inserisce notifiche pre/due/post/missed a paziente e caregiver collegati.
+//   4. Invia Web Push persistenti, con allarme per il momento esatto.
 //
 // Deploy: `supabase functions deploy dose-scheduler --no-verify-jwt`
 // Vars richieste: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (impostate di default nel runtime).
@@ -96,6 +96,67 @@ async function sendPush(sb: any, targetUserId: string, payload: {
   }
 }
 
+async function getCaregiverIds(sb: any, patientId: string): Promise<string[]> {
+  const { data } = await sb
+    .from("caregiver_patients")
+    .select("caregiver_id")
+    .eq("patient_id", patientId);
+  return ((data ?? []) as Array<{ caregiver_id: string }>).map((row) => row.caregiver_id);
+}
+
+async function notifyRecipients(sb: any, input: {
+  patientId: string;
+  patientUserId?: string | null;
+  caregiverIds?: string[];
+  therapyId: string;
+  eventId: string;
+  scheduledAt: string;
+  kind: "reminder_pre" | "due" | "reminder_post" | "missed";
+  severity: "info" | "warning" | "alert";
+  patientTitle: string;
+  patientMessage: string;
+  caregiverTitle: string;
+  caregiverMessage: string;
+  isAlarm?: boolean;
+  requireInteraction?: boolean;
+}) {
+  const recipients = [
+    ...(input.patientUserId
+      ? [{ userId: input.patientUserId, title: input.patientTitle, message: input.patientMessage, audience: "patient" }]
+      : []),
+    ...((input.caregiverIds ?? []).map((userId) => ({
+      userId,
+      title: input.caregiverTitle,
+      message: input.caregiverMessage,
+      audience: "caregiver",
+    }))),
+  ];
+
+  for (const recipient of recipients) {
+    const doseKey = `${input.therapyId}@${input.scheduledAt}@${input.kind}@${recipient.audience}`;
+    const { error } = await sb.from("notifications").insert({
+      target_user_id: recipient.userId,
+      kind: input.kind,
+      severity: input.severity,
+      title: recipient.title,
+      message: recipient.message,
+      patient_id: input.patientId,
+      therapy_id: input.therapyId,
+      event_id: input.eventId,
+      dose_key: doseKey,
+    });
+    if (!error) {
+      await sendPush(sb, recipient.userId, {
+        title: recipient.title,
+        body: recipient.message,
+        tag: doseKey,
+        isAlarm: input.isAlarm,
+        requireInteraction: input.requireInteraction,
+      });
+    }
+  }
+}
+
 Deno.serve(async (_req) => {
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
@@ -130,7 +191,7 @@ Deno.serve(async (_req) => {
     await sb.from("events").upsert(rows, { onConflict: "therapy_id,scheduled_at", ignoreDuplicates: true });
   }
 
-  // 3a. Reminder PRE → notifica paziente
+  // 3a. Reminder PRE → notifica paziente + caregiver
   const reminderWindowStart = now.toISOString();
   const reminderWindowEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
   const { data: reminderEvents } = await sb
@@ -147,24 +208,25 @@ Deno.serve(async (_req) => {
     const diffMs = new Date(ev.scheduled_at).getTime() - now.getTime();
     if (diffMs > reminderBefore * 60 * 1000 || diffMs <= Math.max(0, reminderBefore - 2) * 60 * 1000) continue;
     if (!patient?.user_id) continue;
-    const doseKey = `${ev.therapy_id}@${ev.scheduled_at}@reminder_pre`;
-    const title = `Tra ${reminderBefore} min: ${therapy?.name ?? "farmaco"}`;
-    const message = `Alle ${new Date(ev.scheduled_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })} — ${therapy?.dosage ?? ""}`;
-    const { error } = await sb.from("notifications").insert({
-      target_user_id: patient.user_id,
+    const caregivers = await getCaregiverIds(sb, ev.patient_id);
+    const time = new Date(ev.scheduled_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+    await notifyRecipients(sb, {
+      patientId: ev.patient_id,
+      patientUserId: patient.user_id,
+      caregiverIds: caregivers,
+      therapyId: ev.therapy_id,
+      eventId: ev.id,
+      scheduledAt: ev.scheduled_at,
       kind: "reminder_pre",
       severity: "info",
-      title,
-      message,
-      patient_id: ev.patient_id,
-      therapy_id: ev.therapy_id,
-      event_id: ev.id,
-      dose_key: doseKey,
+      patientTitle: `Tra ${reminderBefore} min: ${therapy?.name ?? "farmaco"}`,
+      patientMessage: `Alle ${time} — ${therapy?.dosage ?? ""}`,
+      caregiverTitle: `${patient?.name ?? "Paziente"}: promemoria tra ${reminderBefore} min`,
+      caregiverMessage: `${therapy?.name ?? "Farmaco"} previsto alle ${time}.`,
     });
-    if (!error) await sendPush(sb, patient.user_id, { title, body: message, tag: doseKey });
   }
 
-  // 3b. DUE → notifica paziente + SVEGLIA
+  // 3b. DUE → notifica paziente + caregiver + SVEGLIA
   const dueWindowStart = new Date(now.getTime() - 60 * 1000).toISOString();
   const dueWindowEnd = new Date(now.getTime() + 90 * 1000).toISOString();
   const { data: dueEvents } = await sb
@@ -178,32 +240,27 @@ Deno.serve(async (_req) => {
     const patient = ev.patients;
     const therapy = ev.therapies;
     if (!patient?.user_id) continue;
-    const doseKey = `${ev.therapy_id}@${ev.scheduled_at}@due`;
-    const title = `È ora: ${therapy?.name ?? "farmaco"}`;
-    const message = `${therapy?.quantity ?? 1} unità — ${therapy?.dosage ?? ""}`;
-    const { error } = await sb.from("notifications").insert({
-      target_user_id: patient.user_id,
+    const caregivers = await getCaregiverIds(sb, ev.patient_id);
+    const time = new Date(ev.scheduled_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+    await notifyRecipients(sb, {
+      patientId: ev.patient_id,
+      patientUserId: patient.user_id,
+      caregiverIds: caregivers,
+      therapyId: ev.therapy_id,
+      eventId: ev.id,
+      scheduledAt: ev.scheduled_at,
       kind: "due",
       severity: "warning",
-      title,
-      message,
-      patient_id: ev.patient_id,
-      therapy_id: ev.therapy_id,
-      event_id: ev.id,
-      dose_key: doseKey,
+      patientTitle: `È ora: ${therapy?.name ?? "farmaco"}`,
+      patientMessage: `${therapy?.quantity ?? 1} unità — ${therapy?.dosage ?? ""}. Conferma o rimanda ora.`,
+      caregiverTitle: `${patient?.name ?? "Paziente"}: dose da prendere ora`,
+      caregiverMessage: `${therapy?.name ?? "Farmaco"} delle ${time}: in attesa di conferma o rimando.`,
+      isAlarm: true,
+      requireInteraction: true,
     });
-    if (!error) {
-      await sendPush(sb, patient.user_id, {
-        title,
-        body: message,
-        tag: doseKey,
-        isAlarm: true,
-        requireInteraction: true,
-      });
-    }
   }
 
-  // 3c. Reminder POST → paziente se ancora pending oltre post_reminder_minutes
+  // 3c. Reminder POST → paziente + caregiver se ancora pending oltre post_reminder_minutes
   const { data: postEvents } = await sb
     .from("events")
     .select("id, therapy_id, patient_id, scheduled_at, status, therapies(name, dosage, post_reminder_minutes, timeout_minutes), patients(name, user_id)")
@@ -219,28 +276,23 @@ Deno.serve(async (_req) => {
     const elapsedMin = (now.getTime() - new Date(ev.scheduled_at).getTime()) / 60_000;
     if (elapsedMin < postMin || elapsedMin >= timeoutMin) continue;
     if (elapsedMin > postMin + 2) continue; // finestra di 2 min per non spammare
-    const doseKey = `${ev.therapy_id}@${ev.scheduled_at}@reminder_post`;
-    const title = `Ancora da prendere: ${therapy?.name ?? "farmaco"}`;
-    const message = `Non hai ancora confermato la dose. ${therapy?.dosage ?? ""}`;
-    const { error } = await sb.from("notifications").insert({
-      target_user_id: patient.user_id,
+    const caregivers = await getCaregiverIds(sb, ev.patient_id);
+    const time = new Date(ev.scheduled_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+    await notifyRecipients(sb, {
+      patientId: ev.patient_id,
+      patientUserId: patient.user_id,
+      caregiverIds: caregivers,
+      therapyId: ev.therapy_id,
+      eventId: ev.id,
+      scheduledAt: ev.scheduled_at,
       kind: "reminder_post",
       severity: "warning",
-      title,
-      message,
-      patient_id: ev.patient_id,
-      therapy_id: ev.therapy_id,
-      event_id: ev.id,
-      dose_key: doseKey,
+      patientTitle: `Ancora da prendere: ${therapy?.name ?? "farmaco"}`,
+      patientMessage: `Non hai ancora confermato la dose delle ${time}. ${therapy?.dosage ?? ""}`,
+      caregiverTitle: `${patient?.name ?? "Paziente"}: dose non ancora confermata`,
+      caregiverMessage: `${therapy?.name ?? "Farmaco"} delle ${time}: nessuna conferma ricevuta.`,
+      requireInteraction: true,
     });
-    if (!error) {
-      await sendPush(sb, patient.user_id, {
-        title,
-        body: message,
-        tag: doseKey,
-        requireInteraction: true,
-      });
-    }
   }
 
   // 4. Missed: pending oltre timeout(+ snooze) → status=missed + notifica caregiver
@@ -263,14 +315,10 @@ Deno.serve(async (_req) => {
       timeline: [{ at: now.toISOString(), kind: "missed", message: "Dose non confermata" }],
     }).eq("id", ev.id).eq("status", ev.status);
 
-    const { data: cps } = await sb
-      .from("caregiver_patients")
-      .select("caregiver_id")
-      .eq("patient_id", ev.patient_id);
-
     const title = `${ev.patients?.name ?? "Paziente"} non ha preso ${th?.name ?? "il farmaco"}`;
     const message = `Prevista alle ${new Date(ev.scheduled_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })}`;
-    for (const { caregiver_id } of (cps ?? []) as any[]) {
+    const caregiverIds = await getCaregiverIds(sb, ev.patient_id);
+    for (const caregiver_id of caregiverIds) {
       const doseKey = `${ev.therapy_id}@${ev.scheduled_at}@missed`;
       const { error } = await sb.from("notifications").insert({
         target_user_id: caregiver_id,
@@ -297,18 +345,20 @@ Deno.serve(async (_req) => {
     const { data: pat } = await sb.from("patients").select("user_id").eq("id", ev.patient_id).maybeSingle();
     if (pat?.user_id) {
       const doseKey = `${ev.therapy_id}@${ev.scheduled_at}@missed-patient`;
+      const patientTitle = `Cura dimenticata: ${th?.name ?? "farmaco"}`;
+      const patientMessage = `La dose delle ${new Date(ev.scheduled_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })} è stata segnata come dimenticata. Potresti essere contattato da un familiare.`;
       const { error } = await sb.from("notifications").insert({
         target_user_id: pat.user_id,
         kind: "missed",
         severity: "alert",
-        title: `Dose saltata: ${th?.name ?? "farmaco"}`,
-        message: `Non hai confermato la dose delle ${new Date(ev.scheduled_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })}`,
+        title: patientTitle,
+        message: patientMessage,
         patient_id: ev.patient_id,
         therapy_id: ev.therapy_id,
         event_id: ev.id,
         dose_key: doseKey,
       });
-      if (!error) await sendPush(sb, pat.user_id, { title: `Dose saltata: ${th?.name ?? ""}`, body: message, tag: doseKey });
+      if (!error) await sendPush(sb, pat.user_id, { title: patientTitle, body: patientMessage, tag: doseKey, requireInteraction: true });
     }
   }
 
