@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { signUpUser } from "@/lib/auth-service";
 import { AppShell } from "@/components/AppShell";
+import { PatientShell } from "@/components/PatientShell";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,34 @@ function SettingsPage() {
       toast.error("Errore durante la registrazione", { description: error.message });
     } finally { setSubmitting(false); }
   };
+
+  const isPatient = userProfile?.role === "paziente";
+
+  // Vista paziente: solo profilo/logout, installazione app e notifiche push.
+  if (isPatient && user && userProfile) {
+    return (
+      <PatientShell title="Impostazioni" subtitle="Il tuo account, app e notifiche">
+        <div className="space-y-4">
+          <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+            <h2 className="text-lg font-black tracking-tight">Il tuo account</h2>
+            <div className="mt-4 space-y-4">
+              <Field label="Nome" value={userProfile.name} />
+              <Field label="Email" value={userProfile.email} />
+              <Button
+                variant="destructive"
+                className="w-full mt-2"
+                onClick={async () => { await logout(); toast.info("Sessione chiusa."); }}
+              >
+                Disconnetti
+              </Button>
+            </div>
+          </section>
+          <InstallCard />
+          <PushCard />
+        </div>
+      </PatientShell>
+    );
+  }
 
   return (
     <AppShell title="Impostazioni" subtitle="Account, installazione e notifiche">
