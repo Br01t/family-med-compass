@@ -49,6 +49,8 @@ function computeStatus(
 ): DoseStatus {
   if (event?.status === "taken") return "taken";
   if (event?.status === "skipped") return "skipped";
+  if (event?.status === "missed") return "missed";
+  if (event?.status === "snoozed") return "snoozed";
   const minutesFromScheduled = (now.getTime() - scheduledAt.getTime()) / 60000;
   if (minutesFromScheduled < 0) {
     const minutesUntilScheduled = Math.abs(minutesFromScheduled);
@@ -162,6 +164,8 @@ export const statusLabel: Record<DoseStatus, string> = {
   due: "Da prendere",
   reminder: "Reminder inviato",
   late: "In ritardo",
+  snoozed: "Rimandata",
+  missed: "Dimenticata",
   taken: "Confermata",
   skipped: "Saltata",
 };
@@ -171,6 +175,8 @@ export const statusTone: Record<DoseStatus, string> = {
   due: "bg-primary-soft text-primary",
   reminder: "bg-warning/15 text-warning-foreground",
   late: "bg-accent-soft text-accent",
+  snoozed: "bg-warning/15 text-warning-foreground",
+  missed: "bg-destructive/10 text-destructive",
   taken: "bg-success/15 text-success",
   skipped: "bg-destructive/10 text-destructive",
 };
@@ -180,6 +186,8 @@ export const statusDot: Record<DoseStatus, string> = {
   due: "bg-primary",
   reminder: "bg-warning",
   late: "bg-accent",
+  snoozed: "bg-warning",
+  missed: "bg-destructive",
   taken: "bg-success",
   skipped: "bg-destructive",
 };
