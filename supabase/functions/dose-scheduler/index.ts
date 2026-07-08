@@ -113,23 +113,15 @@ async function notifyBoth(
   },
 ) {
   const baseKey = `${ev.therapy_id}@${ev.scheduled_at}@${spec.kind}`;
-  const pushBase: any = {
-    tag: baseKey,
-    image: therapy?.photo_drug ?? therapy?.photo_package ?? undefined,
-    isAlarm: !!spec.isAlarm,
-    requireInteraction: !!spec.requireInteraction,
-    kind: spec.kind,
-    eventId: ev.id,
-    actions: spec.actions ?? [],
-  };
+  const image = therapy?.photo_drug ?? therapy?.photo_package ?? undefined;
 
-  // Paziente
+  // Paziente: sveglia, azioni, foto grande, icona farmaco
   if (patient?.user_id) {
     const ok = await insertNotif(sb, {
       target_user_id: patient.user_id,
       kind: spec.kind,
       severity: spec.severity,
-      title: spec.patientTitle,
+      title: `💊 ${spec.patientTitle}`,
       message: spec.patientBody,
       patient_id: ev.patient_id,
       therapy_id: ev.therapy_id,
@@ -138,14 +130,22 @@ async function notifyBoth(
     });
     if (ok) {
       await sendPush(sb, patient.user_id, {
-        ...pushBase,
-        title: spec.patientTitle,
+        title: `💊 ${spec.patientTitle}`,
         body: spec.patientBody,
+        image,
+        tag: `pt-${baseKey}`,
+        isAlarm: !!spec.isAlarm,
+        requireInteraction: !!spec.requireInteraction,
+        kind: spec.kind,
+        eventId: ev.id,
+        actions: spec.actions ?? [],
+        icon: "/icons/icon-192.png",
       });
     }
   }
 
-  // Caregiver mirror
+  // Caregiver mirror: stile "informativo", senza sveglia né azioni,
+  // icona/tag distinti così le due notifiche coesistono sullo stesso device.
   const { data: cps } = await sb
     .from("caregiver_patients").select("caregiver_id").eq("patient_id", ev.patient_id);
   for (const { caregiver_id } of (cps ?? []) as any[]) {
@@ -153,7 +153,7 @@ async function notifyBoth(
       target_user_id: caregiver_id,
       kind: spec.kind,
       severity: spec.severity,
-      title: spec.caregiverTitle,
+      title: `👨‍👩‍👧 ${spec.caregiverTitle}`,
       message: spec.caregiverBody,
       patient_id: ev.patient_id,
       therapy_id: ev.therapy_id,
@@ -162,10 +162,16 @@ async function notifyBoth(
     });
     if (ok) {
       await sendPush(sb, caregiver_id, {
-        ...pushBase,
-        actions: [], // caregiver non deve agire
-        title: spec.caregiverTitle,
+        title: `👨‍👩‍👧 ${spec.caregiverTitle}`,
         body: spec.caregiverBody,
+        image,
+        tag: `cg-${baseKey}`,
+        isAlarm: false,
+        requireInteraction: false,
+        kind: spec.kind,
+        eventId: ev.id,
+        actions: [], // caregiver non deve agire
+        icon: "/icons/badge-caregiver.png",
       });
     }
   }

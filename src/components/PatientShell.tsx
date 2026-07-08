@@ -4,6 +4,8 @@ import { Bell, Home, LogOut, Pill, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { useAppBadge } from "@/hooks/use-app-badge";
+import { useNotificationToasts } from "@/hooks/use-notification-toasts";
 
 /**
  * Shell mobile-first dedicato al paziente.
@@ -36,8 +38,14 @@ export function PatientShell({
     data?.patients?.[0];
 
   const unreadCount = data.notifications.filter(
-    (n) => !n.read && (!n.patientId || !patient || n.patientId === patient.id),
+    (n) =>
+      !n.read &&
+      (!n.targetUserId || n.targetUserId === user?.id) &&
+      (!n.patientId || !patient || n.patientId === patient.id),
   ).length;
+
+  useAppBadge(unreadCount);
+  useNotificationToasts(data.notifications);
 
   const handleLogout = async () => {
     await logout();

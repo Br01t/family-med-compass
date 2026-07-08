@@ -1,8 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Bell, Clock, Info, Package, Pill, Settings } from "lucide-react";
+import { ArrowLeft, Bell, CalendarPlus, Clock, Info, Package, Pill, Settings } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { recurrenceLabel } from "@/lib/therapy";
+import { downloadIcs, therapyToIcs } from "@/lib/ics";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/le-mie-terapie")({
@@ -212,6 +214,23 @@ function MyTherapiesPage() {
                       <p className="italic">{t.notes}</p>
                     </div>
                   )}
+
+                  <div className="mt-4 flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const ics = therapyToIcs(t, patient);
+                        downloadIcs(`${t.name.replace(/\s+/g, "_")}.ics`, ics);
+                        toast.success("Evento calendario esportato", {
+                          description: "Apri il file per aggiungerlo al calendario del telefono.",
+                        });
+                      }}
+                    >
+                      <CalendarPlus className="mr-1.5 size-3.5" />
+                      Aggiungi al calendario
+                    </Button>
+                  </div>
                 </article>
               );
             })}
