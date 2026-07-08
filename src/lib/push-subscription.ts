@@ -83,6 +83,7 @@ export async function subscribeToPush(userId: string): Promise<{ ok: boolean; re
     console.warn("[push] save subscription failed:", error.message);
     return { ok: false, reason: error.message };
   }
+  await pushConfigToServiceWorker();
   return { ok: true };
 }
 
