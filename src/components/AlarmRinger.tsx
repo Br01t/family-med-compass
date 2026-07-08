@@ -20,7 +20,7 @@ type AlarmNotif = {
  * finché il paziente non conferma / rimanda / salta.
  */
 export function AlarmRinger() {
-  const { user, userProfile, data, confirmDose, snoozeDose, skipDose } = useFamilyMed();
+  const { user, userProfile, data, confirmDose, snoozeDose, skipDose, markNotificationRead } = useFamilyMed();
   const [alarm, setAlarm] = useState<AlarmNotif | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const oscRef = useRef<{ osc: OscillatorNode; gain: GainNode } | null>(null);
@@ -64,6 +64,24 @@ export function AlarmRinger() {
       supabase.removeChannel(channel);
     };
   }, [user, isPatient]);
+
+  // Se la notifica "È ora" è già arrivata mentre l'app era chiusa, apri comunque l'allarme.
+  useEffect(() => {
+    if (!user || !isPatient || alarm) return;
+    const due = data.notifications.find(
+      (n) => n.kind === "due" && !n.read && (!n.targetUserId || n.targetUserId === user.id),
+    );
+    if (!due) return;
+    setAlarm({
+      id: due.id,
+      title: due.title,
+      message: due.message,
+      therapy_id: due.therapyId ?? null,
+      patient_id: due.patientId ?? null,
+      event_id: due.eventId ?? null,
+      created_at: due.createdAt,
+    });
+  }, [alarm, data.notifications, isPatient, user]);
 
   // Avvia suono + vibrazione + wakelock quando l'allarme si apre
   useEffect(() => {
@@ -148,6 +166,7 @@ export function AlarmRinger() {
 
   async function handleAction(action: "confirm" | "snooze" | "skip") {
     if (!alarm || !therapy || !user) {
+      if (alarm) markNotificationRead(alarm.id);
       setAlarm(null);
       return;
     }
@@ -171,6 +190,7 @@ export function AlarmRinger() {
     } catch (err) {
       console.warn("[alarm] action failed:", err);
     }
+    markNotificationRead(alarm.id);
     setAlarm(null);
   }
 
