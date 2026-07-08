@@ -78,8 +78,7 @@ create policy "notifications: read own or caregiver of patient"
         select 1 from public.patients p
         where p.id = notifications.patient_id
           and (
-            p.user_id = auth.uid()
-            or p.owner_user_id = auth.uid()
+            p.owner_user_id = auth.uid()
             or exists (
               select 1 from public.caregiver_patients cp
               where cp.patient_id = p.id and cp.caregiver_id = auth.uid()
