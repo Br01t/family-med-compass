@@ -58,6 +58,16 @@ function SettingsPage() {
 
   const isPatient = userProfile?.role === "paziente";
 
+  // Loader mentre auth è in corso per evitare di mostrare il form di login
+  // a un paziente già autenticato ma con profilo non ancora caricato.
+  if (loadingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Caricamento…</p>
+      </div>
+    );
+  }
+
   // Vista paziente: solo profilo/logout, installazione app e notifiche push.
   if (isPatient && user && userProfile) {
     return (
@@ -77,6 +87,7 @@ function SettingsPage() {
               </Button>
             </div>
           </section>
+          <PatientDeviceCard />
           <InstallCard />
           <PushCard />
         </div>
