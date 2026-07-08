@@ -1,8 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Bell, Clock, Info, Package, Pill, Settings } from "lucide-react";
+import { ArrowLeft, Bell, CalendarPlus, Clock, Info, Package, Pill, Settings } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { recurrenceLabel } from "@/lib/therapy";
+import { downloadIcs, therapyToIcs } from "@/lib/ics";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/le-mie-terapie")({
