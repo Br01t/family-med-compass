@@ -279,6 +279,31 @@ function PushCard() {
     }
   }
 
+  async function setupOnThisDevice() {
+    if (!user) return;
+    setBusy(true);
+    try {
+      const res = await subscribeToPush(user.id);
+      setPerm(typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported");
+      if (!res.ok) {
+        toast.error("Non posso attivare le notifiche", { description: humanPushReason(res.reason) });
+        return;
+      }
+      setSubscribed(true);
+      toast.success("Notifiche attive su questo telefono");
+      await sendPushToUser({
+        targetUserId: user.id,
+        title: "FamilyMed è pronto",
+        body: "Riceverai promemoria, allarmi e avvisi importanti su questo dispositivo.",
+        url: "/notifiche",
+        tag: `setup-${Date.now()}`,
+        requireInteraction: false,
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function disable() {
     if (!user) return;
     setBusy(true);
@@ -314,6 +339,38 @@ function PushCard() {
       <p className="mt-2 text-sm text-muted-foreground">
         Configura le notifiche per ricevere i promemoria all'orario esatto, anche con app chiusa e schermo bloccato.
       </p>
+
+      <div className="mt-4 rounded-2xl border-2 border-primary/30 bg-primary-soft/25 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black">Questo telefono</p>
+            <p className="text-xs text-muted-foreground">
+              {subscribed
+                ? "Registrato: riceverà promemoria e allarmi."
+                : "Attiva permesso notifiche e registra il dispositivo in un solo passaggio."}
+            </p>
+          </div>
+          {subscribed ? (
+            <Button size="sm" variant="outline" onClick={testPush} disabled={testing}>
+              {testing ? "Invio..." : "Invia test"}
+            </Button>
+          ) : (
+            <Button size="sm" onClick={setupOnThisDevice} disabled={!user || busy || perm === "unsupported" || perm === "denied"}>
+              {busy ? "Attivo..." : "Attiva su questo telefono"}
+            </Button>
+          )}
+        </div>
+        {perm === "denied" && (
+          <p className="mt-3 text-xs font-semibold text-destructive">
+            Il browser ha bloccato le notifiche: sbloccale dalle impostazioni del sito/app e torna qui.
+          </p>
+        )}
+        {iosNeedsInstall && (
+          <p className="mt-3 text-xs font-semibold text-amber-600 dark:text-amber-400">
+            Su iPhone devi prima aggiungere FamilyMed alla schermata Home, poi riaprire l'app installata.
+          </p>
+        )}
+      </div>
 
       <ol className="mt-4 space-y-3">
         <Step
@@ -373,6 +430,15 @@ function PushCard() {
       )}
     </section>
   );
+}
+
+function humanPushReason(reason?: string) {
+  if (reason === "unsupported") return "Questo browser non supporta le push.";
+  if (reason === "denied") return "Il permesso notifiche è bloccato.";
+  if (reason === "sw-failed" || reason === "sw-not-ready") return "Il dispositivo non ha completato la registrazione push. Riprova dall'app installata.";
+  if (reason === "subscribe-failed") return "Il browser non ha creato la subscription push.";
+  if (reason === "bad-sub") return "La subscription push del browser è incompleta.";
+  return reason ?? "Errore sconosciuto.";
 }
 
 function Step({
