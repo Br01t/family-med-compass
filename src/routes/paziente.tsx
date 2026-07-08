@@ -190,6 +190,7 @@ function PatientPage() {
         {activeDose && (
           <ActiveDoseCard
             dose={activeDose}
+            now={now}
             onConfirm={() => {
               confirmDose({
                 therapyId: activeDose.therapy.id,
