@@ -312,17 +312,25 @@ function PatientPage() {
 
 function ActiveDoseCard({
   dose,
+  now,
   onConfirm,
   onSnooze,
   onSkip,
 }: {
   dose: ScheduledDose;
+  now: Date;
   onConfirm: () => void;
   onSnooze: () => void;
   onSkip: () => void;
 }) {
   const isLate = dose.status === "late";
   const isReminder = dose.status === "reminder";
+  // Le azioni si sbloccano solo dall'orario stabilito in poi.
+  const canAct = now.getTime() >= dose.scheduledAt.getTime();
+  const minutesToScheduled = Math.max(
+    0,
+    Math.ceil((dose.scheduledAt.getTime() - now.getTime()) / 60000),
+  );
 
   return (
     <section
@@ -337,12 +345,14 @@ function ActiveDoseCard({
             "rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-widest",
             isLate
               ? "bg-accent-soft text-accent"
-              : isReminder
-                ? "bg-warning/20 text-warning-foreground"
-                : "bg-primary-soft text-primary",
+              : !canAct
+                ? "bg-secondary text-muted-foreground"
+                : isReminder
+                  ? "bg-warning/20 text-warning-foreground"
+                  : "bg-primary-soft text-primary",
           )}
         >
-          {isLate ? "In ritardo" : "Adesso"}
+          {isLate ? "In ritardo" : canAct ? "Adesso" : "In arrivo"}
         </span>
         <span className="flex items-center gap-1 font-mono text-sm text-muted-foreground">
           <Clock className="size-4" /> {formatTime(dose.scheduledAt)}
@@ -377,9 +387,21 @@ function ActiveDoseCard({
         </div>
       </div>
 
+      {!canAct && (
+        <p className="mt-5 rounded-2xl bg-secondary/60 px-4 py-3 text-center text-sm font-semibold text-muted-foreground">
+          Puoi confermare o rimandare solo dall'orario stabilito
+          {minutesToScheduled > 0
+            ? ` (tra ${minutesToScheduled} min, alle ${formatTime(dose.scheduledAt)})`
+            : ""}
+          .
+        </p>
+      )}
+
       <button
         onClick={onConfirm}
-        className="mt-6 h-20 w-full rounded-2xl bg-primary text-xl font-black text-primary-foreground shadow-lift transition active:scale-[0.98]"
+        disabled={!canAct}
+        aria-disabled={!canAct}
+        className="mt-6 h-20 w-full rounded-2xl bg-primary text-xl font-black text-primary-foreground shadow-lift transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:active:scale-100"
       >
         Ho preso la medicina
       </button>
@@ -387,13 +409,17 @@ function ActiveDoseCard({
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
           onClick={onSnooze}
-          className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-sm font-semibold text-foreground hover:bg-secondary"
+          disabled={!canAct}
+          aria-disabled={!canAct}
+          className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-sm font-semibold text-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface"
         >
           <Clock className="size-4" /> Ritarda 10 min
         </button>
         <button
           onClick={onSkip}
-          className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-muted-foreground hover:text-foreground"
+          disabled={!canAct}
+          aria-disabled={!canAct}
+          className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
         >
           <X className="size-4" /> Salta
         </button>
