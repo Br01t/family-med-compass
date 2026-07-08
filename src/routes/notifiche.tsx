@@ -29,36 +29,52 @@ const KIND_META: Record<
   info: { label: "Info", icon: Info, tone: "bg-secondary text-muted-foreground" },
 };
 
-const CAREGIVER_FILTERS: Array<{ id: "all" | "missed" | "taken" | "action"; label: string }> = [
+const CAREGIVER_FILTERS: Array<{ id: "all" | "missed" | "taken" | "action" | "reminder" | "stock"; label: string }> = [
   { id: "all", label: "Tutte" },
+  { id: "reminder", label: "Promemoria" },
+  { id: "taken", label: "Confermate" },
   { id: "missed", label: "Saltate" },
   { id: "action", label: "Azioni paziente" },
+  { id: "stock", label: "Scorte" },
+];
+
+const PATIENT_FILTERS: Array<{ id: "all" | "reminder" | "taken" | "missed"; label: string }> = [
+  { id: "all", label: "Tutte" },
+  { id: "reminder", label: "Promemoria" },
   { id: "taken", label: "Confermate" },
+  { id: "missed", label: "Saltate" },
 ];
 
 function NotificationsPage() {
-  const { data, userProfile, markNotificationRead, markAllRead } = useFamilyMed();
-  const items = useMemo(
-    () =>
-      [...data.notifications].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      ),
-    [data.notifications],
-  );
-  const unread = items.filter((n) => !n.read).length;
+  const { data, user, userProfile, markNotificationRead, markAllRead } = useFamilyMed();
   const isPatient = userProfile?.role === "paziente";
+
+  const patient = isPatient
+    ? (user && data.patients.find((p) => p.userId === user.id)) ??
+      data.patients.find((p) => p.id === data.currentPatientId) ??
+      data.patients[0]
+    : undefined;
+
+  const items = useMemo(() => {
+    const base = isPatient
+      ? data.notifications.filter((n) => !n.patientId || (patient && n.patientId === patient.id))
+      : data.notifications;
+    return [...base].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [data.notifications, isPatient, patient]);
+
+  const unread = items.filter((n) => !n.read).length;
 
   if (isPatient) {
     return (
       <PatientShell title="Le tue notifiche" subtitle={`${unread} non lette · ${items.length} totali`}>
-        {unread > 0 && (
-          <div className="mb-4 flex justify-end">
-            <Button size="sm" variant="outline" onClick={markAllRead}>
-              <CheckCheck className="mr-2 size-4" /> Segna tutte lette
-            </Button>
-          </div>
-        )}
-        <PatientView items={items} markRead={markNotificationRead} />
+        <PatientView
+          items={items}
+          markRead={markNotificationRead}
+          markAllRead={markAllRead}
+          unread={unread}
+        />
       </PatientShell>
     );
   }
@@ -78,61 +94,107 @@ function NotificationsPage() {
   );
 }
 
-function PatientView({ items, markRead }: { items: Notification[]; markRead: (id: string) => void }) {
-  if (items.length === 0) {
-    return (
-      <EmptyState
-        title="Nessuna notifica"
-        message="Qui vedrai i promemoria dei tuoi farmaci e le conferme."
-      />
-    );
-  }
+function PatientView({
+  items,
+  markRead,
+  markAllRead,
+  unread,
+}: {
+  items: Notification[];
+  markRead: (id: string) => void;
+  markAllRead: () => void;
+  unread: number;
+}) {
+  const [filter, setFilter] = useState<(typeof PATIENT_FILTERS)[number]["id"]>("all");
+
+  const filtered = items.filter((n) => {
+    if (filter === "all") return true;
+    if (filter === "reminder") return n.kind === "reminder" || n.kind === "reminder_pre" || n.kind === "reminder_post" || n.kind === "due";
+    if (filter === "taken") return n.kind === "taken";
+    if (filter === "missed") return n.kind === "missed" || n.kind === "skipped" || n.kind === "snoozed";
+    return true;
+  });
 
   return (
-    <ol className="space-y-3">
-      {items.map((n) => {
-        const meta = KIND_META[n.kind] ?? KIND_META.info;
-        const Icon = meta.icon;
-        return (
-          <li
-            key={n.id}
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {PATIENT_FILTERS.map((f) => (
+          <button
+            key={f.id}
+            onClick={() => setFilter(f.id)}
             className={cn(
-              "flex items-start gap-4 rounded-2xl border-2 bg-card p-4 shadow-sm",
-              !n.read ? "border-primary/60 bg-primary-soft/20" : "border-border/60",
+              "rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition",
+              filter === f.id
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-muted-foreground hover:bg-secondary",
             )}
           >
-            <div className={cn("grid size-14 shrink-0 place-items-center rounded-xl", meta.tone)}>
-              <Icon className="size-7" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                {meta.label}
-              </p>
-              <p className="mt-0.5 text-lg font-black leading-tight">{n.title}</p>
-              {n.message && (
-                <p className="mt-1 text-sm text-muted-foreground">{n.message}</p>
-              )}
-              <p className="mt-2 text-xs text-muted-foreground">
-                {new Date(n.createdAt).toLocaleString("it-IT", {
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
-            </div>
-            {!n.read && (
-              <button
-                onClick={() => markRead(n.id)}
-                className="shrink-0 text-xs font-bold text-primary hover:underline"
+            {f.label}
+          </button>
+        ))}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={markAllRead}
+          disabled={unread === 0}
+          className="ml-auto"
+        >
+          <CheckCheck className="mr-2 size-4" /> Segna tutte lette
+        </Button>
+      </div>
+
+      {filtered.length === 0 ? (
+        <EmptyState
+          title="Nessuna notifica"
+          message="Qui vedrai i promemoria dei tuoi farmaci e le conferme."
+        />
+      ) : (
+        <ol className="space-y-3">
+          {filtered.map((n) => {
+            const meta = KIND_META[n.kind] ?? KIND_META.info;
+            const Icon = meta.icon;
+            return (
+              <li
+                key={n.id}
+                className={cn(
+                  "flex items-start gap-4 rounded-2xl border-2 bg-card p-4 shadow-sm",
+                  !n.read ? "border-primary/60 bg-primary-soft/20" : "border-border/60",
+                )}
               >
-                Letta
-              </button>
-            )}
-          </li>
-        );
-      })}
-    </ol>
+                <div className={cn("grid size-14 shrink-0 place-items-center rounded-xl", meta.tone)}>
+                  <Icon className="size-7" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    {meta.label}
+                  </p>
+                  <p className="mt-0.5 text-lg font-black leading-tight">{n.title}</p>
+                  {n.message && (
+                    <p className="mt-1 text-sm text-muted-foreground">{n.message}</p>
+                  )}
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {new Date(n.createdAt).toLocaleString("it-IT", {
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+                {!n.read && (
+                  <button
+                    onClick={() => markRead(n.id)}
+                    className="shrink-0 rounded-lg border border-primary/40 px-3 py-1 text-xs font-bold text-primary hover:bg-primary-soft"
+                  >
+                    Segna letta
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </div>
   );
 }
 
@@ -151,10 +213,13 @@ function CaregiverView({
   const filtered = items.filter((n) => {
     if (patientFilter && n.patientId !== patientFilter) return false;
     if (filter === "all") return true;
-    if (filter === "missed") return n.kind === "missed" || n.kind === "low_stock";
+    if (filter === "reminder")
+      return n.kind === "reminder" || n.kind === "reminder_pre" || n.kind === "reminder_post" || n.kind === "due";
+    if (filter === "missed") return n.kind === "missed";
     if (filter === "taken") return n.kind === "taken";
     if (filter === "action")
-      return n.kind === "skipped" || n.kind === "snoozed" || n.kind === "taken";
+      return n.kind === "skipped" || n.kind === "snoozed";
+    if (filter === "stock") return n.kind === "low_stock";
     return true;
   });
 
