@@ -44,6 +44,8 @@ export type Therapy = {
   times: string[]; // ["08:00","13:00"]
   recurrence: Recurrence;
   timeoutMinutes: number;
+  snoozeMinutes?: number;
+  postReminderMinutes?: number;
   reminderIntervals: number[]; // minuti prima dell'orario programmato
   packs: number;
   pillsPerPack: number;
@@ -60,6 +62,8 @@ export type DoseStatus =
   | "due" // window open, not confirmed
   | "reminder" // reminder sent
   | "late" // past timeout, still not confirmed
+  | "snoozed"
+  | "missed"
   | "taken"
   | "skipped";
 
@@ -71,6 +75,7 @@ export type MedicationEvent = {
   status: DoseStatus;
   confirmedAt?: string;
   confirmedBy?: string;
+  snoozedUntil?: string;
   note?: string;
   timeline: { at: string; kind: string; message: string }[];
 };
@@ -89,11 +94,13 @@ export type NotificationKind =
 
 export type Notification = {
   id: string;
+  targetUserId?: string;
   createdAt: string;
   kind: NotificationKind;
   patientId?: string;
   therapyId?: string;
   eventId?: string;
+  doseKey?: string;
   severity: "info" | "warning" | "alert";
   title: string;
   message: string;

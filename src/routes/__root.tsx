@@ -16,6 +16,7 @@ import { Toaster } from "../components/ui/sonner";
 import { InstallBanner } from "../components/InstallBanner";
 import { NotificationScheduler } from "../components/NotificationScheduler";
 import { AlarmRinger } from "../components/AlarmRinger";
+import { primeAlarmAudio } from "../lib/alarm-audio";
 
 function NotFoundComponent() {
   return (
@@ -165,6 +166,17 @@ function RootComponent() {
         .then((reg) => console.log("[SW] Registered:", reg.scope))
         .catch((err) => console.warn("[SW] Registration failed:", err));
     });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const prime = () => primeAlarmAudio();
+    window.addEventListener("pointerdown", prime, { once: true, passive: true });
+    window.addEventListener("keydown", prime, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", prime);
+      window.removeEventListener("keydown", prime);
+    };
   }, []);
 
   return (

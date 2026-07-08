@@ -19,12 +19,18 @@ export async function subscribeToPush(userId: string): Promise<{ ok: boolean; re
   if (!reg) {
     try {
       reg = await navigator.serviceWorker.register("/sw.js");
+      await reg.update().catch(() => {});
     } catch (err) {
       console.warn("[push] sw register failed:", err);
       return { ok: false, reason: "sw-failed" };
     }
   }
-  await navigator.serviceWorker.ready;
+  try {
+    reg = await navigator.serviceWorker.ready;
+  } catch (err) {
+    console.warn("[push] sw ready failed:", err);
+    return { ok: false, reason: "sw-not-ready" };
+  }
 
   let sub = await reg.pushManager.getSubscription();
   if (!sub) {

@@ -77,6 +77,7 @@ async function notifyCaregiversAboutDose(input: {
   }[input.kind];
 
   for (const cg of caregivers) {
+    const doseKey = `${input.therapyId}@${input.scheduledAt.toISOString()}@${input.kind}@caregiver`;
     await insertNotificationDoc({
       targetUserId: cg,
       kind: input.kind,
@@ -86,7 +87,7 @@ async function notifyCaregiversAboutDose(input: {
       patientId: input.patientId,
       therapyId: input.therapyId,
       eventId: input.eventId,
-      doseKey: `${input.therapyId}@${input.scheduledAt.toISOString()}@${input.kind}`,
+      doseKey,
     });
     void sendPushToUser({
       targetUserId: cg,
@@ -94,6 +95,7 @@ async function notifyCaregiversAboutDose(input: {
       body: spec.message,
       url: "/notifiche",
       tag: `${input.eventId}-${input.kind}`,
+      requireInteraction: input.kind !== "taken",
     });
   }
 }
@@ -464,7 +466,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       const updatedEvent: MedicationEvent = existingEvent
         ? {
             ...existingEvent,
-            status: "reminder" as const,
+            status: "snoozed" as const,
+            snoozedUntil,
             timeline: [
               ...existingEvent.timeline,
               { at: nowIso, kind: "snoozed", message: `Rimandata di ${minutes} min` },
@@ -475,18 +478,15 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
             therapyId,
             patientId: therapy.patientId,
             scheduledAt: scheduledIso,
-            status: "reminder" as const,
+            status: "snoozed" as const,
+            snoozedUntil,
             timeline: [
               { at: scheduledIso, kind: "scheduled", message: "Dose programmata" },
               { at: nowIso, kind: "snoozed", message: `Rimandata di ${minutes} min` },
             ],
           };
       if (user) {
-        // La colonna snoozed_until è gestita direttamente in Supabase via update mirato
         await saveEventDoc(updatedEvent);
-        if (supabase) {
-          await supabase.from("events").update({ status: "snoozed", snoozed_until: snoozedUntil }).eq("id", updatedEvent.id);
-        }
         await notifyCaregiversAboutDose({
           patientId: therapy.patientId,
           therapyId: therapy.id,
@@ -611,7 +611,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
   const markAllRead = useCallback(async () => {
     if (user) {
       for (const n of notifications) {
-        if (!n.read) {
+        if (!n.read && (!n.targetUserId || n.targetUserId === user.id)) {
           await updateNotificationReadState(n.id, true);
         }
       }

@@ -8,7 +8,11 @@
 
 > ⚠️ Lo script droppa e ricrea lo schema `public`. Tutti i dati esistenti vengono eliminati (come richiesto).
 
-## 2. Deploy edge function `dose-scheduler`
+## 2. Applica patch notifiche su database esistente
+
+Se il database esiste già e NON vuoi fare reset, esegui prima [`PATCH_notifications.sql`](./PATCH_notifications.sql). Aggiunge permessi, realtime, push subscriptions e campi necessari a reminder prima/durante/dopo la dose.
+
+## 3. Deploy edge functions `dose-scheduler` e `push-sender`
 
 Serve la Supabase CLI installata (`brew install supabase/tap/supabase` o `scoop install supabase`).
 
@@ -16,14 +20,15 @@ Serve la Supabase CLI installata (`brew install supabase/tap/supabase` o `scoop 
 # Nella root del progetto
 supabase login
 supabase link --project-ref <IL_TUO_PROJECT_REF>
+supabase functions deploy push-sender --no-verify-jwt
 supabase functions deploy dose-scheduler --no-verify-jwt
 ```
 
-Le variabili `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` sono impostate automaticamente dal runtime edge, non servono config aggiuntive.
+`dose-scheduler` usa `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` del runtime. `push-sender` richiede anche `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
 
-**In alternativa senza CLI:** dal dashboard vai su **Edge Functions → Create a new function** chiamata `dose-scheduler` e incolla il contenuto di `supabase/functions/dose-scheduler/index.ts`. Disattiva "Verify JWT".
+**In alternativa senza CLI:** crea le function `dose-scheduler` e `push-sender`, incolla i rispettivi file in `supabase/functions/.../index.ts` e disattiva "Verify JWT".
 
-## 3. Attiva pg_cron per invocare la function ogni minuto
+## 4. Attiva pg_cron per invocare la function ogni minuto
 
 Nel **SQL Editor**, esegui una volta:
 
@@ -47,17 +52,18 @@ Sostituisci `<IL_TUO_PROJECT_REF>` e `<IL_TUO_SUPABASE_ANON_KEY>` (li trovi in *
 
 Per fermarlo: `select cron.unschedule('familymed-dose-scheduler');`
 
-## 4. Auth — URL configuration
+## 5. Auth — URL configuration
 
 In **Authentication → URL Configuration** aggiungi ai *Redirect URLs*:
 
 - `https://<tuo-dominio-lovable>/reset-password`
 - `http://localhost:5173/reset-password` (per dev locale)
 
-## 5. Test rapido
+## 6. Test rapido
 
 1. Registrati come **caregiver** dall'app.
 2. Registrati (in un altro browser/incognito) come **paziente**.
 3. Dal caregiver, tab "Tutti i pazienti" → clic su **Segui**.
 4. Crea una terapia con orario tra 2 minuti.
-5. Entro 10 min il paziente riceverà la notifica reminder; passati 10 min oltre l'orario senza conferma, il caregiver riceverà "missed".
+5. Il paziente riceve: promemoria prima, allarme all'orario, avviso "cura dimenticata" dopo il timeout.
+6. Il caregiver vede le stesse tappe e le azioni del paziente: conferma, rimando, dose dimenticata.

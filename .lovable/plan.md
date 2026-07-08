@@ -1,64 +1,40 @@
-## Obiettivo
+## Piano di intervento
 
-1. Garantire che FamilyMed sia installabile come PWA su Android e iOS.
-2. Garantire che le notifiche push arrivino anche ad app chiusa (in particolare su cellulare).
-3. Ripulire la pagina Impostazioni lasciando solo controlli reali e funzionanti.
+1. **Flusso notifiche terapia in 3 momenti**
+   - Generare notifiche per ogni dose:
+     - promemoria prima dell’orario configurato della terapia;
+     - avviso all’orario esatto con azioni paziente “Conferma” e “Rimanda”;
+     - avviso dopo il tempo massimo se non c’è stata azione, marcando la dose come dimenticata.
+   - Il testo dell’ultimo avviso al paziente indicherà chiaramente che la cura è stata segnata come dimenticata e che potrebbe essere contattato da un familiare.
 
----
+2. **Caregiver sempre informato**
+   - Per ogni promemoria/avviso importante creare anche notifiche dedicate ai caregiver collegati al paziente, così il caregiver vede le stesse tappe senza poter alterare lo stato “letto” del paziente.
+   - Quando il paziente conferma, rimanda o salta una dose, mantenere notifiche realtime al caregiver con azione, farmaco, orario e paziente.
+   - Se una dose diventa “dimenticata”, notificare sia paziente sia caregiver.
 
-## 1. PWA installabile su cellulare
+3. **Centro notifiche con azioni corrette**
+   - Vista paziente: mostrare solo notifiche proprie, con azioni rapide sulle notifiche “È ora”: conferma, rimanda, segna come letta.
+   - Vista caregiver: mostrare notifiche proprie + quelle dei pazienti collegati, con filtri per paziente/categoria/stato e “segna letta” solo per le notifiche del caregiver.
+   - Mantenere sincronizzazione realtime letta/non letta e nuove notifiche su più dispositivi.
 
-Lo scaffolding c'è già (manifest, service worker, icone 192/512/apple-touch, theme-color, viewport). Mancano dettagli che su iOS/Android fanno la differenza:
+4. **Push mobile e registrazione dispositivo nelle impostazioni paziente**
+   - Rendere la card “Notifiche push & sveglie” più evidente e completa nella vista paziente mobile.
+   - Unire in un unico pulsante guidato: richiesta permesso notifiche + registrazione del dispositivo + notifica di prova.
+   - Gestire casi mobile: browser non supportato, iOS non installata in Home, permesso negato, service worker non registrato.
 
-- Aggiungere in `src/routes/__root.tsx`:
-  - `apple-mobile-web-app-capable = yes`, `apple-mobile-web-app-status-bar-style = black-translucent`, `apple-mobile-web-app-title = FamilyMed` (richiesti da iOS per l'installazione "vera").
-  - `mobile-web-app-capable = yes` (Android legacy).
-- `public/manifest.json`: aggiungere una seconda icona 512 con `purpose: "maskable"` separata da quella `any` (Chrome preferisce icone dedicate). Aggiungere `id: "/"` e `scope: "/"` per stabilità del prompt di installazione.
-- In `public/sw.js`: aggiungere fallback offline pulito e assicurare che l'`activate` non elimini la cache push. Nessuna azione lato utente.
-- Nuova card **"Installa app"** in Impostazioni che:
-  - intercetta l'evento `beforeinstallprompt` (Android/desktop Chrome) e mostra il pulsante "Installa FamilyMed";
-  - su iOS Safari (dove il prompt non esiste) mostra istruzioni: *Condividi → Aggiungi a Home*;
-  - se già installata (`display-mode: standalone`) mostra "App installata ✓" e nasconde il pulsante.
+5. **Suono/visibilità notifiche**
+   - Migliorare la notifica “È ora” come allarme in-app fullscreen con suono/vibrazione quando l’app è aperta.
+   - Per app chiusa o telefono bloccato usare Web Push con `requireInteraction`, vibrazione, tag/renotify e apertura diretta alla schermata paziente/notifiche.
+   - Nota tecnica: su iOS/Android il suono delle push a schermo bloccato dipende dal sistema operativo e dalle impostazioni dell’utente; l’app può richiedere notifiche persistenti e vibrazione, ma non può forzare sempre un suono personalizzato.
 
-## 2. Notifiche push affidabili ad app chiusa
+6. **Patch database/permessi**
+   - Aggiornare lo script SQL patch esistente con colonne/indici/policy necessari per:
+     - notifiche uniche per dose e fase;
+     - campi snooze/timeout/post-reminder;
+     - RLS: paziente vede/modifica solo proprie notifiche; caregiver vede le proprie e quelle relative ai pazienti collegati, ma modifica solo le proprie notifiche.
+   - Allineare scheduler e client alle policy aggiornate.
 
-L'infrastruttura Web Push (VAPID + `push-sender` + `push_subscriptions` + `sw.js`) esiste. Le criticità da chiudere:
-
-- **iOS**: le Web Push funzionano solo se l'app è **installata come PWA dalla schermata Home** (Safari 16.4+). Il flusso in Impostazioni verrà riscritto in step obbligati e visibili:
-  1. Installa la PWA (se non installata → bottone/istruzioni sopra).
-  2. Concedi permesso notifiche.
-  3. Registra questo dispositivo per le push.
-  Ogni step si sblocca solo quando il precedente è completato, con stato "✓ Fatto / In attesa / Non supportato".
-- **Diagnostica visibile all'utente**: mostrare in Impostazioni una riga di stato per dispositivo con: PWA installata sì/no, permesso notifiche, subscription registrata sul server (query a `push_subscriptions` filtrata per `user_id` + endpoint corrente), pulsante "Invia notifica di test" che chiama `push-sender` con un payload demo verso il proprio user_id — così l'utente verifica che arrivi anche a schermo bloccato.
-- **Service worker**: garantire `requireInteraction: true`, `renotify: true`, `tag` per non-duplicare, e `notificationclick` che apre `/notifiche` (già in gran parte presente — verifico e correggo se serve).
-- **`push-sender`**: già cancella le subscription scadute (410/404). Verifico che sia effettivamente il caso e aggiungo log lato client se `subscribeToPush` fallisce.
-
-## 3. Pulizia Impostazioni
-
-Attualmente la pagina contiene:
-- ✅ Profilo & Account (login/register/logout) — **mantenere**.
-- ❌ Card "Sistema" (fuso orario, lingua, tema, volume reminder) — sono valori read-only da `data.settings` mai modificabili → **rimuovere**.
-- ❌ Card "Preferenze notifiche" con 5 Switch (`Push`, `Email`, `WhatsApp Business`, `Alert timeout`, `Alert scorte basse`) — tutti `defaultChecked` senza handler, non fanno nulla → **rimuovere**.
-- ✅ Card "Sveglie & notifiche push" (NotificationsCard) — **mantenere e potenziare** (vedi §2).
-- ⚠️ Card "Database & Dati" — mostrata solo se non loggato con bottone "Ripristina dati demo". Utente loggato vede solo un messaggio informativo. **Mantenere solo il messaggio per utente loggato**; rimuovere il ramo demo (l'app è ormai su Cloud reale).
-
-Nuova struttura finale della pagina, in ordine:
-1. **Profilo & Account** (invariato).
-2. **Installa app** (nuova, §1).
-3. **Notifiche push & sveglie** (riscritta a step, §2, con "Invia notifica di test").
-4. **Info sincronizzazione** (riga singola: "Dati sincronizzati sul cloud in tempo reale").
-
-## File toccati
-
-- `src/routes/__root.tsx` — meta iOS/Android extra.
-- `public/manifest.json` — icona maskable dedicata, `id`, `scope`.
-- `public/sw.js` — verifica handler `push` / `notificationclick` (fix minore se serve).
-- `src/routes/impostazioni.tsx` — rimozione card inutili, nuova UI "Installa app" + push a step + test push.
-- `src/lib/push-subscription.ts` — piccola API `isSubscribed(userId)` per lo stato "registrato sul server".
-- (nessuna nuova migrazione DB, nessun nuovo secret)
-
-## Fuori scopo
-
-- Non tocco business logic terapie/dosi/scheduler.
-- Non tocco design system, tema o layout globale.
-- Non aggiungo canali Email/WhatsApp (rimossi perché non implementati; se li vorrai in futuro li ricostruiamo veri).
+7. **Verifica**
+   - Controllare che la vista paziente mobile mostri il pulsante per abilitare le push.
+   - Verificare che il centro notifiche distingua paziente/caregiver.
+   - Verificare che le azioni conferma/rimanda aggiornino eventi e notifiche in realtime.

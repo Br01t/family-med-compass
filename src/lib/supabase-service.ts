@@ -199,6 +199,8 @@ export function subscribeTherapies(
           times: t.times,
           recurrence: t.recurrence,
           timeoutMinutes: t.timeout_minutes,
+          snoozeMinutes: t.snooze_minutes,
+          postReminderMinutes: t.post_reminder_minutes,
           reminderIntervals: Array.isArray(t.reminder_intervals) && t.reminder_intervals.length > 0
             ? (t.reminder_intervals as unknown[])
                 .map((value) => Math.abs(Number(value)))
@@ -270,6 +272,7 @@ export function subscribeEvents(
           status: e.status,
           confirmedAt: e.confirmed_at,
           confirmedBy: e.confirmed_by,
+          snoozedUntil: e.snoozed_until,
           note: e.note,
           timeline: e.timeline,
         }))
@@ -334,11 +337,13 @@ export function subscribeNotifications(
       onUpdate(
         (data || []).map((n) => ({
           id: n.id,
+          targetUserId: n.target_user_id,
           createdAt: n.created_at,
           kind: n.kind ?? "info",
           patientId: n.patient_id,
           therapyId: n.therapy_id,
           eventId: n.event_id,
+          doseKey: n.dose_key,
           severity: n.severity,
           title: n.title,
           message: n.message,
@@ -482,6 +487,8 @@ function toTherapyPayload(therapy: Therapy) {
     times: therapy.times,
     recurrence: therapy.recurrence,
     timeout_minutes: therapy.timeoutMinutes,
+    snooze_minutes: therapy.snoozeMinutes ?? 10,
+    post_reminder_minutes: therapy.postReminderMinutes ?? 5,
     reminder_intervals: therapy.reminderIntervals,
     packs: therapy.packs,
     pills_per_pack: therapy.pillsPerPack,
@@ -505,6 +512,7 @@ export async function saveEventDoc(event: MedicationEvent): Promise<void> {
     status: event.status,
     confirmed_at: event.confirmedAt,
     confirmed_by: event.confirmedBy,
+    snoozed_until: event.snoozedUntil,
     note: event.note,
     timeline: event.timeline,
   });
@@ -602,6 +610,7 @@ export async function insertNotificationDoc(input: {
 }): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase.from("notifications").insert({
+    id: crypto.randomUUID(),
     target_user_id: input.targetUserId,
     kind: input.kind,
     severity: input.severity,

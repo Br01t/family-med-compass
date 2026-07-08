@@ -3,6 +3,7 @@ import { AlertOctagon, Check, Clock, X } from "lucide-react";
 import { useFamilyMed } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
+import { getPrimedAlarmAudioContext } from "@/lib/alarm-audio";
 
 type AlarmNotif = {
   id: string;
@@ -20,7 +21,7 @@ type AlarmNotif = {
  * finché il paziente non conferma / rimanda / salta.
  */
 export function AlarmRinger() {
-  const { user, userProfile, data, confirmDose, snoozeDose, skipDose } = useFamilyMed();
+  const { user, userProfile, data, confirmDose, snoozeDose, skipDose, markNotificationRead } = useFamilyMed();
   const [alarm, setAlarm] = useState<AlarmNotif | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const oscRef = useRef<{ osc: OscillatorNode; gain: GainNode } | null>(null);
@@ -65,6 +66,24 @@ export function AlarmRinger() {
     };
   }, [user, isPatient]);
 
+  // Se la notifica "È ora" è già arrivata mentre l'app era chiusa, apri comunque l'allarme.
+  useEffect(() => {
+    if (!user || !isPatient || alarm) return;
+    const due = data.notifications.find(
+      (n) => n.kind === "due" && !n.read && (!n.targetUserId || n.targetUserId === user.id),
+    );
+    if (!due) return;
+    setAlarm({
+      id: due.id,
+      title: due.title,
+      message: due.message,
+      therapy_id: due.therapyId ?? null,
+      patient_id: due.patientId ?? null,
+      event_id: due.eventId ?? null,
+      created_at: due.createdAt,
+    });
+  }, [alarm, data.notifications, isPatient, user]);
+
   // Avvia suono + vibrazione + wakelock quando l'allarme si apre
   useEffect(() => {
     if (!alarm) return;
@@ -79,8 +98,8 @@ export function AlarmRinger() {
 
     // Suono in loop (WebAudio, così non serve un file mp3)
     try {
-      const AC = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
-      const ctx = new AC();
+      void getPrimedAlarmAudioContext().then((ctx) => {
+        if (!ctx) return;
       audioCtxRef.current = ctx;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -103,6 +122,7 @@ export function AlarmRinger() {
       beep();
       const beepInterval = window.setInterval(beep, 1000);
       vibrateIntervalRef.current = beepInterval;
+      });
     } catch (err) {
       console.warn("[alarm] audio failed:", err);
     }
@@ -124,9 +144,6 @@ export function AlarmRinger() {
         oscRef.current = null;
       }
       if (audioCtxRef.current) {
-        try {
-          audioCtxRef.current.close();
-        } catch {}
         audioCtxRef.current = null;
       }
       if ("vibrate" in navigator) navigator.vibrate(0);
@@ -148,6 +165,7 @@ export function AlarmRinger() {
 
   async function handleAction(action: "confirm" | "snooze" | "skip") {
     if (!alarm || !therapy || !user) {
+      if (alarm) markNotificationRead(alarm.id);
       setAlarm(null);
       return;
     }
@@ -163,7 +181,7 @@ export function AlarmRinger() {
         await snoozeDose({
           therapyId: therapy.id,
           scheduledAt,
-          minutes: (therapy as any).snoozeMinutes ?? 10,
+            minutes: therapy.snoozeMinutes ?? 10,
         });
       } else {
         await skipDose({ therapyId: therapy.id, scheduledAt });
@@ -171,6 +189,7 @@ export function AlarmRinger() {
     } catch (err) {
       console.warn("[alarm] action failed:", err);
     }
+    markNotificationRead(alarm.id);
     setAlarm(null);
   }
 
@@ -212,7 +231,7 @@ export function AlarmRinger() {
             className="h-12 font-semibold"
             onClick={() => handleAction("snooze")}
           >
-            <Clock className="mr-2 size-5" /> Rimanda di {(therapy as any)?.snoozeMinutes ?? 10} min
+            <Clock className="mr-2 size-5" /> Rimanda di {therapy?.snoozeMinutes ?? 10} min
           </Button>
           <Button
             size="lg"
