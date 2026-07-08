@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertOctagon, Check, Clock, X } from "lucide-react";
+import { AlertOctagon, Check, Clock } from "lucide-react";
 import { useFamilyMed } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
