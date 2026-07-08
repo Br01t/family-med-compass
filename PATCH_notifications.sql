@@ -10,6 +10,9 @@ alter table public.therapies
   add column if not exists snooze_minutes integer default 10,
   add column if not exists post_reminder_minutes integer default 5;
 
+alter table public.patients
+  add column if not exists owner_user_id uuid references auth.users(id) on delete set null;
+
 alter table public.events
   add column if not exists snooze_count integer default 0,
   add column if not exists snoozed_until timestamptz;
