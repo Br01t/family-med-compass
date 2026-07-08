@@ -22,8 +22,10 @@ const KIND_META: Record<
   reminder_pre: { label: "Promemoria pre", icon: Clock, tone: "bg-primary-soft text-primary" },
   due: { label: "È ora", icon: AlertOctagon, tone: "bg-warning/20 text-warning-foreground" },
   reminder_post: { label: "Promemoria post", icon: Clock, tone: "bg-warning/15 text-warning-foreground" },
-  missed: { label: "Dose saltata", icon: AlertTriangle, tone: "bg-destructive/15 text-destructive" },
+  final_due: { label: "Ultima chiamata", icon: AlertOctagon, tone: "bg-accent/20 text-accent" },
+  missed: { label: "Dimenticata", icon: AlertTriangle, tone: "bg-destructive/15 text-destructive" },
   taken: { label: "Confermata", icon: Check, tone: "bg-success/15 text-success" },
+  taken_after_snooze: { label: "Confermata dopo rimando", icon: Check, tone: "bg-success/15 text-success" },
   snoozed: { label: "Rimandata", icon: Clock, tone: "bg-warning/15 text-warning-foreground" },
   skipped: { label: "Rifiutata", icon: XCircle, tone: "bg-destructive/10 text-destructive" },
   low_stock: { label: "Scorta bassa", icon: Package, tone: "bg-orange-100 text-orange-800" },
@@ -130,8 +132,8 @@ function PatientView({
 
   const filtered = items.filter((n) => {
     if (filter === "all") return true;
-    if (filter === "reminder") return n.kind === "reminder" || n.kind === "reminder_pre" || n.kind === "reminder_post" || n.kind === "due";
-    if (filter === "taken") return n.kind === "taken";
+    if (filter === "reminder") return n.kind === "reminder" || n.kind === "reminder_pre" || n.kind === "reminder_post" || n.kind === "due" || n.kind === "final_due";
+    if (filter === "taken") return n.kind === "taken" || n.kind === "taken_after_snooze";
     if (filter === "missed") return n.kind === "missed" || n.kind === "skipped" || n.kind === "snoozed";
     return true;
   });
@@ -177,7 +179,9 @@ function PatientView({
             const event = data.events.find((e) => e.id === n.eventId);
             const therapy = data.therapies.find((t) => t.id === n.therapyId);
             const scheduledAt = event?.scheduledAt ? new Date(event.scheduledAt) : extractScheduledFromEventId(n.eventId);
-            const actionDose = n.kind === "due" && therapy && scheduledAt ? { therapy, scheduledAt } : null;
+            const canSnooze = n.kind === "due";
+            const canConfirm = n.kind === "due" || n.kind === "final_due";
+            const actionDose = canConfirm && therapy && scheduledAt ? { therapy, scheduledAt, canSnooze } : null;
             const snoozeMinutes = therapy?.snoozeMinutes ?? 10;
             return (
               <li
@@ -208,7 +212,7 @@ function PatientView({
                       })}
                     </p>
                     {actionDose && (
-                      <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div className={cn("mt-3 grid gap-2", actionDose.canSnooze ? "grid-cols-2" : "grid-cols-1")}>
                         <Button
                           size="sm"
                           onClick={async () => {
@@ -223,17 +227,19 @@ function PatientView({
                         >
                           <Check className="mr-2 size-4" /> Conferma
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={async () => {
-                            await onSnoozeDose({ therapyId: actionDose.therapy.id, scheduledAt: actionDose.scheduledAt, minutes: snoozeMinutes });
-                            markRead(n.id);
-                            toast.info(`Rimandata di ${snoozeMinutes} min`, { description: actionDose.therapy.name });
-                          }}
-                        >
-                          <Clock className="mr-2 size-4" /> Rimanda
-                        </Button>
+                        {actionDose.canSnooze && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              await onSnoozeDose({ therapyId: actionDose.therapy.id, scheduledAt: actionDose.scheduledAt, minutes: snoozeMinutes });
+                              markRead(n.id);
+                              toast.info(`Rimandata di ${snoozeMinutes} min`, { description: actionDose.therapy.name });
+                            }}
+                          >
+                            <Clock className="mr-2 size-4" /> Rimanda
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
