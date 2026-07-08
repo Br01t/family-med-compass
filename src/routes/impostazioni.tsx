@@ -58,6 +58,16 @@ function SettingsPage() {
 
   const isPatient = userProfile?.role === "paziente";
 
+  // Loader mentre auth è in corso per evitare di mostrare il form di login
+  // a un paziente già autenticato ma con profilo non ancora caricato.
+  if (loadingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Caricamento…</p>
+      </div>
+    );
+  }
+
   // Vista paziente: solo profilo/logout, installazione app e notifiche push.
   if (isPatient && user && userProfile) {
     return (
@@ -77,8 +87,8 @@ function SettingsPage() {
               </Button>
             </div>
           </section>
+          <PatientDeviceCard />
           <InstallCard />
-          <PushCard />
         </div>
       </PatientShell>
     );
@@ -468,6 +478,164 @@ function Field({ label, value, capitalize }: { label: string; value: string; cap
     <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-3 border-b border-border/50 pb-2 last:border-0">
       <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
       <span className={`truncate text-right text-sm font-semibold ${capitalize ? "capitalize" : ""}`}>{value}</span>
+    </div>
+  );
+}
+
+/* ---------------- Card dedicata al paziente ---------------- */
+
+function PatientDeviceCard() {
+  const { user } = useFamilyMed();
+  const [perm, setPerm] = useState<NotificationPermission | "unsupported">(
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported",
+  );
+  const [subscribed, setSubscribed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [installed, setInstalled] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setInstalled(
+      window.matchMedia?.("(display-mode: standalone)").matches ||
+        (window.navigator as any).standalone === true,
+    );
+    const id = window.setInterval(() => {
+      if ("Notification" in window) setPerm(Notification.permission);
+    }, 2000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!user) { setSubscribed(false); return; }
+    isSubscribedOnThisDevice(user.id).then(setSubscribed);
+  }, [user, perm]);
+
+  const iosNeedsInstall =
+    typeof window !== "undefined" &&
+    /iPad|iPhone|iPod/.test(window.navigator.userAgent) &&
+    !installed;
+
+  async function register() {
+    if (!user) return;
+    primeAlarmAudio();
+    setBusy(true);
+    try {
+      const res = await subscribeToPush(user.id);
+      setPerm(typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported");
+      if (!res.ok) {
+        toast.error("Registrazione non riuscita", { description: humanPushReason(res.reason) });
+        return;
+      }
+      setSubscribed(true);
+      toast.success("Dispositivo registrato");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function unregister() {
+    if (!user) return;
+    setBusy(true);
+    await unsubscribeFromPush(user.id);
+    setBusy(false);
+    setSubscribed(false);
+    toast.info("Dispositivo rimosso");
+  }
+
+  async function testPush() {
+    if (!user) return;
+    setTesting(true);
+    await sendPushToUser({
+      targetUserId: user.id,
+      title: "Prova promemoria",
+      body: "Se vedi questo avviso, le notifiche funzionano correttamente.",
+      url: "/notifiche",
+      tag: "test-" + Date.now(),
+      requireInteraction: false,
+    });
+    setTesting(false);
+    toast.success("Notifica di prova inviata");
+  }
+
+  const canRegister = !!user && perm !== "unsupported" && !iosNeedsInstall;
+
+  return (
+    <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-black tracking-tight">Notifiche sul telefono</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Registra questo dispositivo per ricevere i promemoria delle terapie.
+          </p>
+        </div>
+        <span
+          className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider ${
+            subscribed
+              ? "bg-green-500/15 text-green-700 dark:text-green-400"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {subscribed ? "Registrato" : "Non registrato"}
+        </span>
+      </div>
+
+      <div className="mt-4 space-y-2 text-xs">
+        <StatusRow ok={installed} label={installed ? "App installata" : "App non installata (consigliato su iPhone)"} />
+        <StatusRow
+          ok={perm === "granted"}
+          label={
+            perm === "granted" ? "Permesso notifiche concesso" :
+            perm === "denied" ? "Permesso notifiche bloccato dal browser" :
+            perm === "unsupported" ? "Notifiche non supportate su questo browser" :
+            "Permesso notifiche non ancora concesso"
+          }
+        />
+        <StatusRow ok={subscribed} label={subscribed ? "Dispositivo registrato sul server" : "Dispositivo non registrato"} />
+      </div>
+
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+        {subscribed ? (
+          <>
+            <Button variant="outline" className="flex-1" onClick={testPush} disabled={testing}>
+              {testing ? "Invio…" : "Invia notifica di prova"}
+            </Button>
+            <Button variant="destructive" className="flex-1" onClick={unregister} disabled={busy}>
+              {busy ? "…" : "Rimuovi dispositivo"}
+            </Button>
+          </>
+        ) : (
+          <Button className="w-full" onClick={register} disabled={!canRegister || busy || perm === "denied"}>
+            {busy ? "Registrazione…" : "Registra dispositivo"}
+          </Button>
+        )}
+      </div>
+
+      {perm === "denied" && (
+        <p className="mt-3 text-xs font-semibold text-destructive">
+          Sblocca le notifiche dalle impostazioni del browser per questo sito, poi torna qui.
+        </p>
+      )}
+      {iosNeedsInstall && (
+        <p className="mt-3 text-xs font-semibold text-amber-600 dark:text-amber-400">
+          Su iPhone aggiungi prima FamilyMed alla schermata Home, poi riapri l'app installata e registra il dispositivo.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function StatusRow({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span
+        className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-black ${
+          ok ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"
+        }`}
+      >
+        {ok ? "✓" : "•"}
+      </span>
+      <span className={ok ? "font-semibold" : "text-muted-foreground"}>{label}</span>
     </div>
   );
 }
