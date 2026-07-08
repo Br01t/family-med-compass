@@ -240,7 +240,11 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     });
 
     const unsubCaregivers = subscribeCaregivers(user.id, userProfile.role, setCaregivers);
-    const unsubNotifications = subscribeNotifications(user.id, setNotifications);
+    const unsubNotifications = subscribeNotifications(
+      user.id,
+      setNotifications,
+      userProfile.role === "paziente" ? "paziente" : "caregiver",
+    );
 
     return () => {
       unsubPatients();

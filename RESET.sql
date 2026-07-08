@@ -429,16 +429,33 @@ create policy "notifications: insert if linked to patient"
 
 alter table public.notifications enable row level security;
 
-create policy "notifications: read own"
+create policy "notifications: read own or caregiver of patient"
   on public.notifications for select to authenticated
-  using (target_user_id = auth.uid());
+  using (
+    target_user_id = auth.uid()
+    or (
+      patient_id is not null and exists (
+        select 1 from public.patients p
+        where p.id = notifications.patient_id
+          and (
+            p.owner_user_id = auth.uid()
+            or exists (
+              select 1 from public.caregiver_patients cp
+              where cp.patient_id = p.id and cp.caregiver_id = auth.uid()
+            )
+          )
+      )
+    )
+  );
 
+-- Solo il destinatario può cambiare lo stato letta/non letta della propria notifica.
 create policy "notifications: mark own read"
   on public.notifications for update to authenticated
   using (target_user_id = auth.uid()) with check (target_user_id = auth.uid());
 
--- Abilita Realtime per notifications ed events
+-- Abilita Realtime per notifications ed events + full row image per gli UPDATE
 alter publication supabase_realtime add table public.notifications;
+alter table public.notifications replica identity full;
 alter publication supabase_realtime add table public.events;
 alter publication supabase_realtime add table public.therapies;
 alter publication supabase_realtime add table public.patients;
