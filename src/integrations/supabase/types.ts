@@ -14,16 +14,449 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      caregiver_patients: {
+        Row: {
+          caregiver_id: string
+          created_at: string
+          patient_id: string
+          relationship: string | null
+        }
+        Insert: {
+          caregiver_id: string
+          created_at?: string
+          patient_id: string
+          relationship?: string | null
+        }
+        Update: {
+          caregiver_id?: string
+          created_at?: string
+          patient_id?: string
+          relationship?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caregiver_patients_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      caregivers: {
+        Row: {
+          created_at: string
+          id: string
+          name: string | null
+          notify: Json | null
+          photo: string | null
+          relation: string | null
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          name?: string | null
+          notify?: Json | null
+          photo?: string | null
+          relation?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          notify?: Json | null
+          photo?: string | null
+          relation?: string | null
+        }
+        Relationships: []
+      }
+      events: {
+        Row: {
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          id: string
+          note: string | null
+          patient_id: string
+          scheduled_at: string
+          snooze_count: number | null
+          snoozed_until: string | null
+          status: string
+          therapy_id: string
+          timeline: Json | null
+        }
+        Insert: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id: string
+          note?: string | null
+          patient_id: string
+          scheduled_at: string
+          snooze_count?: number | null
+          snoozed_until?: string | null
+          status?: string
+          therapy_id: string
+          timeline?: Json | null
+        }
+        Update: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          patient_id?: string
+          scheduled_at?: string
+          snooze_count?: number | null
+          snoozed_until?: string | null
+          status?: string
+          therapy_id?: string
+          timeline?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_therapy_id_fkey"
+            columns: ["therapy_id"]
+            isOneToOne: false
+            referencedRelation: "therapies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          dose_key: string | null
+          event_id: string | null
+          id: string
+          kind: string
+          message: string | null
+          patient_id: string | null
+          read: boolean
+          severity: string
+          target_user_id: string
+          therapy_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          dose_key?: string | null
+          event_id?: string | null
+          id?: string
+          kind?: string
+          message?: string | null
+          patient_id?: string | null
+          read?: boolean
+          severity?: string
+          target_user_id: string
+          therapy_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          dose_key?: string | null
+          event_id?: string | null
+          id?: string
+          kind?: string
+          message?: string | null
+          patient_id?: string | null
+          read?: boolean
+          severity?: string
+          target_user_id?: string
+          therapy_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_therapy_id_fkey"
+            columns: ["therapy_id"]
+            isOneToOne: false
+            referencedRelation: "therapies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          birth_year: number | null
+          created_at: string
+          id: string
+          name: string
+          owner_user_id: string | null
+          photo: string | null
+          user_id: string | null
+        }
+        Insert: {
+          birth_year?: number | null
+          created_at?: string
+          id: string
+          name: string
+          owner_user_id?: string | null
+          photo?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          birth_year?: number | null
+          created_at?: string
+          id?: string
+          name?: string
+          owner_user_id?: string | null
+          photo?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          id: string
+          name?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      stock_movements: {
+        Row: {
+          created_at: string
+          delta: number
+          event_id: string | null
+          id: string
+          reason: string
+          therapy_id: string
+        }
+        Insert: {
+          created_at?: string
+          delta: number
+          event_id?: string | null
+          id?: string
+          reason: string
+          therapy_id: string
+        }
+        Update: {
+          created_at?: string
+          delta?: number
+          event_id?: string | null
+          id?: string
+          reason?: string
+          therapy_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_therapy_id_fkey"
+            columns: ["therapy_id"]
+            isOneToOne: false
+            referencedRelation: "therapies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      therapies: {
+        Row: {
+          active: boolean | null
+          category: string | null
+          color: string | null
+          created_at: string
+          dosage: string | null
+          end_date: string | null
+          icon: string | null
+          id: string
+          low_stock_threshold: number | null
+          name: string
+          notes: string | null
+          packs: number | null
+          patient_id: string
+          photo_drug: string | null
+          photo_package: string | null
+          pills_per_pack: number | null
+          pills_remaining: number | null
+          post_reminder_minutes: number | null
+          quantity: number | null
+          recurrence: Json
+          reminder_intervals: number[] | null
+          snooze_minutes: number | null
+          start_date: string
+          suspended: boolean | null
+          timeout_minutes: number | null
+          times: string[] | null
+        }
+        Insert: {
+          active?: boolean | null
+          category?: string | null
+          color?: string | null
+          created_at?: string
+          dosage?: string | null
+          end_date?: string | null
+          icon?: string | null
+          id: string
+          low_stock_threshold?: number | null
+          name: string
+          notes?: string | null
+          packs?: number | null
+          patient_id: string
+          photo_drug?: string | null
+          photo_package?: string | null
+          pills_per_pack?: number | null
+          pills_remaining?: number | null
+          post_reminder_minutes?: number | null
+          quantity?: number | null
+          recurrence?: Json
+          reminder_intervals?: number[] | null
+          snooze_minutes?: number | null
+          start_date?: string
+          suspended?: boolean | null
+          timeout_minutes?: number | null
+          times?: string[] | null
+        }
+        Update: {
+          active?: boolean | null
+          category?: string | null
+          color?: string | null
+          created_at?: string
+          dosage?: string | null
+          end_date?: string | null
+          icon?: string | null
+          id?: string
+          low_stock_threshold?: number | null
+          name?: string
+          notes?: string | null
+          packs?: number | null
+          patient_id?: string
+          photo_drug?: string | null
+          photo_package?: string | null
+          pills_per_pack?: number | null
+          pills_remaining?: number | null
+          post_reminder_minutes?: number | null
+          quantity?: number | null
+          recurrence?: Json
+          reminder_intervals?: number[] | null
+          snooze_minutes?: number | null
+          start_date?: string
+          suspended?: boolean | null
+          timeout_minutes?: number | null
+          times?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "therapies_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "caregiver" | "paziente"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +583,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["caregiver", "paziente"],
+    },
   },
 } as const
