@@ -1,7 +1,7 @@
 // Chiave pubblica VAPID — sicura da esporre al client.
 // La chiave privata vive solo come secret nell'edge function push-sender.
 export const VAPID_PUBLIC_KEY =
-  "BMESHU6eBpeooMzkgGj86LBDoDMQva-oAPIkLzj56WrwLP8aOeBg2XenyGz-tRWkRsAOESHNmnzf-CL0oKgXXyM";
+  "BMbzptNsoaKr30opHwgbQfTJwRna0CwJpD2iFwtrF8Rx9qF0oTlI-wcohd0Ss_dV0gawYb0_HNPkw4l7M5jiwC4";
 
 export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
