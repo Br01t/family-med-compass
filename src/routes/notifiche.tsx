@@ -326,7 +326,7 @@ function CaregiverView({
             const patient = data.patients.find((p) => p.id === n.patientId);
             const meta = KIND_META[n.kind] ?? KIND_META.info;
             const Icon = meta.icon;
-            const canMarkRead = !n.read && (!n.targetUserId || n.targetUserId === userId);
+            const canMarkRead = !n.read && n.targetUserId === userId;
             return (
               <li
                 key={n.id}
