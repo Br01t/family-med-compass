@@ -231,7 +231,7 @@ export function AlarmRinger() {
             className="h-12 font-semibold"
             onClick={() => handleAction("snooze")}
           >
-            <Clock className="mr-2 size-5" /> Rimanda di {therapy.snoozeMinutes ?? 10} min
+            <Clock className="mr-2 size-5" /> Rimanda di {therapy?.snoozeMinutes ?? 10} min
           </Button>
           <Button
             size="lg"
