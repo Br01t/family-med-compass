@@ -78,11 +78,16 @@ Deno.serve(async (req) => {
       results.push({ id: s.id, ok: true });
     } catch (err: any) {
       const status = err?.statusCode;
+      const host = (() => { try { return new URL(s.endpoint).host; } catch { return "?"; } })();
+      const bodySnippet = typeof err?.body === "string" ? err.body.slice(0, 200) : undefined;
       if (status === 404 || status === 410) {
         await sb.from("push_subscriptions").delete().eq("id", s.id);
       }
-      results.push({ id: s.id, ok: false, status, err: err?.message });
-      console.warn("[push-sender]", status, err?.message);
+      results.push({ id: s.id, ok: false, status, host, err: err?.message, body: bodySnippet });
+      console.warn("[push-sender]", status, host, err?.message, bodySnippet ?? "");
+      if (status === 403) {
+        console.warn("[push-sender] 403 = VAPID key/subject mismatch. Verify VAPID_PUBLIC_KEY secret matches src/lib/vapid.ts and VAPID_SUBJECT is a valid mailto: or https:// URL.");
+      }
     }
   }
 
