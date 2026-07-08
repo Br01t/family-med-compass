@@ -307,19 +307,28 @@ export function subscribeEvents(
 
 export function subscribeNotifications(
   userId: string,
-  onUpdate: (notifications: Notification[]) => void
+  onUpdate: (notifications: Notification[]) => void,
+  role: "paziente" | "caregiver" = "paziente"
 ): () => void {
   if (!supabase) return () => {};
   if (!userId) return () => {};
 
   const fetchAndEmit = async () => {
     try {
-      const { data, error } = await supabase
+      // Il caregiver, grazie alla policy RLS, riceve anche le notifiche legate
+      // ai pazienti che gestisce (oltre alle proprie). Il paziente vede solo
+      // le proprie. Non filtriamo lato client per il caregiver in modo da
+      // includere anche le notifiche destinate ai suoi pazienti.
+      let query = supabase
         .from("notifications")
         .select("*")
-        .eq("target_user_id", userId)
         .order("created_at", { ascending: false });
 
+      if (role === "paziente") {
+        query = query.eq("target_user_id", userId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
 
       onUpdate(
@@ -342,11 +351,14 @@ export function subscribeNotifications(
     }
   };
 
-
   fetchAndEmit();
 
+  // Realtime: qualunque INSERT/UPDATE/DELETE sulla tabella notifications
+  // filtrata dalla RLS scatena un refetch. In questo modo lo stato
+  // "letta/non letta" si sincronizza istantaneamente su tutti i dispositivi
+  // dello stesso utente e tra caregiver ↔ paziente per le notifiche condivise.
   const channel = supabase
-    .channel(`notifications-${userId}`)
+    .channel(`notifications-${role}-${userId}`)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "notifications" },
