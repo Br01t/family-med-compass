@@ -9,7 +9,7 @@ import {
   PieChart,
   Pill,
   Settings,
-  
+
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { useAppBadge } from "@/hooks/use-app-badge";
+import { useNotificationToasts } from "@/hooks/use-notification-toasts";
 
 const nav = [
   { title: "Dashboard", url: "/caregiver", icon: LayoutDashboard },
