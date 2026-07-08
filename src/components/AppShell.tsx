@@ -46,9 +46,13 @@ const nav = [
 function AppSidebar() {
   const navigate = useNavigate();
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const { data, logout } = useFamilyMed();
+  const { data, user, logout } = useFamilyMed();
   const isActive = (url: string) =>
     url === "/caregiver" ? path === "/caregiver" : path.startsWith(url);
+
+  const unreadCount = data.notifications.filter(
+    (n) => !n.read && (!n.targetUserId || n.targetUserId === user?.id),
+  ).length;
 
   const handleLogout = async () => {
     try {
@@ -79,20 +83,28 @@ function AppSidebar() {
           <SidebarGroupLabel>Navigazione</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {nav.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url)}
-                    tooltip={item.title}
-                  >
-                    <Link to={item.url} className="flex items-center gap-3">
-                      <item.icon className="size-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {nav.map((item) => {
+                const showBadge = item.url === "/notifiche" && unreadCount > 0;
+                return (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(item.url)}
+                      tooltip={item.title}
+                    >
+                      <Link to={item.url} className="relative flex items-center gap-3">
+                        <item.icon className="size-4" />
+                        <span>{item.title}</span>
+                        {showBadge && (
+                          <span className="ml-auto grid min-w-5 h-5 place-items-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:right-1 group-data-[collapsible=icon]:top-1 group-data-[collapsible=icon]:ml-0">
+                            {unreadCount > 9 ? "9+" : unreadCount}
+                          </span>
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
