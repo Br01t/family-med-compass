@@ -1,58 +1,46 @@
-## Piano — Notifiche push FamilyMed (Android + Supabase esterno + Cloudflare)
+## Diagnosi
 
-### Contesto operativo confermato
-- Target principale: **Android** (Chrome/Edge PWA). Su Android le Web Push funzionano bene anche con app chiusa e schermo bloccato tramite FCM, con suono/vibrazione gestiti dall'OS.
-- Database: **Supabase esterno personale** (non Lovable Cloud) → tutte le modifiche SQL verranno consegnate come file `.sql` idempotenti da eseguire nello SQL Editor, non tramite lo strumento di migration di Lovable.
-- Hosting frontend: **Cloudflare Pages/Workers** (piano free) → il service worker deve funzionare da dominio pubblico HTTPS Cloudflare; nessuna dipendenza da server long-running.
-- Edge functions: restano su Supabase (`push-sender`, `dose-scheduler`), aggiornate e da ridistribuire via CLI Supabase come già indicato in `DEPLOY.md`.
+La preflight `OPTIONS` verso `push-sender` risponde **HTTP 500 `WORKER_ERROR` "Function exited due to an error"**. Non è un problema di header CORS: la function crasha all'avvio, quindi il runtime Supabase risponde 500 anche alla preflight e il browser blocca tutto con l'errore CORS che vedi.
 
-### Nota realistica sui limiti
-Il timer che suona “fino a un'azione” con app completamente chiusa non è garantibile dai browser. Su Android la notifica push arriva persistente con vibrazione e suono di sistema; se l'utente apre l'app la sveglia in-app suona in loop. iPhone resta best-effort e richiede PWA installata.
+Causa quasi certa: nel tuo Supabase esterno (`qdwadqkpobtxivlypbio`) mancano (o hanno valore vuoto) uno o più dei secret `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`. Il file `supabase/functions/push-sender/index.ts` li legge con `Deno.env.get("...")!` a livello di modulo e chiama subito `webpush.setVapidDetails(...)`: se uno è mancante il modulo esplode al boot → 500 su qualsiasi richiesta, preflight compresa.
+
+Stesso pattern potrebbe colpire `dose-scheduler` e `dose-action` quando li richiami.
 
 ## Cosa farò
 
-### 1. Flusso notifiche unico
-Stati evento dose:
-```text
-scheduled → due → snoozed → final_due → taken | missed
+### 1. `supabase/functions/push-sender/index.ts` — boot resiliente
+- Rispondere `OPTIONS` **subito**, prima di leggere env o importare `web-push`, con gli header CORS attuali (aggiungo `apikey`, `x-client-info` che già ci sono, e `Access-Control-Max-Age`).
+- Spostare `webpush.setVapidDetails(...)` dentro un init lazy chiamato solo dentro l'handler `POST`, in `try/catch`, così un secret mancante restituisce un JSON `500 {error:"missing VAPID_*"}` invece di crashare il worker.
+- Ritornare errore esplicito e leggibile se `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` non sono impostati.
+
+### 2. Stesso trattamento a `dose-scheduler` e `dose-action`
+- OPTIONS gestito prima di qualunque `Deno.env.get(...)!` o import pesante.
+- Env obbligatorie lette dentro l'handler, con errore JSON chiaro se mancano.
+
+### 3. Nessuna modifica al DB o al frontend
+Il codice client (`src/lib/push-subscription.ts`, service worker) è già corretto: passa da `supabase.functions.invoke` che imposta gli header giusti. Il problema è solo lato edge function.
+
+### 4. Istruzioni di re-deploy (da eseguire tu, Supabase esterno)
+Dopo che avrò aggiornato i file:
+
+```bash
+supabase functions deploy push-sender --no-verify-jwt
+supabase functions deploy dose-scheduler --no-verify-jwt
+supabase functions deploy dose-action --no-verify-jwt
 ```
 
-Paziente riceve:
-- `reminder_pre` — qualche minuto prima (solo avviso).
-- `due` — ora esatta, azioni **Conferma** / **Rimanda**.
-- `final_due` — solo dopo rimando, solo **Conferma**.
-- `missed` — dopo il tempo massimo, testo “cura segnata come dimenticata, un familiare potrebbe contattarti”.
+E verifica/imposta i secret nel tuo Supabase:
 
-Caregiver riceve mirror di tutte le tappe + eventi azione paziente:
-- confermata / rimandata / confermata dopo rimando / dimenticata.
+```bash
+supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:tu@dominio
+```
 
-### 2. Database (file SQL da eseguire sul tuo Supabase)
-Consegnerò un unico patch idempotente (`PATCH_notifications_v2.sql`) che:
-- Aggiunge/aggiorna colonne su `events` (`stage`, `final_due_at`) e `therapies` (parametri già presenti).
-- Aggiorna RLS: paziente vede/aggiorna solo le proprie notifiche; caregiver vede quelle dei pazienti collegati; `push_subscriptions` per-utente.
-- Aggiunge policy/grant mancanti per far girare tutto senza `permission denied`.
-- Assicura Realtime su `notifications`, `events`, `therapies`, `patients`.
-- Aggiorna trigger `handle_dose_taken` per generare le notifiche caregiver corrette (conferma / rimando / conferma-dopo-rimando).
-- Include istruzioni pg_cron per invocare `dose-scheduler` ogni minuto.
+(I VAPID keys devono essere gli **stessi** già usati lato client in `src/lib/vapid.ts`, altrimenti le subscription salvate non sono valide.)
 
-### 3. Edge functions Supabase (aggiornate e da ri-deployare)
-- `dose-scheduler`: genera dosi, emette `reminder_pre`, `due`, `final_due`, `missed`, aggiorna `stage`, notifica caregiver in mirror.
-- `push-sender`: payload arricchito (titolo, corpo, immagine terapia/confezione, tag, `renotify`, `requireInteraction`, `urgency high`, azioni Conferma/Rimanda), rimozione subscription 404/410, log diagnostico.
-- Nuova function pubblica `dose-action` (verifica JWT o token firmato) chiamata dall'azione della notifica per confermare/rimandare senza richiedere app aperta.
+### 5. Verifica
+Dopo il redeploy, ripeterò la preflight via `curl -X OPTIONS` verso `push-sender`: deve tornare `204` con gli header `Access-Control-Allow-*`. Poi da telefono "Registra dispositivo" → deve funzionare e la notifica di test deve arrivare.
 
-### 4. Service worker (`public/sw.js`)
-- Notifiche persistenti con `vibrate`, `renotify`, `requireInteraction`, immagine terapia.
-- `notificationclick` per azioni `confirm` / `snooze`: chiama `dose-action` in background e chiude la notifica; apre `/notifiche` se solo click.
-- `postMessage` all'app aperta per attivare `AlarmRinger`.
-- Nessun cache aggressivo che blocchi update su Cloudflare.
+## Dettagli tecnici
 
-### 5. Frontend
-- Timeline paziente: mostra stato `snoozed` e `final_due` in modo evidente.
-- `AlarmRinger`: gestisce sia `due` (Conferma/Rimanda) sia `final_due` (solo Conferma).
-- Centro notifiche: nuovi tipi con azioni coerenti, stato letta/non letta in realtime multi-device.
-- Impostazioni paziente: diagnostica chiara (permesso, service worker, subscription locale, registrazione server, test push).
-
-### 6. Consegna e verifica
-- File da eseguire tu una volta: `PATCH_notifications_v2.sql` (SQL Editor) + comandi `supabase functions deploy` + snippet `cron.schedule` (già in `DEPLOY.md`, aggiornato).
-- Verificherò lato codice build e ricontrollerò i log delle edge function dopo il deploy.
-- Testeremo insieme: registrazione dispositivo Android → notifica test → creazione terapia a +2 min → arrivo `reminder_pre`, `due`, azione, `final_due` o `missed`, mirror caregiver.
+- Root cause: top-level throw in Deno edge → il runtime marca la function come non healthy e serve `500 WORKER_ERROR` su ogni metodo, inclusa `OPTIONS`, che il browser interpreta come "preflight didn't pass".
+- Fix pattern standard: `if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });` come prima riga dell'handler, e init dei secret lazy dentro il `POST`.

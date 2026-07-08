@@ -4,14 +4,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY")!;
-const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY")!;
-const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@familymed.app";
-
-webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -19,9 +11,33 @@ const cors = {
   "Access-Control-Max-Age": "86400",
 };
 
+let vapidReady = false;
+function initVapid(): { ok: true } | { ok: false; error: string } {
+  if (vapidReady) return { ok: true };
+  const pub = Deno.env.get("VAPID_PUBLIC_KEY");
+  const priv = Deno.env.get("VAPID_PRIVATE_KEY");
+  const subj = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@familymed.app";
+  if (!pub || !priv) return { ok: false, error: "missing VAPID_PUBLIC_KEY or VAPID_PRIVATE_KEY secret" };
+  try {
+    webpush.setVapidDetails(subj, pub, priv);
+    vapidReady = true;
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: `vapid init failed: ${e?.message ?? e}` };
+  }
+}
+
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return json({ error: "missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }, 500);
+  }
+  const vapid = initVapid();
+  if (!vapid.ok) return json({ error: vapid.error }, 500);
 
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "bad json" }, 400); }
