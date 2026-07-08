@@ -370,7 +370,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
           therapyId: therapy.id,
           eventId: updatedEvent.id,
           scheduledAt,
-          kind: "taken",
+          kind: existingEvent?.status === "snoozed" ? "taken_after_snooze" : "taken",
           therapyName: therapy.name,
           patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
           actor: confirmedBy,
