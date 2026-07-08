@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertOctagon, AlertTriangle, Bell, Check, CheckCheck, Clock, Info, Package, PillIcon, XCircle } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { PatientShell } from "@/components/PatientShell";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,15 @@ const PATIENT_FILTERS: Array<{ id: "all" | "reminder" | "taken" | "missed"; labe
 ];
 
 function NotificationsPage() {
-  const { data, user, userProfile, markNotificationRead, markAllRead } = useFamilyMed();
+  const {
+    data,
+    user,
+    userProfile,
+    markNotificationRead,
+    markAllRead,
+    confirmDose,
+    snoozeDose,
+  } = useFamilyMed();
   const isPatient = userProfile?.role === "paziente";
 
   const patient = isPatient
@@ -71,9 +80,13 @@ function NotificationsPage() {
       <PatientShell title="Le tue notifiche" subtitle={`${unread} non lette · ${items.length} totali`}>
         <PatientView
           items={items}
+          data={data}
+          patientName={patient?.name ?? userProfile?.name ?? "Paziente"}
           markRead={markNotificationRead}
           markAllRead={markAllRead}
           unread={unread}
+          onConfirmDose={confirmDose}
+          onSnoozeDose={snoozeDose}
         />
       </PatientShell>
     );
@@ -89,21 +102,29 @@ function NotificationsPage() {
         </Button>
       }
     >
-      <CaregiverView items={items} data={data} markRead={markNotificationRead} />
+      <CaregiverView items={items} data={data} userId={user?.id} markRead={markNotificationRead} />
     </AppShell>
   );
 }
 
 function PatientView({
   items,
+  data,
+  patientName,
   markRead,
   markAllRead,
   unread,
+  onConfirmDose,
+  onSnoozeDose,
 }: {
   items: Notification[];
+  data: ReturnType<typeof useFamilyMed>["data"];
+  patientName: string;
   markRead: (id: string) => void;
   markAllRead: () => void;
   unread: number;
+  onConfirmDose: ReturnType<typeof useFamilyMed>["confirmDose"];
+  onSnoozeDose: ReturnType<typeof useFamilyMed>["snoozeDose"];
 }) {
   const [filter, setFilter] = useState<(typeof PATIENT_FILTERS)[number]["id"]>("all");
 
@@ -153,33 +174,69 @@ function PatientView({
           {filtered.map((n) => {
             const meta = KIND_META[n.kind] ?? KIND_META.info;
             const Icon = meta.icon;
+            const event = data.events.find((e) => e.id === n.eventId);
+            const therapy = data.therapies.find((t) => t.id === n.therapyId);
+            const scheduledAt = event?.scheduledAt ? new Date(event.scheduledAt) : extractScheduledFromEventId(n.eventId);
+            const canActOnDose = n.kind === "due" && therapy && scheduledAt;
+            const snoozeMinutes = (therapy as any)?.snoozeMinutes ?? 10;
             return (
               <li
                 key={n.id}
                 className={cn(
-                  "flex items-start gap-4 rounded-2xl border-2 bg-card p-4 shadow-sm",
+                  "flex flex-col gap-4 rounded-2xl border-2 bg-card p-4 shadow-sm sm:flex-row sm:items-start",
                   !n.read ? "border-primary/60 bg-primary-soft/20" : "border-border/60",
                 )}
               >
-                <div className={cn("grid size-14 shrink-0 place-items-center rounded-xl", meta.tone)}>
-                  <Icon className="size-7" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    {meta.label}
-                  </p>
-                  <p className="mt-0.5 text-lg font-black leading-tight">{n.title}</p>
-                  {n.message && (
-                    <p className="mt-1 text-sm text-muted-foreground">{n.message}</p>
-                  )}
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {new Date(n.createdAt).toLocaleString("it-IT", {
-                      day: "numeric",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
+                <div className="flex min-w-0 flex-1 items-start gap-4">
+                  <div className={cn("grid size-14 shrink-0 place-items-center rounded-xl", meta.tone)}>
+                    <Icon className="size-7" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                      {meta.label}
+                    </p>
+                    <p className="mt-0.5 text-lg font-black leading-tight">{n.title}</p>
+                    {n.message && (
+                      <p className="mt-1 text-sm text-muted-foreground">{n.message}</p>
+                    )}
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {new Date(n.createdAt).toLocaleString("it-IT", {
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    {canActOnDose && (
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            await onConfirmDose({
+                              therapyId: therapy.id,
+                              scheduledAt,
+                              confirmedBy: patientName,
+                            });
+                            markRead(n.id);
+                            toast.success(`${therapy.name} confermata`);
+                          }}
+                        >
+                          <Check className="mr-2 size-4" /> Conferma
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            await onSnoozeDose({ therapyId: therapy.id, scheduledAt, minutes: snoozeMinutes });
+                            markRead(n.id);
+                            toast.info(`Rimandata di ${snoozeMinutes} min`, { description: therapy.name });
+                          }}
+                        >
+                          <Clock className="mr-2 size-4" /> Rimanda
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {!n.read && (
                   <button
@@ -201,10 +258,12 @@ function PatientView({
 function CaregiverView({
   items,
   data,
+  userId,
   markRead,
 }: {
   items: Notification[];
   data: ReturnType<typeof useFamilyMed>["data"];
+  userId?: string;
   markRead: (id: string) => void;
 }) {
   const [filter, setFilter] = useState<(typeof CAREGIVER_FILTERS)[number]["id"]>("all");
@@ -267,6 +326,7 @@ function CaregiverView({
             const patient = data.patients.find((p) => p.id === n.patientId);
             const meta = KIND_META[n.kind] ?? KIND_META.info;
             const Icon = meta.icon;
+            const canMarkRead = !n.read && (!n.targetUserId || n.targetUserId === userId);
             return (
               <li
                 key={n.id}
@@ -305,13 +365,16 @@ function CaregiverView({
                       minute: "2-digit",
                     })}
                   </p>
-                  {!n.read && (
+                  {canMarkRead && (
                     <button
                       onClick={() => markRead(n.id)}
                       className="mt-1 text-xs font-semibold text-primary hover:underline"
                     >
                       Segna letta
                     </button>
+                  )}
+                  {!n.read && !canMarkRead && (
+                    <p className="mt-1 text-xs font-semibold text-muted-foreground">Non letta</p>
                   )}
                 </div>
               </li>
@@ -321,6 +384,12 @@ function CaregiverView({
       </div>
     </div>
   );
+}
+
+function extractScheduledFromEventId(eventId?: string): Date | undefined {
+  if (!eventId) return undefined;
+  const ms = Number(eventId.split("_").at(-1));
+  return Number.isFinite(ms) ? new Date(ms) : undefined;
 }
 
 function EmptyState({ title, message }: { title: string; message: string }) {
