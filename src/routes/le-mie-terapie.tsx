@@ -75,12 +75,17 @@ function MyTherapiesPage() {
         >
           <ArrowLeft className="size-4" /> Indietro
         </Link>
-        <span className="flex items-center gap-2 font-black tracking-tight">
-          <span className="grid size-8 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <Pill className="size-4" />
+        <div className="flex items-center gap-1">
+          <span className="mr-1 flex items-center gap-2 font-black tracking-tight">
+            <span className="grid size-8 place-items-center rounded-xl bg-primary text-primary-foreground">
+              <Pill className="size-4" />
+            </span>
+            FamilyMed
           </span>
-          FamilyMed
-        </span>
+          <Button variant="ghost" size="icon" asChild aria-label="Impostazioni">
+            <Link to="/impostazioni"><Settings className="size-5" /></Link>
+          </Button>
+        </div>
       </header>
 
       <main className="mx-auto max-w-xl px-5 pb-24 pt-4">
