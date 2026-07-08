@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertOctagon, AlertTriangle, Bell, Check, CheckCheck, Clock, Info, Package, PillIcon, XCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { PatientShell } from "@/components/PatientShell";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import type { Notification, NotificationKind } from "@/lib/mock-data";
@@ -47,9 +48,24 @@ function NotificationsPage() {
   const unread = items.filter((n) => !n.read).length;
   const isPatient = userProfile?.role === "paziente";
 
+  if (isPatient) {
+    return (
+      <PatientShell title="Le tue notifiche" subtitle={`${unread} non lette · ${items.length} totali`}>
+        {unread > 0 && (
+          <div className="mb-4 flex justify-end">
+            <Button size="sm" variant="outline" onClick={markAllRead}>
+              <CheckCheck className="mr-2 size-4" /> Segna tutte lette
+            </Button>
+          </div>
+        )}
+        <PatientView items={items} markRead={markNotificationRead} />
+      </PatientShell>
+    );
+  }
+
   return (
     <AppShell
-      title={isPatient ? "Le tue notifiche" : "Centro notifiche"}
+      title="Centro notifiche"
       subtitle={`${unread} non lette · ${items.length} totali`}
       actions={
         <Button size="sm" variant="outline" onClick={markAllRead} disabled={unread === 0}>
@@ -57,11 +73,7 @@ function NotificationsPage() {
         </Button>
       }
     >
-      {isPatient ? (
-        <PatientView items={items} markRead={markNotificationRead} />
-      ) : (
-        <CaregiverView items={items} data={data} markRead={markNotificationRead} />
-      )}
+      <CaregiverView items={items} data={data} markRead={markNotificationRead} />
     </AppShell>
   );
 }
