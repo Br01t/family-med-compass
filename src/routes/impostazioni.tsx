@@ -89,7 +89,6 @@ function SettingsPage() {
           </section>
           <PatientDeviceCard />
           <InstallCard />
-          <PushCard />
         </div>
       </PatientShell>
     );
