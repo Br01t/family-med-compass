@@ -92,19 +92,39 @@ self.addEventListener("push", (event) => {
     data = { title: "FamilyMed", body: event.data?.text() ?? "" };
   }
   const title = data.title || "FamilyMed";
+  const isAlarm = !!data.isAlarm;
   const options = {
     body: data.body || "",
     icon: data.icon || "/icons/icon-192.png",
     badge: "/icons/icon-192.png",
     image: data.image,
     tag: data.tag,
-    data: { url: data.url || "/notifiche", isAlarm: !!data.isAlarm },
-    requireInteraction: !!data.requireInteraction || !!data.isAlarm,
-    vibrate: data.isAlarm ? [500, 200, 500, 200, 500, 200, 500] : [200, 100, 200],
+    data: { url: data.url || "/notifiche", isAlarm, kind: data.kind, payload: data },
+    requireInteraction: !!data.requireInteraction || isAlarm,
+    vibrate: isAlarm ? [500, 200, 500, 200, 500, 200, 500, 200, 800] : [300, 150, 300],
     silent: false,
     renotify: true,
+    actions: isAlarm
+      ? [
+          { action: "confirm", title: "Conferma" },
+          { action: "snooze", title: "Rimanda 10 min" },
+        ]
+      : undefined,
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+
+  event.waitUntil(
+    (async () => {
+      // Mostra la notifica di sistema (suono + vibrazione gestiti dall'OS)
+      await self.registration.showNotification(title, options);
+      // Fallback in-app: se l'app è aperta, avvisa i client per far
+      // suonare l'AlarmRinger anche se la notifica di sistema è silenziata
+      // o non è visibile (schermo acceso con app in primo piano).
+      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const c of clients) {
+        c.postMessage({ type: "familymed-push", isAlarm, title, body: options.body, url: options.data.url });
+      }
+    })(),
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {
