@@ -148,6 +148,9 @@ function PatientPage() {
               )}
             </Link>
           </Button>
+          <Button variant="ghost" size="icon" asChild aria-label="Impostazioni">
+            <Link to="/impostazioni"><Settings className="size-5" /></Link>
+          </Button>
           <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Esci">
             <LogOut className="size-5" />
           </Button>
