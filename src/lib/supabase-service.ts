@@ -199,6 +199,8 @@ export function subscribeTherapies(
           times: t.times,
           recurrence: t.recurrence,
           timeoutMinutes: t.timeout_minutes,
+          snoozeMinutes: t.snooze_minutes,
+          postReminderMinutes: t.post_reminder_minutes,
           reminderIntervals: Array.isArray(t.reminder_intervals) && t.reminder_intervals.length > 0
             ? (t.reminder_intervals as unknown[])
                 .map((value) => Math.abs(Number(value)))
@@ -485,6 +487,8 @@ function toTherapyPayload(therapy: Therapy) {
     times: therapy.times,
     recurrence: therapy.recurrence,
     timeout_minutes: therapy.timeoutMinutes,
+    snooze_minutes: therapy.snoozeMinutes ?? 10,
+    post_reminder_minutes: therapy.postReminderMinutes ?? 5,
     reminder_intervals: therapy.reminderIntervals,
     packs: therapy.packs,
     pills_per_pack: therapy.pillsPerPack,
