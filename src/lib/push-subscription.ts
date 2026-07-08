@@ -1,6 +1,25 @@
 import { supabase } from "./supabase";
 import { VAPID_PUBLIC_KEY, urlBase64ToUint8Array } from "./vapid";
 
+/** Invia al service worker l'URL della edge `dose-action` e l'anon key, così
+ *  le azioni Conferma/Rimanda dalla notifica funzionino anche ad app chiusa. */
+async function pushConfigToServiceWorker(): Promise<void> {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+  const reg = await navigator.serviceWorker.getRegistration();
+  const sw = reg?.active;
+  if (!sw) return;
+  const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/$/, "");
+  const anonKey =
+    (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ||
+    (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined);
+  if (!url) return;
+  sw.postMessage({
+    type: "familymed-config",
+    doseActionUrl: `${url}/functions/v1/dose-action`,
+    anonKey,
+  });
+}
+
 /** Registra questo browser per ricevere Web Push per l'utente `userId`. */
 export async function subscribeToPush(userId: string): Promise<{ ok: boolean; reason?: string }> {
   if (typeof window === "undefined") return { ok: false, reason: "no-window" };
