@@ -178,7 +178,7 @@ function PatientView({
             const therapy = data.therapies.find((t) => t.id === n.therapyId);
             const scheduledAt = event?.scheduledAt ? new Date(event.scheduledAt) : extractScheduledFromEventId(n.eventId);
             const canActOnDose = n.kind === "due" && therapy && scheduledAt;
-            const snoozeMinutes = (therapy as any)?.snoozeMinutes ?? 10;
+            const snoozeMinutes = therapy?.snoozeMinutes ?? 10;
             return (
               <li
                 key={n.id}

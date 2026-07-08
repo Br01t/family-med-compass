@@ -181,7 +181,7 @@ export function AlarmRinger() {
         await snoozeDose({
           therapyId: therapy.id,
           scheduledAt,
-          minutes: (therapy as any).snoozeMinutes ?? 10,
+            minutes: therapy.snoozeMinutes ?? 10,
         });
       } else {
         await skipDose({ therapyId: therapy.id, scheduledAt });
@@ -231,7 +231,7 @@ export function AlarmRinger() {
             className="h-12 font-semibold"
             onClick={() => handleAction("snooze")}
           >
-            <Clock className="mr-2 size-5" /> Rimanda di {(therapy as any)?.snoozeMinutes ?? 10} min
+            <Clock className="mr-2 size-5" /> Rimanda di {therapy.snoozeMinutes ?? 10} min
           </Button>
           <Button
             size="lg"
