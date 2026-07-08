@@ -610,6 +610,7 @@ export async function insertNotificationDoc(input: {
 }): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase.from("notifications").insert({
+    id: crypto.randomUUID(),
     target_user_id: input.targetUserId,
     kind: input.kind,
     severity: input.severity,

@@ -135,6 +135,7 @@ async function notifyRecipients(sb: any, input: {
   for (const recipient of recipients) {
     const doseKey = `${input.therapyId}@${input.scheduledAt}@${input.kind}@${recipient.audience}`;
     const { error } = await sb.from("notifications").insert({
+      id: crypto.randomUUID(),
       target_user_id: recipient.userId,
       kind: input.kind,
       severity: input.severity,
@@ -321,6 +322,7 @@ Deno.serve(async (_req) => {
     for (const caregiver_id of caregiverIds) {
       const doseKey = `${ev.therapy_id}@${ev.scheduled_at}@missed`;
       const { error } = await sb.from("notifications").insert({
+        id: crypto.randomUUID(),
         target_user_id: caregiver_id,
         kind: "missed",
         severity: "alert",
@@ -348,6 +350,7 @@ Deno.serve(async (_req) => {
       const patientTitle = `Cura dimenticata: ${th?.name ?? "farmaco"}`;
       const patientMessage = `La dose delle ${new Date(ev.scheduled_at).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" })} è stata segnata come dimenticata. Potresti essere contattato da un familiare.`;
       const { error } = await sb.from("notifications").insert({
+        id: crypto.randomUUID(),
         target_user_id: pat.user_id,
         kind: "missed",
         severity: "alert",
