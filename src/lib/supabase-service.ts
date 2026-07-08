@@ -270,6 +270,7 @@ export function subscribeEvents(
           status: e.status,
           confirmedAt: e.confirmed_at,
           confirmedBy: e.confirmed_by,
+          snoozedUntil: e.snoozed_until,
           note: e.note,
           timeline: e.timeline,
         }))
@@ -334,11 +335,13 @@ export function subscribeNotifications(
       onUpdate(
         (data || []).map((n) => ({
           id: n.id,
+          targetUserId: n.target_user_id,
           createdAt: n.created_at,
           kind: n.kind ?? "info",
           patientId: n.patient_id,
           therapyId: n.therapy_id,
           eventId: n.event_id,
+          doseKey: n.dose_key,
           severity: n.severity,
           title: n.title,
           message: n.message,
@@ -505,6 +508,7 @@ export async function saveEventDoc(event: MedicationEvent): Promise<void> {
     status: event.status,
     confirmed_at: event.confirmedAt,
     confirmed_by: event.confirmedBy,
+    snoozed_until: event.snoozedUntil,
     note: event.note,
     timeline: event.timeline,
   });
