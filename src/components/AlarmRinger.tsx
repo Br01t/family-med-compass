@@ -7,6 +7,7 @@ import { getPrimedAlarmAudioContext } from "@/lib/alarm-audio";
 
 type AlarmNotif = {
   id: string;
+  kind: "due" | "final_due";
   title: string;
   message: string | null;
   therapy_id: string | null;
@@ -46,9 +47,10 @@ export function AlarmRinger() {
         },
         (payload) => {
           const n = payload.new as any;
-          if (n.kind === "due") {
+          if (n.kind === "due" || n.kind === "final_due") {
             setAlarm({
               id: n.id,
+              kind: n.kind,
               title: n.title,
               message: n.message,
               therapy_id: n.therapy_id,
@@ -70,11 +72,12 @@ export function AlarmRinger() {
   useEffect(() => {
     if (!user || !isPatient || alarm) return;
     const due = data.notifications.find(
-      (n) => n.kind === "due" && !n.read && (!n.targetUserId || n.targetUserId === user.id),
+      (n) => (n.kind === "due" || n.kind === "final_due") && !n.read && (!n.targetUserId || n.targetUserId === user.id),
     );
     if (!due) return;
     setAlarm({
       id: due.id,
+      kind: due.kind as "due" | "final_due",
       title: due.title,
       message: due.message,
       therapy_id: due.therapyId ?? null,
