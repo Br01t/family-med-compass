@@ -150,6 +150,13 @@ export function AppShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const { data, user } = useFamilyMed();
+  const unreadCount = data.notifications.filter(
+    (n) => !n.read && (!n.targetUserId || n.targetUserId === user?.id),
+  ).length;
+  useAppBadge(unreadCount);
+  useNotificationToasts(data.notifications);
+
   const now = new Date();
   const dateStr = now.toLocaleDateString("it-IT", {
     weekday: "long",
