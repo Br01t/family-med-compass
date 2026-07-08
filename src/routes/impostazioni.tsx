@@ -13,6 +13,7 @@ import { useFamilyMed } from "@/lib/store";
 import { requestNotificationPermission } from "@/components/NotificationScheduler";
 import { subscribeToPush, isSubscribedOnThisDevice, unsubscribeFromPush, sendPushToUser } from "@/lib/push-subscription";
 import { type Role } from "@/lib/mock-data";
+import { primeAlarmAudio } from "@/lib/alarm-audio";
 
 export const Route = createFileRoute("/impostazioni")({
   head: () => ({ meta: [{ title: "Impostazioni — FamilyMed" }] }),
@@ -281,6 +282,7 @@ function PushCard() {
 
   async function setupOnThisDevice() {
     if (!user) return;
+    primeAlarmAudio();
     setBusy(true);
     try {
       const res = await subscribeToPush(user.id);

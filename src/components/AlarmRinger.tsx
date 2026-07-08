@@ -3,6 +3,7 @@ import { AlertOctagon, Check, Clock, X } from "lucide-react";
 import { useFamilyMed } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
+import { getPrimedAlarmAudioContext } from "@/lib/alarm-audio";
 
 type AlarmNotif = {
   id: string;
@@ -97,8 +98,8 @@ export function AlarmRinger() {
 
     // Suono in loop (WebAudio, così non serve un file mp3)
     try {
-      const AC = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
-      const ctx = new AC();
+      void getPrimedAlarmAudioContext().then((ctx) => {
+        if (!ctx) return;
       audioCtxRef.current = ctx;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -121,6 +122,7 @@ export function AlarmRinger() {
       beep();
       const beepInterval = window.setInterval(beep, 1000);
       vibrateIntervalRef.current = beepInterval;
+      });
     } catch (err) {
       console.warn("[alarm] audio failed:", err);
     }
@@ -142,9 +144,6 @@ export function AlarmRinger() {
         oscRef.current = null;
       }
       if (audioCtxRef.current) {
-        try {
-          audioCtxRef.current.close();
-        } catch {}
         audioCtxRef.current = null;
       }
       if ("vibrate" in navigator) navigator.vibrate(0);
