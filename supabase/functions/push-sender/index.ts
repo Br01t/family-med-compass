@@ -1,17 +1,6 @@
 // FamilyMed — push-sender
 // Invocata da client o da altre edge (dose-scheduler) per inviare Web Push
 // a tutte le subscription registrate per un utente.
-//
-// Body atteso: {
-//   targetUserId: string,
-//   title: string,
-//   body?: string,
-//   icon?: string, image?: string, url?: string, tag?: string,
-//   requireInteraction?: boolean,
-//   isAlarm?: boolean,
-// }
-//
-// Vars richieste: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -25,32 +14,57 @@ const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@familymed.a
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
+// CORREZIONE CORS: Lettere maiuscole corrette per gli header accettati
 const cors = {
-  "access-control-allow-origin": "*",
-  "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
-  "access-control-allow-methods": "POST, OPTIONS",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type, apikey, x-client-info, authorization, content-type, X-Client-Info, X-Client-Info",
+  "Access-Control-Max-Age": "86400", // Dice al browser di salvare i permessi CORS per 24 ore senza rifare ogni volta il preflight
 };
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  if (req.method !== "POST") return new Response("method not allowed", { status: 405, headers: cors });
+  // Gestione Preflight OPTIONS
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { status: 200, headers: cors });
+  }
+  
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "method not allowed" }), { 
+      status: 405, 
+      headers: { ...cors, "Content-Type": "application/json" } 
+    });
+  }
 
   let body: any;
   try {
     body = await req.json();
   } catch {
-    return new Response("bad json", { status: 400, headers: cors });
+    return new Response(JSON.stringify({ error: "bad json" }), { 
+      status: 400, 
+      headers: { ...cors, "Content-Type": "application/json" } 
+    });
   }
 
   const targetUserId = body.targetUserId as string | undefined;
-  if (!targetUserId) return new Response("missing targetUserId", { status: 400, headers: cors });
+  if (!targetUserId) {
+    return new Response(JSON.stringify({ error: "missing targetUserId" }), { 
+      status: 400, 
+      headers: { ...cors, "Content-Type": "application/json" } 
+    });
+  }
 
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
   const { data: subs, error } = await sb
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth")
     .eq("user_id", targetUserId);
-  if (error) return new Response(`db: ${error.message}`, { status: 500, headers: cors });
+    
+  if (error) {
+    return new Response(JSON.stringify({ error: `db: ${error.message}` }), { 
+      status: 500, 
+      headers: { ...cors, "Content-Type": "application/json" } 
+    });
+  }
 
   const payload = JSON.stringify({
     title: body.title ?? "FamilyMed",
@@ -77,7 +91,6 @@ Deno.serve(async (req) => {
       results.push({ id: s.id, ok: true });
     } catch (err: any) {
       const status = err?.statusCode;
-      // Endpoint scaduto → rimuovi
       if (status === 404 || status === 410) {
         await sb.from("push_subscriptions").delete().eq("id", s.id);
       }
@@ -86,6 +99,6 @@ Deno.serve(async (req) => {
   }
 
   return new Response(JSON.stringify({ sent: results.length, results }), {
-    headers: { ...cors, "content-type": "application/json" },
+    headers: { ...cors, "Content-Type": "application/json" },
   });
 });
