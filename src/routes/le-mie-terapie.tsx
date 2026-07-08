@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Bell, Clock, Info, Package, Pill } from "lucide-react";
+import { ArrowLeft, Bell, Clock, Info, Package, Pill, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { recurrenceLabel } from "@/lib/therapy";
