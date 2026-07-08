@@ -177,7 +177,7 @@ function PatientView({
             const event = data.events.find((e) => e.id === n.eventId);
             const therapy = data.therapies.find((t) => t.id === n.therapyId);
             const scheduledAt = event?.scheduledAt ? new Date(event.scheduledAt) : extractScheduledFromEventId(n.eventId);
-            const canActOnDose = n.kind === "due" && therapy && scheduledAt;
+            const actionDose = n.kind === "due" && therapy && scheduledAt ? { therapy, scheduledAt } : null;
             const snoozeMinutes = therapy?.snoozeMinutes ?? 10;
             return (
               <li
@@ -207,18 +207,18 @@ function PatientView({
                         minute: "2-digit",
                       })}
                     </p>
-                    {canActOnDose && (
+                    {actionDose && (
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         <Button
                           size="sm"
                           onClick={async () => {
                             await onConfirmDose({
-                              therapyId: therapy.id,
-                              scheduledAt,
+                              therapyId: actionDose.therapy.id,
+                              scheduledAt: actionDose.scheduledAt,
                               confirmedBy: patientName,
                             });
                             markRead(n.id);
-                            toast.success(`${therapy.name} confermata`);
+                            toast.success(`${actionDose.therapy.name} confermata`);
                           }}
                         >
                           <Check className="mr-2 size-4" /> Conferma
@@ -227,9 +227,9 @@ function PatientView({
                           size="sm"
                           variant="outline"
                           onClick={async () => {
-                            await onSnoozeDose({ therapyId: therapy.id, scheduledAt, minutes: snoozeMinutes });
+                            await onSnoozeDose({ therapyId: actionDose.therapy.id, scheduledAt: actionDose.scheduledAt, minutes: snoozeMinutes });
                             markRead(n.id);
-                            toast.info(`Rimandata di ${snoozeMinutes} min`, { description: therapy.name });
+                            toast.info(`Rimandata di ${snoozeMinutes} min`, { description: actionDose.therapy.name });
                           }}
                         >
                           <Clock className="mr-2 size-4" /> Rimanda
