@@ -213,10 +213,13 @@ function CaregiverView({
   const filtered = items.filter((n) => {
     if (patientFilter && n.patientId !== patientFilter) return false;
     if (filter === "all") return true;
-    if (filter === "missed") return n.kind === "missed" || n.kind === "low_stock";
+    if (filter === "reminder")
+      return n.kind === "reminder" || n.kind === "reminder_pre" || n.kind === "reminder_post" || n.kind === "due";
+    if (filter === "missed") return n.kind === "missed";
     if (filter === "taken") return n.kind === "taken";
     if (filter === "action")
-      return n.kind === "skipped" || n.kind === "snoozed" || n.kind === "taken";
+      return n.kind === "skipped" || n.kind === "snoozed";
+    if (filter === "stock") return n.kind === "low_stock";
     return true;
   });
 
