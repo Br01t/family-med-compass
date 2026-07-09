@@ -37,68 +37,17 @@ import {
   fetchAllPatients,
   followPatient as followPatientDoc,
   unfollowPatient as unfollowPatientDoc,
-  insertNotificationDoc,
+  
   fetchCaregiverIdsForPatient,
 } from "./supabase-service";
 
 
 
 
-async function notifyCaregiversAboutDose(input: {
-  patientId: string;
-  therapyId: string;
-  eventId: string;
-  scheduledAt: Date;
-  kind: "taken" | "taken_after_snooze" | "snoozed" | "skipped";
-  therapyName: string;
-  patientName: string;
-  actor?: string;
-  minutes?: number;
-}) {
-  const caregivers = await fetchCaregiverIdsForPatient(input.patientId);
-  if (caregivers.length === 0) return;
-  const scheduledLabel = input.scheduledAt.toLocaleTimeString("it-IT", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const spec = {
-    taken: {
-      severity: "info" as const,
-      title: `${input.patientName} ha confermato ${input.therapyName}`,
-      message: `Ha preso la dose delle ${scheduledLabel}.`,
-    },
-    taken_after_snooze: {
-      severity: "info" as const,
-      title: `${input.patientName} ha confermato ${input.therapyName} (dopo rimando)`,
-      message: `Dose delle ${scheduledLabel} confermata dopo il rimando.`,
-    },
-    snoozed: {
-      severity: "warning" as const,
-      title: `${input.patientName} ha rimandato ${input.therapyName}`,
-      message: `Dose delle ${scheduledLabel} rimandata di ${input.minutes ?? 10} min.`,
-    },
-    skipped: {
-      severity: "warning" as const,
-      title: `${input.patientName} ha saltato ${input.therapyName}`,
-      message: `Ha rifiutato la dose delle ${scheduledLabel}.`,
-    },
-  }[input.kind];
+// Notifiche caregiver/paziente: sono generate esclusivamente dai trigger DB
+// (`handle_dose_taken` e `handle_dose_status_change`). Non inserirle dal
+// client per evitare duplicati (chiavi `dose_key` diverse fra client e trigger).
 
-  for (const cg of caregivers) {
-    const doseKey = `${input.therapyId}@${input.scheduledAt.toISOString()}@${input.kind}@caregiver`;
-    await insertNotificationDoc({
-      targetUserId: cg,
-      kind: input.kind,
-      severity: spec.severity,
-      title: spec.title,
-      message: spec.message,
-      patientId: input.patientId,
-      therapyId: input.therapyId,
-      eventId: input.eventId,
-      doseKey,
-    });
-  }
-}
 
 type Ctx = {
   data: FamilyMedData;
@@ -380,18 +329,9 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       try {
         if (user) {
           await saveEventDoc(updatedEvent);
-          // Il decremento delle scorte e la notifica low_stock sono gestiti
-          // dal trigger DB handle_dose_taken (evita doppio scalo).
-          await notifyCaregiversAboutDose({
-            patientId: therapy.patientId,
-            therapyId: therapy.id,
-            eventId: updatedEvent.id,
-            scheduledAt,
-            kind: existingEvent?.status === "snoozed" ? "taken_after_snooze" : "taken",
-            therapyName: therapy.name,
-            patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
-            actor: confirmedBy,
-          });
+          // Decremento scorte, notifiche caregiver e low_stock sono generati
+          // dal trigger DB handle_dose_taken.
+
         } else {
           setLocalData((d) => {
             const nextEvents = existingEvent
@@ -454,32 +394,9 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       try {
         if (user) {
           await saveEventDoc(updatedEvent);
-          const patientName = patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente";
-          await notifyCaregiversAboutDose({
-            patientId: therapy.patientId,
-            therapyId: therapy.id,
-            eventId: updatedEvent.id,
-            scheduledAt,
-            kind: "skipped",
-            therapyName: therapy.name,
-            patientName,
-          });
-          // Notifica anche il paziente stesso: dose saltata, sarà contattato.
-          const patient = patients.find((p) => p.id === therapy.patientId);
-          if (patient?.userId) {
-            const scheduledLabel = scheduledAt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-            await insertNotificationDoc({
-              targetUserId: patient.userId,
-              kind: "skipped",
-              severity: "warning",
-              title: `Hai saltato ${therapy.name}`,
-              message: `La dose delle ${scheduledLabel} è stata segnata come saltata. Probabilmente verrai contattato da un familiare.`,
-              patientId: therapy.patientId,
-              therapyId: therapy.id,
-              eventId: updatedEvent.id,
-              doseKey: `${therapy.id}@${scheduledAt.toISOString()}@skipped@patient`,
-            });
-          }
+          // Notifiche caregiver + notifica al paziente ("verrai contattato...")
+          // sono generate dal trigger DB handle_dose_status_change.
+
         } else {
           setLocalData((d) => {
             const nextEvents = existingEvent
@@ -546,16 +463,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       try {
         if (user) {
           await saveEventDoc(updatedEvent);
-          await notifyCaregiversAboutDose({
-            patientId: therapy.patientId,
-            therapyId: therapy.id,
-            eventId: updatedEvent.id,
-            scheduledAt,
-            kind: "snoozed",
-            therapyName: therapy.name,
-            patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
-            minutes,
-          });
+          // Notifiche generate dal trigger DB handle_dose_status_change.
+
         } else {
           setLocalData((d) => {
             const nextEvents = existingEvent
