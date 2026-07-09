@@ -51,7 +51,9 @@ export function AlarmRinger() {
     confirmDose, snoozeDose, skipDose, markNotificationRead,
   } = useFamilyMed();
   const [modal, setModal] = useState<ModalNotif | null>(null);
+  const [busy, setBusy] = useState(false);
   const handledRef = useRef<Set<string>>(loadHandled());
+
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const oscRef = useRef<{ osc: OscillatorNode; gain: GainNode } | null>(null);
