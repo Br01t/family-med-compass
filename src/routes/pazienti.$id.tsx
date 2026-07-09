@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronLeft } from "lucide-react";
+import { CalendarPlus, ChevronLeft } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
@@ -11,6 +12,7 @@ import {
   statusLabel,
   statusTone,
 } from "@/lib/therapy";
+import { downloadIcs, therapyToIcs } from "@/lib/ics";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/pazienti/$id")({
@@ -138,24 +140,41 @@ function PatientDetail() {
               {therapies.map((t) => (
                 <li
                   key={t.id}
-                  className="flex items-center justify-between rounded-xl border border-border/50 p-3"
+                  className="flex flex-col gap-2 rounded-xl border border-border/50 p-3"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold">{t.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {t.times.join(", ")} · {t.dosage}
-                    </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold">{t.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t.times.join(", ")} · {t.dosage}
+                      </p>
+                    </div>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
+                        t.active && !t.suspended
+                          ? "bg-success/15 text-success"
+                          : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {t.suspended ? "Sospesa" : t.active ? "Attiva" : "Off"}
+                    </span>
                   </div>
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
-                      t.active && !t.suspended
-                        ? "bg-success/15 text-success"
-                        : "bg-muted text-muted-foreground",
-                    )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      const ics = therapyToIcs(t, patient, "caregiver");
+                      downloadIcs(`${t.name.replace(/\s+/g, "_")}.ics`, ics);
+                      toast.success("Evento calendario esportato", {
+                        description: "Apri il file per aggiungerlo al calendario.",
+                      });
+                    }}
                   >
-                    {t.suspended ? "Sospesa" : t.active ? "Attiva" : "Off"}
-                  </span>
+                    <CalendarPlus className="mr-1.5 size-3.5" />
+                    Aggiungi al calendario
+                  </Button>
                 </li>
               ))}
             </ul>
