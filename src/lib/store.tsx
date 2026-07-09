@@ -377,35 +377,39 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
             ],
           };
 
-      if (user) {
-        await saveEventDoc(updatedEvent);
-        // Il decremento delle scorte e la notifica low_stock sono gestiti
-        // dal trigger DB handle_dose_taken (evita doppio scalo).
-        await notifyCaregiversAboutDose({
-          patientId: therapy.patientId,
-          therapyId: therapy.id,
-          eventId: updatedEvent.id,
-          scheduledAt,
-          kind: existingEvent?.status === "snoozed" ? "taken_after_snooze" : "taken",
-          therapyName: therapy.name,
-          patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
-          actor: confirmedBy,
-        });
-      } else {
-        setLocalData((d) => {
-          const nextEvents = existingEvent
-            ? d.events.map((e) => (e === existingEvent ? updatedEvent : e))
-            : [...d.events, updatedEvent];
-          const nextTherapies = d.therapies.map((t) =>
-            t.id === therapyId ? { ...t, pillsRemaining: Math.max(0, t.pillsRemaining - t.quantity) } : t
-          );
-          return { ...d, events: nextEvents, therapies: nextTherapies };
-        });
+      try {
+        if (user) {
+          await saveEventDoc(updatedEvent);
+          // Il decremento delle scorte e la notifica low_stock sono gestiti
+          // dal trigger DB handle_dose_taken (evita doppio scalo).
+          await notifyCaregiversAboutDose({
+            patientId: therapy.patientId,
+            therapyId: therapy.id,
+            eventId: updatedEvent.id,
+            scheduledAt,
+            kind: existingEvent?.status === "snoozed" ? "taken_after_snooze" : "taken",
+            therapyName: therapy.name,
+            patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
+            actor: confirmedBy,
+          });
+        } else {
+          setLocalData((d) => {
+            const nextEvents = existingEvent
+              ? d.events.map((e) => (e === existingEvent ? updatedEvent : e))
+              : [...d.events, updatedEvent];
+            const nextTherapies = d.therapies.map((t) =>
+              t.id === therapyId ? { ...t, pillsRemaining: Math.max(0, t.pillsRemaining - t.quantity) } : t
+            );
+            return { ...d, events: nextEvents, therapies: nextTherapies };
+          });
+        }
+      } finally {
+        pendingDoseActionsRef.current.delete(actionKey);
       }
-
     },
     [user, therapies, events, patients]
   );
+
 
   const skipDose = useCallback(
     async ({ therapyId, scheduledAt }: { therapyId: string; scheduledAt: Date }) => {
