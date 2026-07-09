@@ -4,9 +4,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+
 import { type User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { getUserProfile, type UserProfile } from "./auth-service";
@@ -318,7 +320,11 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     setLocalData((d) => ({ ...d, currentPatientId: id }));
   }, []);
 
+  // Anti double-click: chiave per dose (therapyId@scheduledIso) in-flight.
+  const pendingDoseActionsRef = useRef<Set<string>>(new Set());
+
   const confirmDose = useCallback(
+
     async ({
       therapyId,
       scheduledAt,
@@ -333,12 +339,18 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
       const nowIso = new Date().toISOString();
       const scheduledIso = scheduledAt.toISOString();
+      const actionKey = `${therapyId}@${scheduledIso}@confirm`;
+      if (pendingDoseActionsRef.current.has(actionKey)) return;
 
       const existingEvent = events.find(
         (e) =>
           e.therapyId === therapyId &&
           Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000
       );
+      // Idempotenza: se la dose è già confermata, non ripetere l'azione.
+      if (existingEvent?.status === "taken") return;
+      pendingDoseActionsRef.current.add(actionKey);
+
 
       const updatedEvent: MedicationEvent = existingEvent
         ? {
@@ -365,35 +377,39 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
             ],
           };
 
-      if (user) {
-        await saveEventDoc(updatedEvent);
-        // Il decremento delle scorte e la notifica low_stock sono gestiti
-        // dal trigger DB handle_dose_taken (evita doppio scalo).
-        await notifyCaregiversAboutDose({
-          patientId: therapy.patientId,
-          therapyId: therapy.id,
-          eventId: updatedEvent.id,
-          scheduledAt,
-          kind: existingEvent?.status === "snoozed" ? "taken_after_snooze" : "taken",
-          therapyName: therapy.name,
-          patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
-          actor: confirmedBy,
-        });
-      } else {
-        setLocalData((d) => {
-          const nextEvents = existingEvent
-            ? d.events.map((e) => (e === existingEvent ? updatedEvent : e))
-            : [...d.events, updatedEvent];
-          const nextTherapies = d.therapies.map((t) =>
-            t.id === therapyId ? { ...t, pillsRemaining: Math.max(0, t.pillsRemaining - t.quantity) } : t
-          );
-          return { ...d, events: nextEvents, therapies: nextTherapies };
-        });
+      try {
+        if (user) {
+          await saveEventDoc(updatedEvent);
+          // Il decremento delle scorte e la notifica low_stock sono gestiti
+          // dal trigger DB handle_dose_taken (evita doppio scalo).
+          await notifyCaregiversAboutDose({
+            patientId: therapy.patientId,
+            therapyId: therapy.id,
+            eventId: updatedEvent.id,
+            scheduledAt,
+            kind: existingEvent?.status === "snoozed" ? "taken_after_snooze" : "taken",
+            therapyName: therapy.name,
+            patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
+            actor: confirmedBy,
+          });
+        } else {
+          setLocalData((d) => {
+            const nextEvents = existingEvent
+              ? d.events.map((e) => (e === existingEvent ? updatedEvent : e))
+              : [...d.events, updatedEvent];
+            const nextTherapies = d.therapies.map((t) =>
+              t.id === therapyId ? { ...t, pillsRemaining: Math.max(0, t.pillsRemaining - t.quantity) } : t
+            );
+            return { ...d, events: nextEvents, therapies: nextTherapies };
+          });
+        }
+      } finally {
+        pendingDoseActionsRef.current.delete(actionKey);
       }
-
     },
     [user, therapies, events, patients]
   );
+
 
   const skipDose = useCallback(
     async ({ therapyId, scheduledAt }: { therapyId: string; scheduledAt: Date }) => {
@@ -402,12 +418,17 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
       const nowIso = new Date().toISOString();
       const scheduledIso = scheduledAt.toISOString();
+      const actionKey = `${therapyId}@${scheduledIso}@skip`;
+      if (pendingDoseActionsRef.current.has(actionKey)) return;
 
       const existingEvent = events.find(
         (e) =>
           e.therapyId === therapyId &&
           Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000
       );
+      // Idempotenza: se già finalizzata (presa o saltata), non ripetere.
+      if (existingEvent?.status === "skipped" || existingEvent?.status === "taken") return;
+      pendingDoseActionsRef.current.add(actionKey);
 
       const updatedEvent: MedicationEvent = existingEvent
         ? {
@@ -430,28 +451,33 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
             ],
           };
 
-      if (user) {
-        await saveEventDoc(updatedEvent);
-        await notifyCaregiversAboutDose({
-          patientId: therapy.patientId,
-          therapyId: therapy.id,
-          eventId: updatedEvent.id,
-          scheduledAt,
-          kind: "skipped",
-          therapyName: therapy.name,
-          patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
-        });
-      } else {
-        setLocalData((d) => {
-          const nextEvents = existingEvent
-            ? d.events.map((e) => (e === existingEvent ? updatedEvent : e))
-            : [...d.events, updatedEvent];
-          return { ...d, events: nextEvents };
-        });
+      try {
+        if (user) {
+          await saveEventDoc(updatedEvent);
+          await notifyCaregiversAboutDose({
+            patientId: therapy.patientId,
+            therapyId: therapy.id,
+            eventId: updatedEvent.id,
+            scheduledAt,
+            kind: "skipped",
+            therapyName: therapy.name,
+            patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
+          });
+        } else {
+          setLocalData((d) => {
+            const nextEvents = existingEvent
+              ? d.events.map((e) => (e === existingEvent ? updatedEvent : e))
+              : [...d.events, updatedEvent];
+            return { ...d, events: nextEvents };
+          });
+        }
+      } finally {
+        pendingDoseActionsRef.current.delete(actionKey);
       }
     },
     [user, therapies, events, patients]
   );
+
 
   const snoozeDose = useCallback(
     async ({
@@ -467,12 +493,17 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       if (!therapy) return;
       const nowIso = new Date().toISOString();
       const scheduledIso = scheduledAt.toISOString();
+      const actionKey = `${therapyId}@${scheduledIso}@snooze`;
+      if (pendingDoseActionsRef.current.has(actionKey)) return;
       const snoozedUntil = new Date(Date.now() + minutes * 60_000).toISOString();
       const existingEvent = events.find(
         (e) =>
           e.therapyId === therapyId &&
           Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000,
       );
+      // Idempotenza: se già presa o saltata, non si può rimandare.
+      if (existingEvent?.status === "taken" || existingEvent?.status === "skipped") return;
+      pendingDoseActionsRef.current.add(actionKey);
       const updatedEvent: MedicationEvent = existingEvent
         ? {
             ...existingEvent,
@@ -495,29 +526,34 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
               { at: nowIso, kind: "snoozed", message: `Rimandata di ${minutes} min` },
             ],
           };
-      if (user) {
-        await saveEventDoc(updatedEvent);
-        await notifyCaregiversAboutDose({
-          patientId: therapy.patientId,
-          therapyId: therapy.id,
-          eventId: updatedEvent.id,
-          scheduledAt,
-          kind: "snoozed",
-          therapyName: therapy.name,
-          patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
-          minutes,
-        });
-      } else {
-        setLocalData((d) => {
-          const nextEvents = existingEvent
-            ? d.events.map((e) => (e === existingEvent ? updatedEvent : e))
-            : [...d.events, updatedEvent];
-          return { ...d, events: nextEvents };
-        });
+      try {
+        if (user) {
+          await saveEventDoc(updatedEvent);
+          await notifyCaregiversAboutDose({
+            patientId: therapy.patientId,
+            therapyId: therapy.id,
+            eventId: updatedEvent.id,
+            scheduledAt,
+            kind: "snoozed",
+            therapyName: therapy.name,
+            patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
+            minutes,
+          });
+        } else {
+          setLocalData((d) => {
+            const nextEvents = existingEvent
+              ? d.events.map((e) => (e === existingEvent ? updatedEvent : e))
+              : [...d.events, updatedEvent];
+            return { ...d, events: nextEvents };
+          });
+        }
+      } finally {
+        pendingDoseActionsRef.current.delete(actionKey);
       }
     },
     [user, therapies, events, patients],
   );
+
 
   const addTherapy = useCallback(
     async (t: Therapy) => {

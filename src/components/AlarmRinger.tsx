@@ -51,7 +51,9 @@ export function AlarmRinger() {
     confirmDose, snoozeDose, skipDose, markNotificationRead,
   } = useFamilyMed();
   const [modal, setModal] = useState<ModalNotif | null>(null);
+  const [busy, setBusy] = useState(false);
   const handledRef = useRef<Set<string>>(loadHandled());
+
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const oscRef = useRef<{ osc: OscillatorNode; gain: GainNode } | null>(null);
@@ -207,33 +209,39 @@ export function AlarmRinger() {
   if (!modal || !isPatient) return null;
 
   async function handleAction(action: "confirm" | "snooze" | "skip" | "dismiss") {
-    if (!modal) return;
-    if (action !== "dismiss" && therapy && user) {
-      const scheduledAt = modal.event_id
-        ? extractScheduledFromEventId(modal.event_id)
-        : new Date();
-      try {
-        if (action === "confirm") {
-          await confirmDose({
-            therapyId: therapy.id,
-            scheduledAt,
-            confirmedBy: userProfile?.name ?? "Paziente",
-          });
-        } else if (action === "snooze") {
-          await snoozeDose({
-            therapyId: therapy.id,
-            scheduledAt,
-            minutes: therapy.snoozeMinutes ?? 10,
-          });
-        } else if (action === "skip") {
-          await skipDose({ therapyId: therapy.id, scheduledAt });
+    if (!modal || busy) return;
+    setBusy(true);
+    try {
+      if (action !== "dismiss" && therapy && user) {
+        const scheduledAt = modal.event_id
+          ? extractScheduledFromEventId(modal.event_id)
+          : new Date();
+        try {
+          if (action === "confirm") {
+            await confirmDose({
+              therapyId: therapy.id,
+              scheduledAt,
+              confirmedBy: userProfile?.name ?? "Paziente",
+            });
+          } else if (action === "snooze") {
+            await snoozeDose({
+              therapyId: therapy.id,
+              scheduledAt,
+              minutes: therapy.snoozeMinutes ?? 10,
+            });
+          } else if (action === "skip") {
+            await skipDose({ therapyId: therapy.id, scheduledAt });
+          }
+        } catch (err) {
+          console.warn("[modal] action failed:", err);
         }
-      } catch (err) {
-        console.warn("[modal] action failed:", err);
       }
+      setModal(null);
+    } finally {
+      setBusy(false);
     }
-    setModal(null);
   }
+
 
   // --- Reminder pre: modale leggera ---
   if (modal.kind === "reminder_pre") {
@@ -257,7 +265,7 @@ export function AlarmRinger() {
           {modal.message && (
             <p className="mt-2 text-center text-sm text-muted-foreground">{modal.message}</p>
           )}
-          <Button size="lg" className="mt-6 h-14 w-full text-lg font-bold" onClick={() => handleAction("dismiss")}>
+          <Button size="lg" className="mt-6 h-14 w-full text-lg font-bold" onClick={() => handleAction("dismiss")} disabled={busy}>
             Ho capito
           </Button>
         </div>
@@ -289,7 +297,7 @@ export function AlarmRinger() {
         )}
 
         <div className="mt-6 grid gap-3">
-          <Button size="lg" className="h-14 text-lg font-bold" onClick={() => handleAction("confirm")}>
+          <Button size="lg" className="h-14 text-lg font-bold" onClick={() => handleAction("confirm")} disabled={busy}>
             <Check className="mr-2 size-6" /> Ho preso il farmaco
           </Button>
           {(modal.kind === "due" || modal.kind === "reminder_post") && (
@@ -297,7 +305,7 @@ export function AlarmRinger() {
               size="lg"
               variant="outline"
               className="h-12 font-semibold"
-              onClick={() => handleAction("snooze")}
+              onClick={() => handleAction("snooze")} disabled={busy}
             >
               <Clock className="mr-2 size-5" /> Rimanda di {therapy?.snoozeMinutes ?? 10} min
             </Button>
@@ -307,7 +315,7 @@ export function AlarmRinger() {
             size="sm"
             variant="ghost"
             className="text-muted-foreground"
-            onClick={() => handleAction("skip")}
+            onClick={() => handleAction("skip")} disabled={busy}
           >
             Salta questa dose
           </Button>
