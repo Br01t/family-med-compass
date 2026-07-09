@@ -222,16 +222,50 @@ export function AlarmRinger() {
     [modal, data.therapies],
   );
 
+  const scheduledAt = useMemo(
+    () => (modal?.event_id ? extractScheduledFromEventId(modal.event_id) : new Date()),
+    [modal?.event_id],
+  );
+
+  // Tick al secondo per aggiornare i countdown
+  const [nowTs, setNowTs] = useState<number>(() => Date.now());
+  useEffect(() => {
+    if (!modal) return;
+    const id = window.setInterval(() => setNowTs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [modal]);
+
   if (!modal || !isPatient) return null;
+
+  const postMin = Math.max(1, Number(therapy?.postReminderMinutes ?? 5));
+  const timeoutMin = Math.max(1, Number(therapy?.timeoutMinutes ?? 10));
+  const snoozeMin = Math.max(1, Number(therapy?.snoozeMinutes ?? 10));
+  const reminderBeforeMin = Math.max(1, Math.abs(therapy?.reminderIntervals?.[0] ?? 10));
+
+  const msToScheduled = scheduledAt.getTime() - nowTs;
+  const msToPostDeadline = scheduledAt.getTime() + postMin * 60_000 - nowTs;
+  const msToMissedDeadline = scheduledAt.getTime() + timeoutMin * 60_000 - nowTs;
+  // Final due: se snoozed, deadline = snoozed_until + timeout. Non avendo snoozed_until in modal,
+  // approssimiamo dal messaggio; usiamo timeoutMin dal now come fallback per la modale final_due.
+  const msFinalDeadline = timeoutMin * 60_000; // countdown "residuo timeout"
+  const finalDueStartRef = useRef<number | null>(null);
+  if (modal.kind === "final_due" && finalDueStartRef.current === null) {
+    finalDueStartRef.current = nowTs;
+  }
+  if (modal.kind !== "final_due") {
+    finalDueStartRef.current = null;
+  }
+  const msFinalRemaining = finalDueStartRef.current !== null
+    ? finalDueStartRef.current + msFinalDeadline - nowTs
+    : msFinalDeadline;
 
   async function handleAction(action: "confirm" | "snooze" | "skip" | "dismiss") {
     if (!modal || busy) return;
     setBusy(true);
     try {
+      // Marca sempre la notifica come letta dopo un'azione utente.
+      markNotificationRead(modal.id);
       if (action !== "dismiss" && therapy && user) {
-        const scheduledAt = modal.event_id
-          ? extractScheduledFromEventId(modal.event_id)
-          : new Date();
         try {
           if (action === "confirm") {
             await confirmDose({
@@ -281,6 +315,21 @@ export function AlarmRinger() {
           {modal.message && (
             <p className="mt-2 text-center text-sm text-muted-foreground">{modal.message}</p>
           )}
+
+          {/* Timer countdown all'orario della dose */}
+          <div className="mt-4 rounded-2xl bg-primary-soft p-4 text-center">
+            <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
+              <Timer className="size-4" /> Manca all'orario della dose
+            </div>
+            <div className="mt-1 text-3xl font-black tabular-nums text-primary">
+              {formatMMSS(msToScheduled)}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              Preavviso: {reminderBeforeMin} min · Dose alle{" "}
+              {scheduledAt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+            </div>
+          </div>
+
           <Button size="lg" className="mt-6 h-14 w-full text-lg font-bold" onClick={() => handleAction("dismiss")} disabled={busy}>
             Ho capito
           </Button>
@@ -289,7 +338,11 @@ export function AlarmRinger() {
     );
   }
 
-  // --- Due / Final due: sveglia ---
+  // --- Due / Reminder post / Final due: sveglia ---
+  const isFinal = modal.kind === "final_due";
+  const alarmMsRemaining = isFinal ? msFinalRemaining : msToMissedDeadline;
+  const alarmCritical = alarmMsRemaining <= 2 * 60_000;
+
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/95 backdrop-blur-sm p-4">
       <div className="w-full max-w-md rounded-3xl border-4 border-primary bg-card p-6 shadow-2xl animate-pulse-slow">
@@ -311,6 +364,42 @@ export function AlarmRinger() {
         {modal.message && (
           <p className="mt-2 text-center text-sm text-muted-foreground">{modal.message}</p>
         )}
+
+        {/* Pannello timer */}
+        <div className="mt-4 space-y-2 rounded-2xl border border-border/60 bg-secondary/30 p-4">
+          {!isFinal && (
+            <>
+              <TimerRow
+                label="Tempo per confermare"
+                value={formatMMSS(msToPostDeadline)}
+                hint={`fino a ${postMin} min dopo l'orario`}
+                tone={msToPostDeadline > 0 ? "warning" : "muted"}
+              />
+              <TimerRow
+                label="Ritardo massimo (poi dimenticata)"
+                value={formatMMSS(msToMissedDeadline)}
+                hint={`totale ${timeoutMin} min dall'orario`}
+                tone={alarmCritical ? "danger" : "primary"}
+              />
+              <p className="pt-1 text-[11px] text-muted-foreground">
+                Se rimandi, avrai altri {snoozeMin} min, poi {timeoutMin} min per confermare.
+              </p>
+            </>
+          )}
+          {isFinal && (
+            <>
+              <TimerRow
+                label="Ritardo massimo prima di dimenticata"
+                value={formatMMSS(msFinalRemaining)}
+                hint={`hai ${timeoutMin} min da adesso`}
+                tone={alarmCritical ? "danger" : "primary"}
+              />
+              <p className="pt-1 text-[11px] text-muted-foreground">
+                Non puoi più rimandare questa dose.
+              </p>
+            </>
+          )}
+        </div>
 
         <div className="mt-6 grid gap-3">
           <Button size="lg" className="h-14 text-lg font-bold" onClick={() => handleAction("confirm")} disabled={busy}>
@@ -342,6 +431,28 @@ export function AlarmRinger() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function TimerRow({
+  label, value, hint, tone,
+}: {
+  label: string; value: string; hint?: string;
+  tone: "primary" | "warning" | "danger" | "muted";
+}) {
+  const toneCls =
+    tone === "danger" ? "text-destructive"
+    : tone === "warning" ? "text-warning-foreground"
+    : tone === "primary" ? "text-primary"
+    : "text-muted-foreground";
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+        {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+      </div>
+      <div className={`shrink-0 text-2xl font-black tabular-nums ${toneCls}`}>{value}</div>
     </div>
   );
 }
