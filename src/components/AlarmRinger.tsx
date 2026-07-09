@@ -95,7 +95,7 @@ export function AlarmRinger() {
         },
         (payload) => {
           const n = payload.new as any;
-          if (n.kind !== "reminder_pre" && n.kind !== "due" && n.kind !== "final_due") return;
+          if (n.kind !== "reminder_pre" && n.kind !== "due" && n.kind !== "reminder_post" && n.kind !== "final_due") return;
           openModal({
             id: n.id,
             kind: n.kind,
