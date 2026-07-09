@@ -508,7 +508,10 @@ function TimelineItem({
   isLast: boolean;
   isActive: boolean;
 }) {
-  const done = dose.status === "taken" || dose.status === "skipped";
+  const done =
+    dose.status === "taken" ||
+    dose.status === "skipped" ||
+    dose.status === "missed";
 
   return (
     <li className="relative flex gap-4">
@@ -523,7 +526,7 @@ function TimelineItem({
           {dose.status === "taken" && (
             <Check className="size-3.5 text-success-foreground" />
           )}
-          {dose.status === "skipped" && (
+          {(dose.status === "skipped" || dose.status === "missed") && (
             <X className="size-3.5 text-destructive-foreground" />
           )}
         </div>
