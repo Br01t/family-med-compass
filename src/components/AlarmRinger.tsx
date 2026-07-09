@@ -209,33 +209,39 @@ export function AlarmRinger() {
   if (!modal || !isPatient) return null;
 
   async function handleAction(action: "confirm" | "snooze" | "skip" | "dismiss") {
-    if (!modal) return;
-    if (action !== "dismiss" && therapy && user) {
-      const scheduledAt = modal.event_id
-        ? extractScheduledFromEventId(modal.event_id)
-        : new Date();
-      try {
-        if (action === "confirm") {
-          await confirmDose({
-            therapyId: therapy.id,
-            scheduledAt,
-            confirmedBy: userProfile?.name ?? "Paziente",
-          });
-        } else if (action === "snooze") {
-          await snoozeDose({
-            therapyId: therapy.id,
-            scheduledAt,
-            minutes: therapy.snoozeMinutes ?? 10,
-          });
-        } else if (action === "skip") {
-          await skipDose({ therapyId: therapy.id, scheduledAt });
+    if (!modal || busy) return;
+    setBusy(true);
+    try {
+      if (action !== "dismiss" && therapy && user) {
+        const scheduledAt = modal.event_id
+          ? extractScheduledFromEventId(modal.event_id)
+          : new Date();
+        try {
+          if (action === "confirm") {
+            await confirmDose({
+              therapyId: therapy.id,
+              scheduledAt,
+              confirmedBy: userProfile?.name ?? "Paziente",
+            });
+          } else if (action === "snooze") {
+            await snoozeDose({
+              therapyId: therapy.id,
+              scheduledAt,
+              minutes: therapy.snoozeMinutes ?? 10,
+            });
+          } else if (action === "skip") {
+            await skipDose({ therapyId: therapy.id, scheduledAt });
+          }
+        } catch (err) {
+          console.warn("[modal] action failed:", err);
         }
-      } catch (err) {
-        console.warn("[modal] action failed:", err);
       }
+      setModal(null);
+    } finally {
+      setBusy(false);
     }
-    setModal(null);
   }
+
 
   // --- Reminder pre: modale leggera ---
   if (modal.kind === "reminder_pre") {
