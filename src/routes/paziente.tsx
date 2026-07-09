@@ -143,9 +143,15 @@ function PatientPage() {
   const totalToday = doses.length;
   const progressPct = totalToday === 0 ? 0 : Math.round((takenToday / totalToday) * 100);
 
-  // "Attiva ora": finestra dinamica basata su reminderIntervals[0] della terapia
+  // "Attiva ora": finestra dinamica basata su reminderIntervals[0] della terapia.
+  // Include anche dosi "snoozed": vanno mostrate finché non scade il ritardo massimo.
   const activeDose = doses.find((d) => {
     if (d.status === "taken" || d.status === "skipped" || d.status === "missed") return false;
+    if (d.status === "snoozed") {
+      const snoozedUntil = d.event?.snoozedUntil ? new Date(d.event.snoozedUntil).getTime() : 0;
+      const hardDeadline = snoozedUntil + (d.therapy.timeoutMinutes ?? 10) * 60_000;
+      return now.getTime() <= hardDeadline;
+    }
     const preMin = Math.abs(d.therapy.reminderIntervals?.[0] ?? 10);
     const diffMin = (d.scheduledAt.getTime() - now.getTime()) / 60000;
     return diffMin <= preMin && diffMin >= -180;
@@ -349,6 +355,7 @@ function ActiveDoseCard({
 }) {
   const isLate = dose.status === "late";
   const isReminder = dose.status === "reminder";
+  const isSnoozed = dose.status === "snoozed";
   // Le azioni si sbloccano solo dall'orario stabilito in poi.
   const canAct = now.getTime() >= dose.scheduledAt.getTime();
   const minutesToScheduled = Math.max(
@@ -356,11 +363,22 @@ function ActiveDoseCard({
     Math.ceil((dose.scheduledAt.getTime() - now.getTime()) / 60000),
   );
 
+  // Countdown "ultimo momento utile" per dose rimandata.
+  const timeoutMin = dose.therapy.timeoutMinutes ?? 10;
+  const snoozedUntilMs = dose.event?.snoozedUntil
+    ? new Date(dose.event.snoozedUntil).getTime()
+    : 0;
+  const hardDeadlineMs = snoozedUntilMs + timeoutMin * 60_000;
+  const msToHardDeadline = hardDeadlineMs - now.getTime();
+  const hardMM = Math.max(0, Math.floor(msToHardDeadline / 60000));
+  const hardSS = Math.max(0, Math.floor((msToHardDeadline % 60000) / 1000));
+  const snoozedCritical = msToHardDeadline <= 2 * 60_000;
+
   return (
     <section
       className={cn(
         "fm-reveal mt-8 rounded-3xl border-l-8 bg-card p-6 shadow-lift ring-1 ring-border [animation-delay:60ms]",
-        isLate ? "border-accent" : isReminder ? "border-warning" : "border-primary",
+        isLate ? "border-accent" : isSnoozed ? "border-warning" : isReminder ? "border-warning" : "border-primary",
       )}
     >
       <div className="flex items-center justify-between">
@@ -369,19 +387,48 @@ function ActiveDoseCard({
             "rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-widest",
             isLate
               ? "bg-accent-soft text-accent"
-              : !canAct
-                ? "bg-secondary text-muted-foreground"
-                : isReminder
-                  ? "bg-warning/20 text-warning-foreground"
-                  : "bg-primary-soft text-primary",
+              : isSnoozed
+                ? "bg-warning/20 text-warning-foreground"
+                : !canAct
+                  ? "bg-secondary text-muted-foreground"
+                  : isReminder
+                    ? "bg-warning/20 text-warning-foreground"
+                    : "bg-primary-soft text-primary",
           )}
         >
-          {isLate ? "In ritardo" : canAct ? "Adesso" : "In arrivo"}
+          {isSnoozed ? "Rimandata" : isLate ? "In ritardo" : canAct ? "Adesso" : "In arrivo"}
         </span>
         <span className="flex items-center gap-1 font-mono text-sm text-muted-foreground">
           <Clock className="size-4" /> {formatTime(dose.scheduledAt)}
         </span>
       </div>
+
+      {isSnoozed && snoozedUntilMs > 0 && (
+        <div
+          className={cn(
+            "mt-4 rounded-2xl border-2 p-4 text-center",
+            snoozedCritical
+              ? "border-destructive bg-destructive/10"
+              : "border-warning bg-warning/10",
+          )}
+        >
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            Ultimo momento per confermare
+          </p>
+          <p
+            className={cn(
+              "mt-1 text-4xl font-black tabular-nums",
+              snoozedCritical ? "text-destructive" : "text-warning-foreground",
+            )}
+          >
+            {String(hardMM).padStart(2, "0")}:{String(hardSS).padStart(2, "0")}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Se non confermi entro questo tempo, la dose sarà segnata come dimenticata
+            e verrai contattato da un familiare.
+          </p>
+        </div>
+      )}
 
       <div className="mt-4 flex items-start gap-4">
         {dose.therapy.photoPackage ? (
@@ -461,7 +508,10 @@ function TimelineItem({
   isLast: boolean;
   isActive: boolean;
 }) {
-  const done = dose.status === "taken" || dose.status === "skipped";
+  const done =
+    dose.status === "taken" ||
+    dose.status === "skipped" ||
+    dose.status === "missed";
 
   return (
     <li className="relative flex gap-4">
@@ -476,7 +526,7 @@ function TimelineItem({
           {dose.status === "taken" && (
             <Check className="size-3.5 text-success-foreground" />
           )}
-          {dose.status === "skipped" && (
+          {(dose.status === "skipped" || dose.status === "missed") && (
             <X className="size-3.5 text-destructive-foreground" />
           )}
         </div>
