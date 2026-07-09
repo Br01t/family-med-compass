@@ -320,7 +320,11 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     setLocalData((d) => ({ ...d, currentPatientId: id }));
   }, []);
 
+  // Anti double-click: chiave per dose (therapyId@scheduledIso) in-flight.
+  const pendingDoseActionsRef = useRef<Set<string>>(new Set());
+
   const confirmDose = useCallback(
+
     async ({
       therapyId,
       scheduledAt,
