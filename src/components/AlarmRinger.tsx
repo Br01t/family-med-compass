@@ -78,14 +78,22 @@ export function AlarmRinger() {
     if (handledRef.current.has(n.id)) return;
     handledRef.current.add(n.id);
     saveHandled(handledRef.current);
-    // Mark read immediately: la notifica non deve essere riproposta.
-    markNotificationRead(n.id);
+    // NON marchiamo qui come letta: la notifica deve restare nel centro
+    // notifiche del paziente finché non compie un'azione sulla modale.
     setModal((prev) => {
-      if (!prev) return n;
-      // Priorità: final_due > reminder_post > due > reminder_pre
+      if (!prev) {
+        return n;
+      }
+      // Priorità: final_due > reminder_post > due > reminder_pre.
+      // Quando sostituiamo una modale precedente, la marchiamo letta
+      // (l'utente non la vedrà più; la successiva è più urgente).
       const rank = (k: ModalNotif["kind"]) =>
         k === "final_due" ? 4 : k === "reminder_post" ? 3 : k === "due" ? 2 : 1;
-      return rank(n.kind) > rank(prev.kind) ? n : prev;
+      if (rank(n.kind) > rank(prev.kind)) {
+        markNotificationRead(prev.id);
+        return n;
+      }
+      return prev;
     });
   };
 
