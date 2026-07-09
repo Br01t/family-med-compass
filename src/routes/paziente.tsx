@@ -143,9 +143,15 @@ function PatientPage() {
   const totalToday = doses.length;
   const progressPct = totalToday === 0 ? 0 : Math.round((takenToday / totalToday) * 100);
 
-  // "Attiva ora": finestra dinamica basata su reminderIntervals[0] della terapia
+  // "Attiva ora": finestra dinamica basata su reminderIntervals[0] della terapia.
+  // Include anche dosi "snoozed": vanno mostrate finché non scade il ritardo massimo.
   const activeDose = doses.find((d) => {
     if (d.status === "taken" || d.status === "skipped" || d.status === "missed") return false;
+    if (d.status === "snoozed") {
+      const snoozedUntil = d.event?.snoozedUntil ? new Date(d.event.snoozedUntil).getTime() : 0;
+      const hardDeadline = snoozedUntil + (d.therapy.timeoutMinutes ?? 10) * 60_000;
+      return now.getTime() <= hardDeadline;
+    }
     const preMin = Math.abs(d.therapy.reminderIntervals?.[0] ?? 10);
     const diffMin = (d.scheduledAt.getTime() - now.getTime()) / 60000;
     return diffMin <= preMin && diffMin >= -180;
