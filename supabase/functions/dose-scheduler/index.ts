@@ -303,7 +303,8 @@ Deno.serve(async (req) => {
       patientTitle: `Cura dimenticata: ${th?.name ?? "farmaco"}`,
       patientBody: `La dose delle ${romeHM(ev.scheduled_at)} è stata segnata come dimenticata. Probabilmente verrai contattato da un familiare.`,
       caregiverTitle: `${pt?.name ?? "Paziente"} non ha preso ${th?.name ?? "il farmaco"} (dimenticata)`,
-      caregiverBody: `Dose delle ${romeHM(ev.scheduled_at)} — segnata come dimenticata dopo il tempo massimo.`,
+      caregiverBody: `Dose delle ${romeHM(ev.scheduled_at)} — segnata come dimenticata dopo il tempo massimo. Contatta il paziente e conferma la dose dalla pagina "Dose da confermare".`,
+      notifyCaregiver: true,
     });
   }
 
