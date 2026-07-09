@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertOctagon, Bell, Check, Clock } from "lucide-react";
+import { AlertOctagon, Bell, Check, Clock, Timer } from "lucide-react";
 import { useFamilyMed } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { getPrimedAlarmAudioContext } from "@/lib/alarm-audio";
+
+function formatMMSS(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return "00:00";
+  const total = Math.floor(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
 
 type ModalNotif = {
   id: string;
