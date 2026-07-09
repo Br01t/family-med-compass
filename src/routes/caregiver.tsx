@@ -78,6 +78,18 @@ function CaregiverHome() {
       Math.max(patients.length, 1),
   );
 
+  // Alert: solo dosi non assunte (dimenticate o saltate) da confermare a mano
+  // dopo aver contattato il paziente. Il conteggio torna a 0 quando il caregiver
+  // le processa dalla pagina dedicata (segna come confermate o conferma il salto).
+  const pendingMissedDoses = useMemo(
+    () =>
+      data.events.filter(
+        (e) => e.status === "missed" || e.status === "skipped",
+      ),
+    [data.events],
+  );
+  const activeAlerts = pendingMissedDoses.length;
+
   return (
     <AppShell
       title="Panoramica famiglia"
@@ -91,19 +103,15 @@ function CaregiverHome() {
           icon={TrendingUp}
           tone="primary"
         />
-        <MetricCard
-          label="Alert attivi"
-          value={String(
-            data.notifications.filter(
-              (n) =>
-                !n.read &&
-                ["missed", "final_due", "snoozed", "skipped", "low_stock", "reminder_post"].includes(n.kind),
-            ).length,
-          )}
-          hint="Richiedono attenzione"
-          icon={AlertTriangle}
-          tone="accent"
-        />
+        <Link to="/dose-da-confermare" className="block">
+          <MetricCard
+            label="Alert attivi"
+            value={String(activeAlerts)}
+            hint={activeAlerts > 0 ? "Dose da confermare con il paziente" : "Nessuna dose in sospeso"}
+            icon={AlertTriangle}
+            tone="accent"
+          />
+        </Link>
         <MetricCard
           label="Scorte in esaurimento"
           value={String(lowStock.length)}
