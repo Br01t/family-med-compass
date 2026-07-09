@@ -45,22 +45,33 @@ function CaregiverHome() {
     (t) => t.pillsRemaining <= t.lowStockThreshold,
   );
 
-  // Global timeline: today's events across patients
-  const timeline = data.events
-    .filter((e) => {
-      const d = new Date(e.scheduledAt);
-      return d.toDateString() === now.toDateString();
-    })
-    .flatMap((e) =>
-      e.timeline.map((t) => ({
-        ...t,
-        eventId: e.id,
-        patientId: e.patientId,
-        therapyId: e.therapyId,
-      })),
-    )
-    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
-    .slice(0, 12);
+  // Timeline dosi: passate (ultimi 3gg) + oggi + prossime 24h, ordinate desc (più recenti in alto)
+  const timelineDays = 4; // oggi + 3 giorni passati
+  const allDoses: Array<ScheduledDose & { patientId: string }> = [];
+  for (let i = 0; i < timelineDays; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    for (const p of patients) {
+      const doses = getDosesForPatientOnDate(data, p.id, d, now);
+      for (const dose of doses) {
+        allDoses.push({ ...dose, patientId: p.id });
+      }
+    }
+  }
+  // Prossime 24h (domani)
+  {
+    const d = new Date(now);
+    d.setDate(d.getDate() + 1);
+    for (const p of patients) {
+      const doses = getDosesForPatientOnDate(data, p.id, d, now);
+      for (const dose of doses) {
+        allDoses.push({ ...dose, patientId: p.id });
+      }
+    }
+  }
+  const timeline = allDoses
+    .sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime())
+    .slice(0, 20);
 
   const totalAdherence = Math.round(
     patients.reduce((sum, p) => sum + getAdherenceForPatient(data, p.id), 0) /
