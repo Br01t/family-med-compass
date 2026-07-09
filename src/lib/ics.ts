@@ -74,12 +74,43 @@ export function therapyToIcs(
   ].filter((v): v is string => v !== null);
   const desc = escape(descLines.join("\n"));
 
+  // Promemoria calendario che simulano le notifiche in-app:
+  // - uno per ogni "reminderIntervals" prima dell'orario (es. -10 min)
+  // - uno all'orario esatto (TRIGGER:PT0M)
+  // - uno dopo "timeoutMinutes" (o snoozeMinutes) come richiamo finale
+  const preTriggers = (therapy.reminderIntervals ?? [])
+    .map((n) => Math.abs(Number(n)))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  const postTrigger = Math.max(
+    1,
+    Number(therapy.snoozeMinutes ?? therapy.timeoutMinutes ?? 10),
+  );
+
+  const alarm = (trigger: string, description: string) =>
+    [
+      "BEGIN:VALARM",
+      "ACTION:DISPLAY",
+      `TRIGGER:${trigger}`,
+      `DESCRIPTION:${escape(description)}`,
+      "END:VALARM",
+    ].join("\r\n");
+
   const events = therapy.times.map((t, i) => {
     const [h, m] = t.split(":").map(Number);
     const start = localStamp(therapy.startDate, h, m);
     const endM = m + 15;
     const endH = h + Math.floor(endM / 60);
     const end = localStamp(therapy.startDate, endH % 24, endM % 60);
+    const alarms = [
+      ...preTriggers.map((n) =>
+        alarm(`-PT${n}M`, `Tra ${n} min: ${therapy.name} ${therapy.dosage}`),
+      ),
+      alarm("PT0M", `È ora di ${therapy.name} ${therapy.dosage}`),
+      alarm(
+        `PT${postTrigger}M`,
+        `Promemoria: hai preso ${therapy.name}?`,
+      ),
+    ];
     const parts = [
       "BEGIN:VEVENT",
       `UID:familymed-${therapy.id}-${i}@familymed.app`,
@@ -91,6 +122,7 @@ export function therapyToIcs(
       `URL:${deepLink}`,
       `CATEGORIES:${escape(therapy.category)}`,
       rrule(therapy),
+      ...alarms,
       "END:VEVENT",
     ];
     return parts.join("\r\n");
