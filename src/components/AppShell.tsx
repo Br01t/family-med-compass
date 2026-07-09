@@ -1,6 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
+  AlertTriangle,
   Bell,
   BookOpen,
   LayoutDashboard,
