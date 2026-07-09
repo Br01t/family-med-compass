@@ -116,7 +116,7 @@ export function AlarmRinger() {
   useEffect(() => {
     if (!user || !isPatient || modal) return;
     for (const n of data.notifications) {
-      if (n.kind !== "reminder_pre" && n.kind !== "due" && n.kind !== "final_due") continue;
+      if (n.kind !== "reminder_pre" && n.kind !== "due" && n.kind !== "reminder_post" && n.kind !== "final_due") continue;
       if (n.targetUserId && n.targetUserId !== user.id) continue;
       if (handledRef.current.has(n.id)) continue;
       if (n.read) {
