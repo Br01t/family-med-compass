@@ -265,7 +265,7 @@ export function AlarmRinger() {
           {modal.message && (
             <p className="mt-2 text-center text-sm text-muted-foreground">{modal.message}</p>
           )}
-          <Button size="lg" className="mt-6 h-14 w-full text-lg font-bold" onClick={() => handleAction("dismiss")}>
+          <Button size="lg" className="mt-6 h-14 w-full text-lg font-bold" onClick={() => handleAction("dismiss")} disabled={busy}>
             Ho capito
           </Button>
         </div>
@@ -297,7 +297,7 @@ export function AlarmRinger() {
         )}
 
         <div className="mt-6 grid gap-3">
-          <Button size="lg" className="h-14 text-lg font-bold" onClick={() => handleAction("confirm")}>
+          <Button size="lg" className="h-14 text-lg font-bold" onClick={() => handleAction("confirm")} disabled={busy}>
             <Check className="mr-2 size-6" /> Ho preso il farmaco
           </Button>
           {(modal.kind === "due" || modal.kind === "reminder_post") && (
@@ -305,7 +305,7 @@ export function AlarmRinger() {
               size="lg"
               variant="outline"
               className="h-12 font-semibold"
-              onClick={() => handleAction("snooze")}
+              onClick={() => handleAction("snooze")} disabled={busy}
             >
               <Clock className="mr-2 size-5" /> Rimanda di {therapy?.snoozeMinutes ?? 10} min
             </Button>
@@ -315,7 +315,7 @@ export function AlarmRinger() {
             size="sm"
             variant="ghost"
             className="text-muted-foreground"
-            onClick={() => handleAction("skip")}
+            onClick={() => handleAction("skip")} disabled={busy}
           >
             Salta questa dose
           </Button>
