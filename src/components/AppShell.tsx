@@ -35,6 +35,7 @@ const nav = [
   { title: "Dashboard", url: "/caregiver", icon: LayoutDashboard },
   { title: "Pazienti", url: "/pazienti", icon: Users },
   { title: "Terapie", url: "/terapie", icon: Pill },
+  { title: "Dose da confermare", url: "/dose-da-confermare", icon: AlertTriangle },
   { title: "Storico & Report", url: "/storico-report", icon: PieChart },
   { title: "Scorte", url: "/scorte", icon: Package },
   { title: "Notifiche", url: "/notifiche", icon: Bell },
