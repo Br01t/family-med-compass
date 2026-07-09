@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarPlus, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ import {
 } from "@/lib/therapy";
 import { downloadIcs, therapyToIcs } from "@/lib/ics";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/pazienti/$id")({
   head: ({ params }) => ({ meta: [{ title: `Paziente ${params.id} — FamilyMed` }] }),
