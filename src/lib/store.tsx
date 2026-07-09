@@ -367,8 +367,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
       if (user) {
         await saveEventDoc(updatedEvent);
-        const updatedPills = Math.max(0, therapy.pillsRemaining - therapy.quantity);
-        await saveTherapyDoc({ ...therapy, pillsRemaining: updatedPills });
+        // Il decremento delle scorte e la notifica low_stock sono gestiti
+        // dal trigger DB handle_dose_taken (evita doppio scalo).
         await notifyCaregiversAboutDose({
           patientId: therapy.patientId,
           therapyId: therapy.id,
@@ -390,6 +390,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
           return { ...d, events: nextEvents, therapies: nextTherapies };
         });
       }
+
     },
     [user, therapies, events, patients]
   );
