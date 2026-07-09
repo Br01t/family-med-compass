@@ -418,12 +418,17 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
       const nowIso = new Date().toISOString();
       const scheduledIso = scheduledAt.toISOString();
+      const actionKey = `${therapyId}@${scheduledIso}@skip`;
+      if (pendingDoseActionsRef.current.has(actionKey)) return;
 
       const existingEvent = events.find(
         (e) =>
           e.therapyId === therapyId &&
           Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000
       );
+      // Idempotenza: se già finalizzata (presa o saltata), non ripetere.
+      if (existingEvent?.status === "skipped" || existingEvent?.status === "taken") return;
+      pendingDoseActionsRef.current.add(actionKey);
 
       const updatedEvent: MedicationEvent = existingEvent
         ? {
@@ -446,28 +451,33 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
             ],
           };
 
-      if (user) {
-        await saveEventDoc(updatedEvent);
-        await notifyCaregiversAboutDose({
-          patientId: therapy.patientId,
-          therapyId: therapy.id,
-          eventId: updatedEvent.id,
-          scheduledAt,
-          kind: "skipped",
-          therapyName: therapy.name,
-          patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
-        });
-      } else {
-        setLocalData((d) => {
-          const nextEvents = existingEvent
-            ? d.events.map((e) => (e === existingEvent ? updatedEvent : e))
-            : [...d.events, updatedEvent];
-          return { ...d, events: nextEvents };
-        });
+      try {
+        if (user) {
+          await saveEventDoc(updatedEvent);
+          await notifyCaregiversAboutDose({
+            patientId: therapy.patientId,
+            therapyId: therapy.id,
+            eventId: updatedEvent.id,
+            scheduledAt,
+            kind: "skipped",
+            therapyName: therapy.name,
+            patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
+          });
+        } else {
+          setLocalData((d) => {
+            const nextEvents = existingEvent
+              ? d.events.map((e) => (e === existingEvent ? updatedEvent : e))
+              : [...d.events, updatedEvent];
+            return { ...d, events: nextEvents };
+          });
+        }
+      } finally {
+        pendingDoseActionsRef.current.delete(actionKey);
       }
     },
     [user, therapies, events, patients]
   );
+
 
   const snoozeDose = useCallback(
     async ({
