@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowRight, Package, Pill, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
