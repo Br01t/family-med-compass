@@ -27,13 +27,20 @@ export const Route = createFileRoute("/caregiver")({
 
 function CaregiverHome() {
   const { data } = useFamilyMed();
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  void tick;
   const caregiver =
     data.caregivers.find((c) => c.id === data.currentCaregiverId) ??
     data.caregivers[0];
-  const patients = data.patients.filter((p) =>
-    caregiver.patientIds.includes(p.id),
-  );
+  const patients = caregiver
+    ? data.patients.filter((p) => caregiver.patientIds.includes(p.id))
+    : data.patients;
   const now = new Date();
+
 
   const lowStock = data.therapies.filter(
     (t) => t.pillsRemaining <= t.lowStockThreshold,
