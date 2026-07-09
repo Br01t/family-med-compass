@@ -339,12 +339,18 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
       const nowIso = new Date().toISOString();
       const scheduledIso = scheduledAt.toISOString();
+      const actionKey = `${therapyId}@${scheduledIso}@confirm`;
+      if (pendingDoseActionsRef.current.has(actionKey)) return;
 
       const existingEvent = events.find(
         (e) =>
           e.therapyId === therapyId &&
           Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000
       );
+      // Idempotenza: se la dose è già confermata, non ripetere l'azione.
+      if (existingEvent?.status === "taken") return;
+      pendingDoseActionsRef.current.add(actionKey);
+
 
       const updatedEvent: MedicationEvent = existingEvent
         ? {
