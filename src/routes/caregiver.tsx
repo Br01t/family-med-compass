@@ -129,59 +129,48 @@ function CaregiverHome() {
           <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
               <h3 className="truncate text-lg font-black tracking-tight">
-                Timeline eventi di oggi
+                Timeline dosi
               </h3>
               <span className="shrink-0 text-xs text-muted-foreground">
-                {timeline.length} eventi
+                {timeline.length} dosi
               </span>
             </div>
             <div className="relative mt-6 space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-border">
               {timeline.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  Nessun evento registrato oggi.
+                  Nessuna dose recente.
                 </p>
               )}
-              {timeline.map((t, i) => {
-                const patient = data.patients.find((p) => p.id === t.patientId);
-                const therapy = data.therapies.find((th) => th.id === t.therapyId);
-                const tone =
-                  t.kind === "taken"
-                    ? "ring-success"
-                    : t.kind === "alert" || t.kind === "whatsapp"
-                      ? "ring-accent"
-                      : t.kind === "reminder"
-                        ? "ring-warning"
-                        : "ring-border";
+              {timeline.map((d) => {
+                const patient = data.patients.find((p) => p.id === d.patientId);
+                const isFuture = d.scheduledAt > now;
+                const dayLabel = d.scheduledAt.toDateString() === now.toDateString()
+                  ? "Oggi"
+                  : d.scheduledAt.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
                 return (
-                  <div key={i} className="relative pl-10">
-                    <div
-                      className={cn(
-                        "absolute left-0 top-1.5 grid size-6 place-items-center rounded-full bg-background ring-2",
-                        tone,
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "size-2 rounded-full",
-                          t.kind === "taken"
-                            ? "bg-success"
-                            : t.kind === "alert"
-                              ? "bg-accent"
-                              : t.kind === "reminder"
-                                ? "bg-warning"
-                                : "bg-muted-foreground",
-                        )}
-                      />
+                  <div key={d.id} className="relative pl-10">
+                    <div className="absolute left-0 top-1.5 grid size-6 place-items-center rounded-full bg-background ring-2 ring-border">
+                      <div className={cn("size-2 rounded-full", statusDot[d.status])} />
                     </div>
                     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-                      <p className="truncate text-sm font-semibold">{t.message}</p>
+                      <p className="truncate text-sm font-semibold">
+                        {d.therapy.name}
+                      </p>
                       <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                        {formatTime(new Date(t.at))}
+                        {dayLabel} · {formatTime(d.scheduledAt)}
                       </span>
                     </div>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {patient?.name} · {therapy?.name}
-                    </p>
+                    <div className="mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                      <p className="truncate text-xs text-muted-foreground">
+                        {patient?.name} {isFuture ? "· in programma" : ""}
+                      </p>
+                      <span className={cn(
+                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                        statusTone[d.status],
+                      )}>
+                        {statusLabel[d.status]}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
