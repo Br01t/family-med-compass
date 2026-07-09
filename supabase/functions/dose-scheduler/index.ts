@@ -97,7 +97,8 @@ async function notifyBoth(
   spec: {
     kind: string; severity: string;
     patientTitle: string; patientBody: string;
-    caregiverTitle: string; caregiverBody: string;
+    caregiverTitle?: string; caregiverBody?: string;
+    notifyCaregiver?: boolean;
   },
 ) {
   const baseKey = `${ev.therapy_id}@${ev.scheduled_at}@${spec.kind}`;
@@ -116,6 +117,13 @@ async function notifyBoth(
     });
   }
 
+  // Il caregiver riceve solo: azioni del paziente sulle modali (gestite dai
+  // trigger DB) + stato finale (missed) + scorte basse. I promemoria interni
+  // (reminder_pre / due / reminder_post / final_due) sono modali del paziente
+  // e NON devono generare notifiche al caregiver.
+  if (!spec.notifyCaregiver) return;
+  therapy;
+
   const { data: cps } = await sb
     .from("caregiver_patients").select("caregiver_id").eq("patient_id", ev.patient_id);
   for (const { caregiver_id } of (cps ?? []) as any[]) {
@@ -123,8 +131,8 @@ async function notifyBoth(
       target_user_id: caregiver_id,
       kind: spec.kind,
       severity: spec.severity,
-      title: `👨‍👩‍👧 ${spec.caregiverTitle}`,
-      message: spec.caregiverBody,
+      title: `👨‍👩‍👧 ${spec.caregiverTitle ?? spec.patientTitle}`,
+      message: spec.caregiverBody ?? spec.patientBody,
       patient_id: ev.patient_id,
       therapy_id: ev.therapy_id,
       event_id: ev.id,
