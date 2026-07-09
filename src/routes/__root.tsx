@@ -14,7 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { FamilyMedProvider } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
 import { InstallBanner } from "../components/InstallBanner";
-import { NotificationScheduler } from "../components/NotificationScheduler";
+
 import { AlarmRinger } from "../components/AlarmRinger";
 import { primeAlarmAudio } from "../lib/alarm-audio";
 
@@ -186,7 +186,6 @@ function RootComponent() {
         <Outlet />
         <Toaster position="top-center" richColors />
         <InstallBanner />
-        <NotificationScheduler />
         <AlarmRinger />
       </FamilyMedProvider>
     </QueryClientProvider>

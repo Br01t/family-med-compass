@@ -38,7 +38,7 @@ import {
   insertNotificationDoc,
   fetchCaregiverIdsForPatient,
 } from "./supabase-service";
-import { sendPushToUser } from "./push-subscription";
+
 
 
 async function notifyCaregiversAboutDose(input: {
@@ -93,14 +93,6 @@ async function notifyCaregiversAboutDose(input: {
       therapyId: input.therapyId,
       eventId: input.eventId,
       doseKey,
-    });
-    void sendPushToUser({
-      targetUserId: cg,
-      title: spec.title,
-      body: spec.message,
-      url: "/notifiche",
-      tag: `${input.eventId}-${input.kind}`,
-      requireInteraction: input.kind !== "taken" && input.kind !== "taken_after_snooze",
     });
   }
 }
