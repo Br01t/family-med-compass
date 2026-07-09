@@ -1,8 +1,10 @@
 // FamilyMed — dose-scheduler
 // Invocata da pg_cron ogni minuto.
-// Flusso per ogni dose:
-//   scheduled → reminder_pre → due (allarme) → [snoozed → final_due] → taken | missed
-// Notifiche paziente + mirror caregiver ad ogni tappa.
+// Genera le righe `events` e avanza lo stage delle dosi
+// (scheduled → reminder_pre → due → snoozed → final_due → taken | missed).
+// Ogni transizione scrive una riga in `notifications`; il client paziente
+// la trasforma in modale in-app e il caregiver la vede nel centro notifiche.
+// Nessuna notifica push viene inviata: quel canale è stato rimosso.
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -80,23 +82,11 @@ function reminderBeforeMin(t: { reminder_intervals?: number[] | null }): number 
   return Math.max(1, Math.abs(Number(first ?? 10)));
 }
 
-async function sendPush(sb: any, targetUserId: string, payload: any) {
-  try {
-    await sb.functions.invoke("push-sender", {
-      body: { targetUserId, url: "/notifiche", ...payload },
-    });
-  } catch (err) {
-    console.warn("[scheduler] push failed:", err);
-  }
-}
-
-async function insertNotif(sb: any, row: any): Promise<boolean> {
+async function insertNotif(sb: any, row: any): Promise<void> {
   const { error } = await sb.from("notifications").insert(row);
-  if (error) {
-    if (error.code !== "23505") console.warn("[scheduler] insert notif:", error.message);
-    return false;
+  if (error && error.code !== "23505") {
+    console.warn("[scheduler] insert notif:", error.message);
   }
-  return true;
 }
 
 async function notifyBoth(
@@ -108,16 +98,12 @@ async function notifyBoth(
     kind: string; severity: string;
     patientTitle: string; patientBody: string;
     caregiverTitle: string; caregiverBody: string;
-    isAlarm?: boolean; requireInteraction?: boolean;
-    actions?: Array<"confirm" | "snooze">;
   },
 ) {
   const baseKey = `${ev.therapy_id}@${ev.scheduled_at}@${spec.kind}`;
-  const image = therapy?.photo_drug ?? therapy?.photo_package ?? undefined;
 
-  // Paziente: sveglia, azioni, foto grande, icona farmaco
   if (patient?.user_id) {
-    const ok = await insertNotif(sb, {
+    await insertNotif(sb, {
       target_user_id: patient.user_id,
       kind: spec.kind,
       severity: spec.severity,
@@ -128,28 +114,12 @@ async function notifyBoth(
       event_id: ev.id,
       dose_key: `${baseKey}@patient`,
     });
-    if (ok) {
-      await sendPush(sb, patient.user_id, {
-        title: `💊 ${spec.patientTitle}`,
-        body: spec.patientBody,
-        image,
-        tag: `pt-${baseKey}`,
-        isAlarm: !!spec.isAlarm,
-        requireInteraction: !!spec.requireInteraction,
-        kind: spec.kind,
-        eventId: ev.id,
-        actions: spec.actions ?? [],
-        icon: "/icons/icon-192.png",
-      });
-    }
   }
 
-  // Caregiver mirror: stile "informativo", senza sveglia né azioni,
-  // icona/tag distinti così le due notifiche coesistono sullo stesso device.
   const { data: cps } = await sb
     .from("caregiver_patients").select("caregiver_id").eq("patient_id", ev.patient_id);
   for (const { caregiver_id } of (cps ?? []) as any[]) {
-    const ok = await insertNotif(sb, {
+    await insertNotif(sb, {
       target_user_id: caregiver_id,
       kind: spec.kind,
       severity: spec.severity,
@@ -160,20 +130,6 @@ async function notifyBoth(
       event_id: ev.id,
       dose_key: `${baseKey}@cg@${caregiver_id}`,
     });
-    if (ok) {
-      await sendPush(sb, caregiver_id, {
-        title: `👨‍👩‍👧 ${spec.caregiverTitle}`,
-        body: spec.caregiverBody,
-        image,
-        tag: `cg-${baseKey}`,
-        isAlarm: false,
-        requireInteraction: false,
-        kind: spec.kind,
-        eventId: ev.id,
-        actions: [], // caregiver non deve agire
-        icon: "/icons/badge-caregiver.png",
-      });
-    }
   }
 }
 
@@ -198,12 +154,11 @@ Deno.serve(async (req) => {
   const horizon = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const past = new Date(now.getTime() - 30 * 60 * 1000);
 
-  // 1) Carica terapie attive
   const { data: therapies, error: tErr } = await sb
     .from("therapies").select("*").eq("active", true).eq("suspended", false);
   if (tErr) return new Response(`therapies error: ${tErr.message}`, { status: 500 });
 
-  // 2) Genera dosi mancanti
+  // Genera dosi future mancanti
   const rows: any[] = [];
   for (const th of (therapies ?? []) as Therapy[]) {
     for (const at of buildDoseTimes(th, past, horizon)) {
@@ -224,7 +179,7 @@ Deno.serve(async (req) => {
 
   const selectCols = "id, therapy_id, patient_id, scheduled_at, status, stage, snoozed_until, final_due_at, therapies(name, quantity, dosage, timeout_minutes, snooze_minutes, post_reminder_minutes, reminder_intervals, photo_drug, photo_package), patients(name, user_id)";
 
-  // 3a) REMINDER_PRE
+  // REMINDER_PRE
   const { data: preEvents } = await sb.from("events").select(selectCols)
     .in("status", ["scheduled"])
     .gte("scheduled_at", now.toISOString())
@@ -244,14 +199,13 @@ Deno.serve(async (req) => {
     });
   }
 
-  // 3b) DUE (allarme, ora esatta ±90s)
+  // DUE (ora esatta ±90s)
   const { data: dueEvents } = await sb.from("events").select(selectCols)
     .in("status", ["scheduled"])
     .gte("scheduled_at", new Date(now.getTime() - 60_000).toISOString())
     .lte("scheduled_at", new Date(now.getTime() + 90_000).toISOString());
   for (const ev of (dueEvents ?? []) as any[]) {
     const th = ev.therapies; const pt = ev.patients;
-    // marca stage=due
     await sb.from("events").update({ stage: "due" }).eq("id", ev.id).in("status", ["scheduled"]);
     await notifyBoth(sb, ev, pt, th, {
       kind: "due",
@@ -260,19 +214,17 @@ Deno.serve(async (req) => {
       patientBody: `${th?.quantity ?? 1} unità — ${th?.dosage ?? ""}`,
       caregiverTitle: `${pt?.name ?? "Paziente"} deve prendere ${th?.name ?? "il farmaco"}`,
       caregiverBody: `Ora: ${romeHM(ev.scheduled_at)} — ${th?.dosage ?? ""}`,
-      isAlarm: true, requireInteraction: true,
-      actions: ["confirm", "snooze"],
     });
   }
 
-  // 3c) FINAL_DUE: solo per snoozed arrivati alla scadenza dello snooze
+  // FINAL_DUE: snoozed alla scadenza dello snooze
   const { data: snoozedEvents } = await sb.from("events").select(selectCols)
     .eq("status", "snoozed")
     .not("snoozed_until", "is", null)
     .lte("snoozed_until", new Date(now.getTime() + 60_000).toISOString());
   for (const ev of (snoozedEvents ?? []) as any[]) {
     if (ev.stage === "final_due" || ev.stage === "missed") continue;
-    if (ev.final_due_at) continue; // già inviato
+    if (ev.final_due_at) continue;
     const th = ev.therapies; const pt = ev.patients;
     await sb.from("events").update({
       stage: "final_due",
@@ -285,12 +237,10 @@ Deno.serve(async (req) => {
       patientBody: `Conferma la dose delle ${romeHM(ev.scheduled_at)}. Non puoi più rimandare.`,
       caregiverTitle: `${pt?.name ?? "Paziente"} — ultima chiamata per ${th?.name ?? "farmaco"}`,
       caregiverBody: `Rimandata, ora deve confermare entro il tempo massimo.`,
-      isAlarm: true, requireInteraction: true,
-      actions: ["confirm"],
     });
   }
 
-  // 4) MISSED: pending oltre timeout finale
+  // MISSED
   const { data: pendingEvents } = await sb.from("events").select(selectCols)
     .in("status", ["scheduled", "snoozed"])
     .lte("scheduled_at", new Date(now.getTime() - 5 * 60_000).toISOString());
@@ -314,10 +264,9 @@ Deno.serve(async (req) => {
       kind: "missed",
       severity: "alert",
       patientTitle: `Cura dimenticata: ${th?.name ?? "farmaco"}`,
-      patientBody: `La dose delle ${romeHM(ev.scheduled_at)} è stata segnata come dimenticata. Un familiare potrebbe contattarti.`,
+      patientBody: `La dose delle ${romeHM(ev.scheduled_at)} è stata segnata come dimenticata.`,
       caregiverTitle: `${pt?.name ?? "Paziente"} non ha preso ${th?.name ?? "il farmaco"}`,
       caregiverBody: `Prevista alle ${romeHM(ev.scheduled_at)}. Segnata come dimenticata.`,
-      requireInteraction: true,
     });
   }
 

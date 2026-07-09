@@ -96,14 +96,14 @@ function PatientPage() {
     );
   }
 
-  const doses = getDosesForPatientOnDate(data, patient.id, now, now);
+  // Timeline: gli orari più recenti (o quello attivo adesso) in cima.
+  const doses = getDosesForPatientOnDate(data, patient.id, now, now)
+    .slice()
+    .sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime());
   const activeTherapies = data.therapies.filter(
     (t) => t.patientId === patient.id && t.active && !t.suspended,
   );
   const firstName = patient.name.split(" ")[0];
-  const unreadCount = data.notifications.filter(
-    (n) => !n.read && (!n.patientId || n.patientId === patient.id),
-  ).length;
 
   const greeting =
     now.getHours() < 12
@@ -139,13 +139,8 @@ function PatientPage() {
         </Link>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" asChild aria-label="Notifiche">
-            <Link to="/notifiche" className="relative">
+            <Link to="/notifiche">
               <Bell className="size-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 grid size-4 place-items-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
             </Link>
           </Button>
           <Button variant="ghost" size="icon" asChild aria-label="Impostazioni">

@@ -1,8 +1,8 @@
-// Generatore ICS (RFC 5545) per esportare terapie come eventi ricorrenti
-// da aggiungere al calendario nativo di iOS / Android / Google.
-// La descrizione include gli URL delle foto del farmaco/confezione:
-// Google Calendar Android li mostra come link cliccabili con anteprima.
-// Gli allegati binari .ics non sono supportati dai calendari mobili.
+// Generatore ICS (RFC 5545) per esportare terapie come eventi RICORRENTI
+// (un solo VEVENT per orario, con RRULE) da aggiungere al calendario nativo
+// di iOS / Android / Google. Il calendario del sistema gestisce da solo
+// promemoria e ricorrenze; nessuna foto viene allegata. La descrizione
+// include un link "Apri in FamilyMed" per riaprire l'app.
 import type { Therapy, Patient } from "./mock-data";
 
 function pad(n: number) {
@@ -44,40 +44,35 @@ function escape(text: string) {
   return text.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/;/g, "\\;").replace(/\n/g, "\\n");
 }
 
-function absoluteUrl(u: string | undefined | null): string | null {
-  if (!u) return null;
-  if (/^https?:\/\//i.test(u)) return u;
-  if (typeof window !== "undefined") {
-    try {
-      return new URL(u, window.location.origin).toString();
-    } catch {
-      return null;
-    }
+function appDeepLink(role: "paziente" | "caregiver", therapyId: string, patientId?: string): string {
+  const origin =
+    typeof window !== "undefined" && window.location?.origin
+      ? window.location.origin
+      : "https://familymed.app";
+  if (role === "caregiver" && patientId) {
+    return `${origin}/pazienti/${patientId}?therapy=${encodeURIComponent(therapyId)}`;
   }
-  return null;
+  return `${origin}/paziente?therapy=${encodeURIComponent(therapyId)}`;
 }
 
-export function therapyToIcs(therapy: Therapy, patient: Patient): string {
+export function therapyToIcs(
+  therapy: Therapy,
+  patient: Patient,
+  role: "paziente" | "caregiver" = "paziente",
+): string {
   const dtstamp = nowStamp();
   const summary = escape(`💊 ${therapy.name} ${therapy.dosage} — ${patient.name}`);
+  const deepLink = appDeepLink(role, therapy.id, patient.id);
 
-  const drugUrl = absoluteUrl(therapy.photoDrug);
-  const packUrl = absoluteUrl(therapy.photoPackage);
   const descLines = [
     `Farmaco: ${therapy.name} ${therapy.dosage}`,
     `Quantità: ${therapy.quantity} unità`,
     `Paziente: ${patient.name}`,
     therapy.notes ? `Note: ${therapy.notes}` : null,
-    drugUrl ? `Foto farmaco: ${drugUrl}` : null,
-    packUrl ? `Foto confezione: ${packUrl}` : null,
-  ].filter(Boolean) as string[];
+    "",
+    `Apri in FamilyMed: ${deepLink}`,
+  ].filter((v): v is string => v !== null);
   const desc = escape(descLines.join("\n"));
-
-  // Sveglia in-anticipo dal primo reminder configurato (default 10 min).
-  const preMin = Math.max(
-    1,
-    Math.abs(Number(therapy.reminderIntervals?.[0] ?? 10)) || 10,
-  );
 
   const events = therapy.times.map((t, i) => {
     const [h, m] = t.split(":").map(Number);
@@ -93,28 +88,11 @@ export function therapyToIcs(therapy: Therapy, patient: Patient): string {
       `DTEND;TZID=Europe/Rome:${end}`,
       `SUMMARY:${summary}`,
       `DESCRIPTION:${desc}`,
+      `URL:${deepLink}`,
       `CATEGORIES:${escape(therapy.category)}`,
       rrule(therapy),
-    ];
-    // Link foto come URL evento (Google Calendar lo mostra cliccabile)
-    if (drugUrl) parts.push(`URL:${drugUrl}`);
-    // Allegati (supportati da Google Calendar quando presente)
-    if (drugUrl) parts.push(`ATTACH;FMTTYPE=image/jpeg:${drugUrl}`);
-    if (packUrl) parts.push(`ATTACH;FMTTYPE=image/jpeg:${packUrl}`);
-    // Sveglia all'ora esatta + preavviso
-    parts.push(
-      "BEGIN:VALARM",
-      "ACTION:DISPLAY",
-      `DESCRIPTION:${summary}`,
-      "TRIGGER:-PT0M",
-      "END:VALARM",
-      "BEGIN:VALARM",
-      "ACTION:DISPLAY",
-      `DESCRIPTION:Tra ${preMin} min: ${summary}`,
-      `TRIGGER:-PT${preMin}M`,
-      "END:VALARM",
       "END:VEVENT",
-    );
+    ];
     return parts.join("\r\n");
   });
 
