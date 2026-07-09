@@ -300,7 +300,7 @@ export function AlarmRinger() {
             await snoozeDose({
               therapyId: therapy.id,
               scheduledAt,
-              minutes: therapy.snoozeMinutes ?? 10,
+              minutes: therapy.postReminderMinutes ?? 5,
             });
           } else if (action === "skip") {
             await skipDose({ therapyId: therapy.id, scheduledAt });
