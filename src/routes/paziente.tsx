@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Bell,
@@ -12,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import {
@@ -56,7 +58,14 @@ function PatientPage() {
     data?.patients?.find((p) => p.id === data.currentPatientId) ??
     data?.patients?.[0];
 
+  // Tick ogni 30s per aggiornare gli stati derivati (reminder → due → late)
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
   const now = new Date();
+  void tick;
 
   // Loading / recovery skeleton
   if (loadingAuth || (user && userProfile?.role === "paziente" && !patient)) {
@@ -96,10 +105,28 @@ function PatientPage() {
     );
   }
 
-  // Timeline: gli orari più recenti (o quello attivo adesso) in cima.
-  const doses = getDosesForPatientOnDate(data, patient.id, now, now)
-    .slice()
-    .sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime());
+  // Timeline ordinata "più imminente prima":
+  //  1) dose attiva ora (reminder / due / snoozed / late)
+  //  2) dosi future in ordine ascendente
+  //  3) dosi già passate (taken / skipped / missed) in ordine discendente
+  const allDoses = getDosesForPatientOnDate(data, patient.id, now, now);
+  const doses = allDoses.slice().sort((a, b) => {
+    const rank = (d: ScheduledDose) => {
+      const inActive =
+        d.status === "reminder" ||
+        d.status === "due" ||
+        d.status === "snoozed" ||
+        d.status === "late";
+      if (inActive) return 0;
+      if (d.scheduledAt.getTime() >= now.getTime()) return 1;
+      return 2;
+    };
+    const ra = rank(a);
+    const rb = rank(b);
+    if (ra !== rb) return ra - rb;
+    if (ra === 2) return b.scheduledAt.getTime() - a.scheduledAt.getTime();
+    return a.scheduledAt.getTime() - b.scheduledAt.getTime();
+  });
   const activeTherapies = data.therapies.filter(
     (t) => t.patientId === patient.id && t.active && !t.suspended,
   );
@@ -116,12 +143,14 @@ function PatientPage() {
   const totalToday = doses.length;
   const progressPct = totalToday === 0 ? 0 : Math.round((takenToday / totalToday) * 100);
 
-  // "Attiva ora": pending entro ±15 min o già in ritardo
+  // "Attiva ora": finestra dinamica basata su reminderIntervals[0] della terapia
   const activeDose = doses.find((d) => {
-    if (d.status === "taken" || d.status === "skipped") return false;
+    if (d.status === "taken" || d.status === "skipped" || d.status === "missed") return false;
+    const preMin = Math.abs(d.therapy.reminderIntervals?.[0] ?? 10);
     const diffMin = (d.scheduledAt.getTime() - now.getTime()) / 60000;
-    return diffMin <= 15 && diffMin >= -180; // finestra: 15 min prima → 3h dopo
+    return diffMin <= preMin && diffMin >= -180;
   });
+
 
   const handleLogout = async () => {
     await logout();

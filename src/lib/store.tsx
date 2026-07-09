@@ -22,8 +22,8 @@ import {
 import {
   subscribePatients,
   subscribeCaregivers,
-  subscribeTherapies,
-  subscribeEvents,
+  subscribeTherapiesForPatients,
+  subscribeEventsForPatients,
   subscribeNotifications,
   addPatientDoc,
   deletePatientDoc,
@@ -38,6 +38,7 @@ import {
   insertNotificationDoc,
   fetchCaregiverIdsForPatient,
 } from "./supabase-service";
+
 
 
 
@@ -252,22 +253,33 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     };
   }, [user, userProfile]);
 
-  // Subscribe to Therapies and Events for the active patient
+  // Subscribe to Therapies and Events. Caregiver: tutti i pazienti seguiti.
+  // Paziente: solo il suo record.
   useEffect(() => {
-    if (!currentPatientId || !user) {
+    if (!user || !userProfile) {
       setTherapies([]);
       setEvents([]);
       return;
     }
-
-    const unsubTherapies = subscribeTherapies(currentPatientId, setTherapies);
-    const unsubEvents = subscribeEvents(currentPatientId, setEvents);
-
+    const ids =
+      userProfile.role === "caregiver"
+        ? patients.map((p) => p.id)
+        : currentPatientId
+          ? [currentPatientId]
+          : [];
+    if (ids.length === 0) {
+      setTherapies([]);
+      setEvents([]);
+      return;
+    }
+    const unsubTherapies = subscribeTherapiesForPatients(ids, setTherapies);
+    const unsubEvents = subscribeEventsForPatients(ids, setEvents);
     return () => {
       unsubTherapies();
       unsubEvents();
     };
-  }, [currentPatientId, user]);
+  }, [user, userProfile, currentPatientId, patients]);
+
 
   // Merge Supabase database and Local configuration state
   const data = useMemo<FamilyMedData>(() => {
@@ -355,8 +367,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
       if (user) {
         await saveEventDoc(updatedEvent);
-        const updatedPills = Math.max(0, therapy.pillsRemaining - therapy.quantity);
-        await saveTherapyDoc({ ...therapy, pillsRemaining: updatedPills });
+        // Il decremento delle scorte e la notifica low_stock sono gestiti
+        // dal trigger DB handle_dose_taken (evita doppio scalo).
         await notifyCaregiversAboutDose({
           patientId: therapy.patientId,
           therapyId: therapy.id,
@@ -378,6 +390,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
           return { ...d, events: nextEvents, therapies: nextTherapies };
         });
       }
+
     },
     [user, therapies, events, patients]
   );

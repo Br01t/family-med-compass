@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowRight, Package, Pill, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -13,6 +14,7 @@ import {
 } from "@/lib/therapy";
 import { cn } from "@/lib/utils";
 
+
 export const Route = createFileRoute("/caregiver")({
   head: () => ({
     meta: [
@@ -25,13 +27,17 @@ export const Route = createFileRoute("/caregiver")({
 
 function CaregiverHome() {
   const { data } = useFamilyMed();
-  const caregiver =
-    data.caregivers.find((c) => c.id === data.currentCaregiverId) ??
-    data.caregivers[0];
-  const patients = data.patients.filter((p) =>
-    caregiver.patientIds.includes(p.id),
-  );
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  void tick;
+  const patients = data.patients;
   const now = new Date();
+
+
+
 
   const lowStock = data.therapies.filter(
     (t) => t.pillsRemaining <= t.lowStockThreshold,

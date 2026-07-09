@@ -7,7 +7,7 @@ import { getPrimedAlarmAudioContext } from "@/lib/alarm-audio";
 
 type ModalNotif = {
   id: string;
-  kind: "reminder_pre" | "due" | "final_due";
+  kind: "reminder_pre" | "due" | "reminder_post" | "final_due";
   title: string;
   message: string | null;
   therapy_id: string | null;
@@ -59,7 +59,10 @@ export function AlarmRinger() {
   const wakeLockRef = useRef<any>(null);
 
   const isPatient = userProfile?.role === "paziente";
-  const isAlarm = modal?.kind === "due" || modal?.kind === "final_due";
+  const isAlarm =
+    modal?.kind === "due" ||
+    modal?.kind === "reminder_post" ||
+    modal?.kind === "final_due";
 
   const openModal = (n: ModalNotif) => {
     if (handledRef.current.has(n.id)) return;
@@ -69,12 +72,13 @@ export function AlarmRinger() {
     markNotificationRead(n.id);
     setModal((prev) => {
       if (!prev) return n;
-      // Priorità: final_due > due > reminder_pre
+      // Priorità: final_due > reminder_post > due > reminder_pre
       const rank = (k: ModalNotif["kind"]) =>
-        k === "final_due" ? 3 : k === "due" ? 2 : 1;
+        k === "final_due" ? 4 : k === "reminder_post" ? 3 : k === "due" ? 2 : 1;
       return rank(n.kind) > rank(prev.kind) ? n : prev;
     });
   };
+
 
   // Realtime: nuove notifiche in ingresso
   useEffect(() => {
@@ -91,7 +95,7 @@ export function AlarmRinger() {
         },
         (payload) => {
           const n = payload.new as any;
-          if (n.kind !== "reminder_pre" && n.kind !== "due" && n.kind !== "final_due") return;
+          if (n.kind !== "reminder_pre" && n.kind !== "due" && n.kind !== "reminder_post" && n.kind !== "final_due") return;
           openModal({
             id: n.id,
             kind: n.kind,
@@ -112,7 +116,7 @@ export function AlarmRinger() {
   useEffect(() => {
     if (!user || !isPatient || modal) return;
     for (const n of data.notifications) {
-      if (n.kind !== "reminder_pre" && n.kind !== "due" && n.kind !== "final_due") continue;
+      if (n.kind !== "reminder_pre" && n.kind !== "due" && n.kind !== "reminder_post" && n.kind !== "final_due") continue;
       if (n.targetUserId && n.targetUserId !== user.id) continue;
       if (handledRef.current.has(n.id)) continue;
       if (n.read) {
@@ -268,7 +272,7 @@ export function AlarmRinger() {
         <div className="flex items-center justify-center gap-3">
           <AlertOctagon className="size-8 text-primary animate-bounce" />
           <p className="text-sm font-black uppercase tracking-widest text-primary">
-            {modal.kind === "final_due" ? "Ultima chiamata" : "È ora del farmaco"}
+            {modal.kind === "final_due" ? "Ultima chiamata" : modal.kind === "reminder_post" ? "Non l'hai ancora preso" : "È ora del farmaco"}
           </p>
         </div>
 
@@ -288,7 +292,7 @@ export function AlarmRinger() {
           <Button size="lg" className="h-14 text-lg font-bold" onClick={() => handleAction("confirm")}>
             <Check className="mr-2 size-6" /> Ho preso il farmaco
           </Button>
-          {modal.kind === "due" && (
+          {(modal.kind === "due" || modal.kind === "reminder_post") && (
             <Button
               size="lg"
               variant="outline"
@@ -298,6 +302,7 @@ export function AlarmRinger() {
               <Clock className="mr-2 size-5" /> Rimanda di {therapy?.snoozeMinutes ?? 10} min
             </Button>
           )}
+
           <Button
             size="sm"
             variant="ghost"

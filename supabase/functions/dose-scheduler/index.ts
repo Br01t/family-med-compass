@@ -217,6 +217,29 @@ Deno.serve(async (req) => {
     });
   }
 
+  // REMINDER_POST: dopo N minuti dall'orario, se ancora scheduled/due
+  const { data: postEvents } = await sb.from("events").select(selectCols)
+    .in("status", ["scheduled"])
+    .lte("scheduled_at", new Date(now.getTime() - 60_000).toISOString())
+    .gte("scheduled_at", new Date(now.getTime() - 30 * 60_000).toISOString());
+  for (const ev of (postEvents ?? []) as any[]) {
+    const th = ev.therapies; const pt = ev.patients;
+    const postMin = Math.max(1, Number(th?.post_reminder_minutes ?? 5));
+    const elapsed = (now.getTime() - new Date(ev.scheduled_at).getTime()) / 60000;
+    if (elapsed < postMin || elapsed > postMin + 2) continue;
+    if (ev.stage === "reminder_post" || ev.stage === "final_due" || ev.stage === "missed") continue;
+    await sb.from("events").update({ stage: "reminder_post" }).eq("id", ev.id).in("status", ["scheduled"]);
+    await notifyBoth(sb, ev, pt, th, {
+      kind: "reminder_post",
+      severity: "warning",
+      patientTitle: `Non hai ancora preso ${th?.name ?? "il farmaco"}`,
+      patientBody: `Erano le ${romeHM(ev.scheduled_at)}. Conferma o rimanda.`,
+      caregiverTitle: `${pt?.name ?? "Paziente"} non ha ancora preso ${th?.name ?? "il farmaco"}`,
+      caregiverBody: `Prevista alle ${romeHM(ev.scheduled_at)} — nessuna azione.`,
+    });
+  }
+
+
   // FINAL_DUE: snoozed alla scadenza dello snooze
   const { data: snoozedEvents } = await sb.from("events").select(selectCols)
     .eq("status", "snoozed")

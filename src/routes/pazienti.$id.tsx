@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarPlus, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ import {
 import { downloadIcs, therapyToIcs } from "@/lib/ics";
 import { cn } from "@/lib/utils";
 
+
 export const Route = createFileRoute("/pazienti/$id")({
   head: ({ params }) => ({ meta: [{ title: `Paziente ${params.id} — FamilyMed` }] }),
   component: PatientDetail,
@@ -30,7 +32,14 @@ export const Route = createFileRoute("/pazienti/$id")({
 function PatientDetail() {
   const { id } = Route.useParams();
   const { data } = useFamilyMed();
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((v) => v + 1), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  void tick;
   const patient = data.patients.find((p) => p.id === id);
+
   if (!patient) {
     return (
       <AppShell title="Paziente non trovato">

@@ -164,25 +164,32 @@ export function subscribeCaregivers(
 }
 
 /* =========================================================
-   THERAPIES
+   THERAPIES (single-patient wrapper defined below)
 ========================================================= */
 
-export function subscribeTherapies(
-  patientId: string,
-  onUpdate: (therapies: Therapy[]) => void
+
+/* =========================================================
+   THERAPIES (multi-patient)
+========================================================= */
+
+export function subscribeTherapiesForPatients(
+  patientIds: string[],
+  onUpdate: (therapies: Therapy[]) => void,
 ): () => void {
   if (!supabase) return () => {};
-  if (!patientId) return () => {};
+  if (!patientIds || patientIds.length === 0) {
+    onUpdate([]);
+    return () => {};
+  }
+  const ids = [...patientIds].sort();
 
   const fetchAndEmit = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabase!
         .from("therapies")
         .select("*")
-        .eq("patient_id", patientId);
-
+        .in("patient_id", ids);
       if (error) throw error;
-
       onUpdate(
         (data || []).map((t) => ({
           id: t.id,
@@ -214,7 +221,7 @@ export function subscribeTherapies(
           suspended: t.suspended,
           photoDrug: t.photo_drug,
           photoPackage: t.photo_package,
-        }))
+        })),
       );
     } catch (err) {
       console.error("Errore fetch terapie:", err);
@@ -225,44 +232,49 @@ export function subscribeTherapies(
   fetchAndEmit();
 
   const channel = supabase
-    .channel(`therapies-${patientId}`)
+    .channel(`therapies-multi-${ids.join(",")}`)
     .on(
       "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "therapies",
-        filter: `patient_id=eq.${patientId}`,
+      { event: "*", schema: "public", table: "therapies" },
+      (payload) => {
+        const pid = (payload.new as any)?.patient_id ?? (payload.old as any)?.patient_id;
+        if (!pid || ids.includes(pid)) fetchAndEmit();
       },
-      () => fetchAndEmit()
     )
     .subscribe();
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
+  return () => { supabase!.removeChannel(channel); };
+}
+
+export function subscribeTherapies(
+  patientId: string,
+  onUpdate: (therapies: Therapy[]) => void,
+): () => void {
+  return subscribeTherapiesForPatients(patientId ? [patientId] : [], onUpdate);
 }
 
 /* =========================================================
-   EVENTS
+   EVENTS (multi-patient)
 ========================================================= */
 
-export function subscribeEvents(
-  patientId: string,
-  onUpdate: (events: MedicationEvent[]) => void
+export function subscribeEventsForPatients(
+  patientIds: string[],
+  onUpdate: (events: MedicationEvent[]) => void,
 ): () => void {
   if (!supabase) return () => {};
-  if (!patientId) return () => {};
+  if (!patientIds || patientIds.length === 0) {
+    onUpdate([]);
+    return () => {};
+  }
+  const ids = [...patientIds].sort();
 
   const fetchAndEmit = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabase!
         .from("events")
         .select("*")
-        .eq("patient_id", patientId);
-
+        .in("patient_id", ids);
       if (error) throw error;
-
       onUpdate(
         (data || []).map((e) => ({
           id: e.id,
@@ -275,7 +287,7 @@ export function subscribeEvents(
           snoozedUntil: e.snoozed_until,
           note: e.note,
           timeline: e.timeline,
-        }))
+        })),
       );
     } catch (err) {
       console.error("Errore fetch eventi:", err);
@@ -286,23 +298,27 @@ export function subscribeEvents(
   fetchAndEmit();
 
   const channel = supabase
-    .channel(`events-${patientId}`)
+    .channel(`events-multi-${ids.join(",")}`)
     .on(
       "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "events",
-        filter: `patient_id=eq.${patientId}`,
+      { event: "*", schema: "public", table: "events" },
+      (payload) => {
+        const pid = (payload.new as any)?.patient_id ?? (payload.old as any)?.patient_id;
+        if (!pid || ids.includes(pid)) fetchAndEmit();
       },
-      () => fetchAndEmit()
     )
     .subscribe();
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
+  return () => { supabase!.removeChannel(channel); };
 }
+
+export function subscribeEvents(
+  patientId: string,
+  onUpdate: (events: MedicationEvent[]) => void,
+): () => void {
+  return subscribeEventsForPatients(patientId ? [patientId] : [], onUpdate);
+}
+
 
 /* =========================================================
    NOTIFICATIONS
