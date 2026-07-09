@@ -256,9 +256,12 @@ export function AlarmRinger() {
   const msToScheduled = scheduledAt.getTime() - nowTs;
   const msToPostDeadline = scheduledAt.getTime() + postMin * 60_000 - nowTs;
   const msToMissedDeadline = scheduledAt.getTime() + timeoutMin * 60_000 - nowTs;
-  // Final due: se snoozed, deadline = snoozed_until + timeout. Non avendo snoozed_until in modal,
-  // approssimiamo dal messaggio; usiamo timeoutMin dal now come fallback per la modale final_due.
-  const msFinalDeadline = timeoutMin * 60_000; // countdown "residuo timeout"
+  // Final due: se abbiamo snoozed_until reale, deadline = snoozed_until + timeout.
+  // Altrimenti fallback al tempo di apertura modale + timeout.
+  const snoozedUntilMs = eventForModal?.snoozedUntil
+    ? new Date(eventForModal.snoozedUntil).getTime()
+    : null;
+  const msFinalDeadline = timeoutMin * 60_000;
   const finalDueStartRef = useRef<number | null>(null);
   if (modal.kind === "final_due" && finalDueStartRef.current === null) {
     finalDueStartRef.current = nowTs;
@@ -266,9 +269,11 @@ export function AlarmRinger() {
   if (modal.kind !== "final_due") {
     finalDueStartRef.current = null;
   }
-  const msFinalRemaining = finalDueStartRef.current !== null
-    ? finalDueStartRef.current + msFinalDeadline - nowTs
-    : msFinalDeadline;
+  const msFinalRemaining = snoozedUntilMs
+    ? snoozedUntilMs + timeoutMin * 60_000 - nowTs
+    : finalDueStartRef.current !== null
+      ? finalDueStartRef.current + msFinalDeadline - nowTs
+      : msFinalDeadline;
 
   async function handleAction(action: "confirm" | "snooze" | "skip" | "dismiss") {
     if (!modal || busy) return;
