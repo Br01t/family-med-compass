@@ -44,61 +44,10 @@ import {
 
 
 
-async function notifyCaregiversAboutDose(input: {
-  patientId: string;
-  therapyId: string;
-  eventId: string;
-  scheduledAt: Date;
-  kind: "taken" | "taken_after_snooze" | "snoozed" | "skipped";
-  therapyName: string;
-  patientName: string;
-  actor?: string;
-  minutes?: number;
-}) {
-  const caregivers = await fetchCaregiverIdsForPatient(input.patientId);
-  if (caregivers.length === 0) return;
-  const scheduledLabel = input.scheduledAt.toLocaleTimeString("it-IT", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const spec = {
-    taken: {
-      severity: "info" as const,
-      title: `${input.patientName} ha confermato ${input.therapyName}`,
-      message: `Ha preso la dose delle ${scheduledLabel}.`,
-    },
-    taken_after_snooze: {
-      severity: "info" as const,
-      title: `${input.patientName} ha confermato ${input.therapyName} (dopo rimando)`,
-      message: `Dose delle ${scheduledLabel} confermata dopo il rimando.`,
-    },
-    snoozed: {
-      severity: "warning" as const,
-      title: `${input.patientName} ha rimandato ${input.therapyName}`,
-      message: `Dose delle ${scheduledLabel} rimandata di ${input.minutes ?? 10} min.`,
-    },
-    skipped: {
-      severity: "warning" as const,
-      title: `${input.patientName} ha saltato ${input.therapyName}`,
-      message: `Ha rifiutato la dose delle ${scheduledLabel}.`,
-    },
-  }[input.kind];
+// Notifiche caregiver/paziente: sono generate esclusivamente dai trigger DB
+// (`handle_dose_taken` e `handle_dose_status_change`). Non inserirle dal
+// client per evitare duplicati (chiavi `dose_key` diverse fra client e trigger).
 
-  for (const cg of caregivers) {
-    const doseKey = `${input.therapyId}@${input.scheduledAt.toISOString()}@${input.kind}@caregiver`;
-    await insertNotificationDoc({
-      targetUserId: cg,
-      kind: input.kind,
-      severity: spec.severity,
-      title: spec.title,
-      message: spec.message,
-      patientId: input.patientId,
-      therapyId: input.therapyId,
-      eventId: input.eventId,
-      doseKey,
-    });
-  }
-}
 
 type Ctx = {
   data: FamilyMedData;
