@@ -59,7 +59,10 @@ export function AlarmRinger() {
   const wakeLockRef = useRef<any>(null);
 
   const isPatient = userProfile?.role === "paziente";
-  const isAlarm = modal?.kind === "due" || modal?.kind === "final_due";
+  const isAlarm =
+    modal?.kind === "due" ||
+    modal?.kind === "reminder_post" ||
+    modal?.kind === "final_due";
 
   const openModal = (n: ModalNotif) => {
     if (handledRef.current.has(n.id)) return;
@@ -69,12 +72,13 @@ export function AlarmRinger() {
     markNotificationRead(n.id);
     setModal((prev) => {
       if (!prev) return n;
-      // Priorità: final_due > due > reminder_pre
+      // Priorità: final_due > reminder_post > due > reminder_pre
       const rank = (k: ModalNotif["kind"]) =>
-        k === "final_due" ? 3 : k === "due" ? 2 : 1;
+        k === "final_due" ? 4 : k === "reminder_post" ? 3 : k === "due" ? 2 : 1;
       return rank(n.kind) > rank(prev.kind) ? n : prev;
     });
   };
+
 
   // Realtime: nuove notifiche in ingresso
   useEffect(() => {
