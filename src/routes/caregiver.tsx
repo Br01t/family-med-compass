@@ -11,7 +11,9 @@ import {
   getNextDose,
   statusDot,
   statusLabel,
+  statusTone,
 } from "@/lib/therapy";
+import type { ScheduledDose } from "@/lib/therapy";
 import { cn } from "@/lib/utils";
 
 
