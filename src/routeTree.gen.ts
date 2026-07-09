@@ -21,6 +21,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeMieTerapieRouteImport } from './routes/le-mie-terapie'
 import { Route as ImpostazioniRouteImport } from './routes/impostazioni'
 import { Route as GuidaRouteImport } from './routes/guida'
+import { Route as DoseDaConfermareRouteImport } from './routes/dose-da-confermare'
 import { Route as CaregiverRouteImport } from './routes/caregiver'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PazientiIndexRouteImport } from './routes/pazienti.index'
@@ -86,6 +87,11 @@ const GuidaRoute = GuidaRouteImport.update({
   path: '/guida',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DoseDaConfermareRoute = DoseDaConfermareRouteImport.update({
+  id: '/dose-da-confermare',
+  path: '/dose-da-confermare',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CaregiverRoute = CaregiverRouteImport.update({
   id: '/caregiver',
   path: '/caregiver',
@@ -110,6 +116,7 @@ const PazientiIdRoute = PazientiIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/caregiver': typeof CaregiverRoute
+  '/dose-da-confermare': typeof DoseDaConfermareRoute
   '/guida': typeof GuidaRoute
   '/impostazioni': typeof ImpostazioniRoute
   '/le-mie-terapie': typeof LeMieTerapieRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/caregiver': typeof CaregiverRoute
+  '/dose-da-confermare': typeof DoseDaConfermareRoute
   '/guida': typeof GuidaRoute
   '/impostazioni': typeof ImpostazioniRoute
   '/le-mie-terapie': typeof LeMieTerapieRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/caregiver': typeof CaregiverRoute
+  '/dose-da-confermare': typeof DoseDaConfermareRoute
   '/guida': typeof GuidaRoute
   '/impostazioni': typeof ImpostazioniRoute
   '/le-mie-terapie': typeof LeMieTerapieRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/caregiver'
+    | '/dose-da-confermare'
     | '/guida'
     | '/impostazioni'
     | '/le-mie-terapie'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/caregiver'
+    | '/dose-da-confermare'
     | '/guida'
     | '/impostazioni'
     | '/le-mie-terapie'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/caregiver'
+    | '/dose-da-confermare'
     | '/guida'
     | '/impostazioni'
     | '/le-mie-terapie'
@@ -222,6 +234,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CaregiverRoute: typeof CaregiverRoute
+  DoseDaConfermareRoute: typeof DoseDaConfermareRoute
   GuidaRoute: typeof GuidaRoute
   ImpostazioniRoute: typeof ImpostazioniRoute
   LeMieTerapieRoute: typeof LeMieTerapieRoute
@@ -324,6 +337,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GuidaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dose-da-confermare': {
+      id: '/dose-da-confermare'
+      path: '/dose-da-confermare'
+      fullPath: '/dose-da-confermare'
+      preLoaderRoute: typeof DoseDaConfermareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/caregiver': {
       id: '/caregiver'
       path: '/caregiver'
@@ -358,6 +378,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CaregiverRoute: CaregiverRoute,
+  DoseDaConfermareRoute: DoseDaConfermareRoute,
   GuidaRoute: GuidaRoute,
   ImpostazioniRoute: ImpostazioniRoute,
   LeMieTerapieRoute: LeMieTerapieRoute,
