@@ -463,16 +463,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       try {
         if (user) {
           await saveEventDoc(updatedEvent);
-          await notifyCaregiversAboutDose({
-            patientId: therapy.patientId,
-            therapyId: therapy.id,
-            eventId: updatedEvent.id,
-            scheduledAt,
-            kind: "snoozed",
-            therapyName: therapy.name,
-            patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
-            minutes,
-          });
+          // Notifiche generate dal trigger DB handle_dose_status_change.
+
         } else {
           setLocalData((d) => {
             const nextEvents = existingEvent
