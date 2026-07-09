@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowRight, Package, Pill, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -12,6 +13,7 @@ import {
   statusLabel,
 } from "@/lib/therapy";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/caregiver")({
   head: () => ({
