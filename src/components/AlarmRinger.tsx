@@ -272,7 +272,7 @@ export function AlarmRinger() {
         <div className="flex items-center justify-center gap-3">
           <AlertOctagon className="size-8 text-primary animate-bounce" />
           <p className="text-sm font-black uppercase tracking-widest text-primary">
-            {modal.kind === "final_due" ? "Ultima chiamata" : "È ora del farmaco"}
+            {modal.kind === "final_due" ? "Ultima chiamata" : modal.kind === "reminder_post" ? "Non l'hai ancora preso" : "È ora del farmaco"}
           </p>
         </div>
 
