@@ -164,84 +164,9 @@ export function subscribeCaregivers(
 }
 
 /* =========================================================
-   THERAPIES
+   THERAPIES (single-patient wrapper defined below)
 ========================================================= */
 
-export function subscribeTherapies(
-  patientId: string,
-  onUpdate: (therapies: Therapy[]) => void
-): () => void {
-  if (!supabase) return () => {};
-  if (!patientId) return () => {};
-
-  const fetchAndEmit = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("therapies")
-        .select("*")
-        .eq("patient_id", patientId);
-
-      if (error) throw error;
-
-      onUpdate(
-        (data || []).map((t) => ({
-          id: t.id,
-          patientId: t.patient_id,
-          name: t.name,
-          dosage: t.dosage,
-          quantity: t.quantity,
-          category: t.category,
-          color: t.color,
-          icon: t.icon,
-          notes: t.notes,
-          startDate: t.start_date,
-          endDate: t.end_date,
-          times: t.times,
-          recurrence: t.recurrence,
-          timeoutMinutes: t.timeout_minutes,
-          snoozeMinutes: t.snooze_minutes,
-          postReminderMinutes: t.post_reminder_minutes,
-          reminderIntervals: Array.isArray(t.reminder_intervals) && t.reminder_intervals.length > 0
-            ? (t.reminder_intervals as unknown[])
-                .map((value) => Math.abs(Number(value)))
-                .filter((value) => value > 0)
-            : [10],
-          packs: t.packs,
-          pillsPerPack: t.pills_per_pack,
-          pillsRemaining: t.pills_remaining,
-          lowStockThreshold: t.low_stock_threshold,
-          active: t.active,
-          suspended: t.suspended,
-          photoDrug: t.photo_drug,
-          photoPackage: t.photo_package,
-        }))
-      );
-    } catch (err) {
-      console.error("Errore fetch terapie:", err);
-      onUpdate([]);
-    }
-  };
-
-  fetchAndEmit();
-
-  const channel = supabase
-    .channel(`therapies-${patientId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "therapies",
-        filter: `patient_id=eq.${patientId}`,
-      },
-      () => fetchAndEmit()
-    )
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}
 
 /* =========================================================
    THERAPIES (multi-patient)
