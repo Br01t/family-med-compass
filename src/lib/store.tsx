@@ -4,9 +4,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+
 import { type User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { getUserProfile, type UserProfile } from "./auth-service";
