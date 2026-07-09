@@ -292,7 +292,7 @@ export function AlarmRinger() {
           <Button size="lg" className="h-14 text-lg font-bold" onClick={() => handleAction("confirm")}>
             <Check className="mr-2 size-6" /> Ho preso il farmaco
           </Button>
-          {modal.kind === "due" && (
+          {(modal.kind === "due" || modal.kind === "reminder_post") && (
             <Button
               size="lg"
               variant="outline"
@@ -302,6 +302,7 @@ export function AlarmRinger() {
               <Clock className="mr-2 size-5" /> Rimanda di {therapy?.snoozeMinutes ?? 10} min
             </Button>
           )}
+
           <Button
             size="sm"
             variant="ghost"
