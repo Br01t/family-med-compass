@@ -405,7 +405,9 @@ export function AlarmRinger() {
                 tone={alarmCritical ? "danger" : "primary"}
               />
               <p className="pt-1 text-[11px] text-muted-foreground">
-                Se rimandi, avrai altri {snoozeMin} min, poi {timeoutMin} min per confermare.
+                {alreadySnoozed
+                  ? "Hai già rimandato questa dose: non puoi rimandarla di nuovo."
+                  : `Puoi rimandare UNA sola volta di ${snoozeMin} min. Dopo, la dose sarà segnata come dimenticata.`}
               </p>
             </>
           )}
