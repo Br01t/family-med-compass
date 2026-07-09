@@ -329,18 +329,9 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       try {
         if (user) {
           await saveEventDoc(updatedEvent);
-          // Il decremento delle scorte e la notifica low_stock sono gestiti
-          // dal trigger DB handle_dose_taken (evita doppio scalo).
-          await notifyCaregiversAboutDose({
-            patientId: therapy.patientId,
-            therapyId: therapy.id,
-            eventId: updatedEvent.id,
-            scheduledAt,
-            kind: existingEvent?.status === "snoozed" ? "taken_after_snooze" : "taken",
-            therapyName: therapy.name,
-            patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
-            actor: confirmedBy,
-          });
+          // Decremento scorte, notifiche caregiver e low_stock sono generati
+          // dal trigger DB handle_dose_taken.
+
         } else {
           setLocalData((d) => {
             const nextEvents = existingEvent
