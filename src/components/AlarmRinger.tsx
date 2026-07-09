@@ -7,7 +7,7 @@ import { getPrimedAlarmAudioContext } from "@/lib/alarm-audio";
 
 type ModalNotif = {
   id: string;
-  kind: "reminder_pre" | "due" | "final_due";
+  kind: "reminder_pre" | "due" | "reminder_post" | "final_due";
   title: string;
   message: string | null;
   therapy_id: string | null;
