@@ -430,14 +430,14 @@ export function AlarmRinger() {
           <Button size="lg" className="h-14 text-lg font-bold" onClick={() => handleAction("confirm")} disabled={busy}>
             <Check className="mr-2 size-6" /> Ho preso il farmaco
           </Button>
-          {(modal.kind === "due" || modal.kind === "reminder_post") && (
+          {(modal.kind === "due" || modal.kind === "reminder_post") && !alreadySnoozed && (
             <Button
               size="lg"
               variant="outline"
               className="h-12 font-semibold"
               onClick={() => handleAction("snooze")} disabled={busy}
             >
-              <Clock className="mr-2 size-5" /> Rimanda di {therapy?.snoozeMinutes ?? 10} min
+              <Clock className="mr-2 size-5" /> Rimanda di {snoozeMin} min (ultima volta)
             </Button>
           )}
 
