@@ -227,6 +227,17 @@ export function AlarmRinger() {
     [modal?.event_id],
   );
 
+  // Recupera l'evento per leggere snoozed_until reale (fonte di verità per il
+  // countdown della modale final_due).
+  const eventForModal = useMemo(() => {
+    if (!modal) return undefined;
+    return data.events.find(
+      (e) =>
+        e.therapyId === modal.therapy_id &&
+        Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000,
+    );
+  }, [modal, data.events, scheduledAt]);
+
   // Tick al secondo per aggiornare i countdown
   const [nowTs, setNowTs] = useState<number>(() => Date.now());
   useEffect(() => {
