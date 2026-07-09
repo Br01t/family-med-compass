@@ -36,10 +36,9 @@ function CaregiverHome() {
   const caregiver =
     data.caregivers.find((c) => c.id === data.currentCaregiverId) ??
     data.caregivers[0];
-  const patients = caregiver
-    ? data.patients.filter((p) => caregiver.patientIds.includes(p.id))
-    : data.patients;
+  const patients = data.patients;
   const now = new Date();
+
 
 
   const lowStock = data.therapies.filter(
