@@ -249,19 +249,26 @@ export function AlarmRinger() {
   if (!modal || !isPatient) return null;
 
   const postMin = Math.max(1, Number(therapy?.postReminderMinutes ?? 5));
-  const timeoutMin = Math.max(1, Number(therapy?.timeoutMinutes ?? 10));
-  const snoozeMin = Math.max(1, Number(therapy?.snoozeMinutes ?? 10));
+  // Il rimando dura ESATTAMENTE quanto il postReminderMinutes della terapia,
+  // ed è concesso una sola volta. Dopo lo scadere, la dose è dimenticata.
+  const snoozeMin = postMin;
+  const timeoutMin = snoozeMin;
   const reminderBeforeMin = Math.max(1, Math.abs(therapy?.reminderIntervals?.[0] ?? 10));
+
+  // Ha già rimandato una volta?
+  const alreadySnoozed = Boolean(
+    eventForModal?.snoozedUntil ||
+      eventForModal?.status === "snoozed" ||
+      eventForModal?.timeline?.some((t) => t.kind === "snoozed"),
+  );
 
   const msToScheduled = scheduledAt.getTime() - nowTs;
   const msToPostDeadline = scheduledAt.getTime() + postMin * 60_000 - nowTs;
   const msToMissedDeadline = scheduledAt.getTime() + timeoutMin * 60_000 - nowTs;
-  // Final due: se abbiamo snoozed_until reale, deadline = snoozed_until + timeout.
-  // Altrimenti fallback al tempo di apertura modale + timeout.
+  // Final due: deadline = snoozed_until (nessun timeout extra).
   const snoozedUntilMs = eventForModal?.snoozedUntil
     ? new Date(eventForModal.snoozedUntil).getTime()
     : null;
-  const msFinalDeadline = timeoutMin * 60_000;
   const finalDueStartRef = useRef<number | null>(null);
   if (modal.kind === "final_due" && finalDueStartRef.current === null) {
     finalDueStartRef.current = nowTs;
@@ -270,10 +277,10 @@ export function AlarmRinger() {
     finalDueStartRef.current = null;
   }
   const msFinalRemaining = snoozedUntilMs
-    ? snoozedUntilMs + timeoutMin * 60_000 - nowTs
+    ? snoozedUntilMs - nowTs
     : finalDueStartRef.current !== null
-      ? finalDueStartRef.current + msFinalDeadline - nowTs
-      : msFinalDeadline;
+      ? finalDueStartRef.current + snoozeMin * 60_000 - nowTs
+      : snoozeMin * 60_000;
 
   async function handleAction(action: "confirm" | "snooze" | "skip" | "dismiss") {
     if (!modal || busy) return;
@@ -293,7 +300,7 @@ export function AlarmRinger() {
             await snoozeDose({
               therapyId: therapy.id,
               scheduledAt,
-              minutes: therapy.snoozeMinutes ?? 10,
+              minutes: therapy.postReminderMinutes ?? 5,
             });
           } else if (action === "skip") {
             await skipDose({ therapyId: therapy.id, scheduledAt });
@@ -398,16 +405,18 @@ export function AlarmRinger() {
                 tone={alarmCritical ? "danger" : "primary"}
               />
               <p className="pt-1 text-[11px] text-muted-foreground">
-                Se rimandi, avrai altri {snoozeMin} min, poi {timeoutMin} min per confermare.
+                {alreadySnoozed
+                  ? "Hai già rimandato questa dose: non puoi rimandarla di nuovo."
+                  : `Puoi rimandare UNA sola volta di ${snoozeMin} min. Dopo, la dose sarà segnata come dimenticata.`}
               </p>
             </>
           )}
           {isFinal && (
             <>
               <TimerRow
-                label="Ritardo massimo prima di dimenticata"
+                label="Ultima occasione: confermare ora"
                 value={formatMMSS(msFinalRemaining)}
-                hint={`hai ${timeoutMin} min da adesso`}
+                hint="Allo scadere la dose sarà segnata come dimenticata"
                 tone={alarmCritical ? "danger" : "primary"}
               />
               <p className="pt-1 text-[11px] text-muted-foreground">
@@ -421,14 +430,14 @@ export function AlarmRinger() {
           <Button size="lg" className="h-14 text-lg font-bold" onClick={() => handleAction("confirm")} disabled={busy}>
             <Check className="mr-2 size-6" /> Ho preso il farmaco
           </Button>
-          {(modal.kind === "due" || modal.kind === "reminder_post") && (
+          {(modal.kind === "due" || modal.kind === "reminder_post") && !alreadySnoozed && (
             <Button
               size="lg"
               variant="outline"
               className="h-12 font-semibold"
               onClick={() => handleAction("snooze")} disabled={busy}
             >
-              <Clock className="mr-2 size-5" /> Rimanda di {therapy?.snoozeMinutes ?? 10} min
+              <Clock className="mr-2 size-5" /> Rimanda di {snoozeMin} min (ultima volta)
             </Button>
           )}
 

@@ -454,6 +454,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       try {
         if (user) {
           await saveEventDoc(updatedEvent);
+          const patientName = patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente";
           await notifyCaregiversAboutDose({
             patientId: therapy.patientId,
             therapyId: therapy.id,
@@ -461,8 +462,24 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
             scheduledAt,
             kind: "skipped",
             therapyName: therapy.name,
-            patientName: patients.find((p) => p.id === therapy.patientId)?.name ?? "Paziente",
+            patientName,
           });
+          // Notifica anche il paziente stesso: dose saltata, sarà contattato.
+          const patient = patients.find((p) => p.id === therapy.patientId);
+          if (patient?.userId) {
+            const scheduledLabel = scheduledAt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+            await insertNotificationDoc({
+              targetUserId: patient.userId,
+              kind: "skipped",
+              severity: "warning",
+              title: `Hai saltato ${therapy.name}`,
+              message: `La dose delle ${scheduledLabel} è stata segnata come saltata. Probabilmente verrai contattato da un familiare.`,
+              patientId: therapy.patientId,
+              therapyId: therapy.id,
+              eventId: updatedEvent.id,
+              doseKey: `${therapy.id}@${scheduledAt.toISOString()}@skipped@patient`,
+            });
+          }
         } else {
           setLocalData((d) => {
             const nextEvents = existingEvent

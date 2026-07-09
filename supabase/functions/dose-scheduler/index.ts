@@ -270,10 +270,15 @@ Deno.serve(async (req) => {
   for (const ev of (pendingEvents ?? []) as any[]) {
     const th = ev.therapies; const pt = ev.patients;
     const timeoutMin = Number(th?.timeout_minutes ?? 10);
+    const postMin = Math.max(1, Number(th?.post_reminder_minutes ?? 5));
     const scheduledMs = new Date(ev.scheduled_at).getTime();
     const snoozeDeadline = ev.snoozed_until ? new Date(ev.snoozed_until).getTime() : null;
+    // Regola: se la dose è stata rimandata, la deadline finale è ESATTAMENTE
+    // snoozed_until (nessun grace period aggiuntivo — il rimando è unico e
+    // dura quanto postReminderMinutes). Se non è stata rimandata, si applica
+    // il timeoutMinutes classico dall'orario schedulato.
     const hardDeadline = snoozeDeadline
-      ? snoozeDeadline + timeoutMin * 60_000
+      ? snoozeDeadline
       : scheduledMs + timeoutMin * 60_000;
     if (now.getTime() < hardDeadline) continue;
 
