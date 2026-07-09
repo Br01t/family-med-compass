@@ -244,25 +244,112 @@ export function subscribeTherapies(
 }
 
 /* =========================================================
-   EVENTS
+   THERAPIES (multi-patient)
 ========================================================= */
 
-export function subscribeEvents(
-  patientId: string,
-  onUpdate: (events: MedicationEvent[]) => void
+export function subscribeTherapiesForPatients(
+  patientIds: string[],
+  onUpdate: (therapies: Therapy[]) => void,
 ): () => void {
   if (!supabase) return () => {};
-  if (!patientId) return () => {};
+  if (!patientIds || patientIds.length === 0) {
+    onUpdate([]);
+    return () => {};
+  }
+  const ids = [...patientIds].sort();
 
   const fetchAndEmit = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabase!
+        .from("therapies")
+        .select("*")
+        .in("patient_id", ids);
+      if (error) throw error;
+      onUpdate(
+        (data || []).map((t) => ({
+          id: t.id,
+          patientId: t.patient_id,
+          name: t.name,
+          dosage: t.dosage,
+          quantity: t.quantity,
+          category: t.category,
+          color: t.color,
+          icon: t.icon,
+          notes: t.notes,
+          startDate: t.start_date,
+          endDate: t.end_date,
+          times: t.times,
+          recurrence: t.recurrence,
+          timeoutMinutes: t.timeout_minutes,
+          snoozeMinutes: t.snooze_minutes,
+          postReminderMinutes: t.post_reminder_minutes,
+          reminderIntervals: Array.isArray(t.reminder_intervals) && t.reminder_intervals.length > 0
+            ? (t.reminder_intervals as unknown[])
+                .map((value) => Math.abs(Number(value)))
+                .filter((value) => value > 0)
+            : [10],
+          packs: t.packs,
+          pillsPerPack: t.pills_per_pack,
+          pillsRemaining: t.pills_remaining,
+          lowStockThreshold: t.low_stock_threshold,
+          active: t.active,
+          suspended: t.suspended,
+          photoDrug: t.photo_drug,
+          photoPackage: t.photo_package,
+        })),
+      );
+    } catch (err) {
+      console.error("Errore fetch terapie:", err);
+      onUpdate([]);
+    }
+  };
+
+  fetchAndEmit();
+
+  const channel = supabase
+    .channel(`therapies-multi-${ids.join(",")}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "therapies" },
+      (payload) => {
+        const pid = (payload.new as any)?.patient_id ?? (payload.old as any)?.patient_id;
+        if (!pid || ids.includes(pid)) fetchAndEmit();
+      },
+    )
+    .subscribe();
+
+  return () => { supabase!.removeChannel(channel); };
+}
+
+export function subscribeTherapies(
+  patientId: string,
+  onUpdate: (therapies: Therapy[]) => void,
+): () => void {
+  return subscribeTherapiesForPatients(patientId ? [patientId] : [], onUpdate);
+}
+
+/* =========================================================
+   EVENTS (multi-patient)
+========================================================= */
+
+export function subscribeEventsForPatients(
+  patientIds: string[],
+  onUpdate: (events: MedicationEvent[]) => void,
+): () => void {
+  if (!supabase) return () => {};
+  if (!patientIds || patientIds.length === 0) {
+    onUpdate([]);
+    return () => {};
+  }
+  const ids = [...patientIds].sort();
+
+  const fetchAndEmit = async () => {
+    try {
+      const { data, error } = await supabase!
         .from("events")
         .select("*")
-        .eq("patient_id", patientId);
-
+        .in("patient_id", ids);
       if (error) throw error;
-
       onUpdate(
         (data || []).map((e) => ({
           id: e.id,
@@ -275,7 +362,7 @@ export function subscribeEvents(
           snoozedUntil: e.snoozed_until,
           note: e.note,
           timeline: e.timeline,
-        }))
+        })),
       );
     } catch (err) {
       console.error("Errore fetch eventi:", err);
@@ -286,23 +373,27 @@ export function subscribeEvents(
   fetchAndEmit();
 
   const channel = supabase
-    .channel(`events-${patientId}`)
+    .channel(`events-multi-${ids.join(",")}`)
     .on(
       "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "events",
-        filter: `patient_id=eq.${patientId}`,
+      { event: "*", schema: "public", table: "events" },
+      (payload) => {
+        const pid = (payload.new as any)?.patient_id ?? (payload.old as any)?.patient_id;
+        if (!pid || ids.includes(pid)) fetchAndEmit();
       },
-      () => fetchAndEmit()
     )
     .subscribe();
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
+  return () => { supabase!.removeChannel(channel); };
 }
+
+export function subscribeEvents(
+  patientId: string,
+  onUpdate: (events: MedicationEvent[]) => void,
+): () => void {
+  return subscribeEventsForPatients(patientId ? [patientId] : [], onUpdate);
+}
+
 
 /* =========================================================
    NOTIFICATIONS
