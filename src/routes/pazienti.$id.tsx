@@ -32,7 +32,14 @@ export const Route = createFileRoute("/pazienti/$id")({
 function PatientDetail() {
   const { id } = Route.useParams();
   const { data } = useFamilyMed();
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((v) => v + 1), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  void tick;
   const patient = data.patients.find((p) => p.id === id);
+
   if (!patient) {
     return (
       <AppShell title="Paziente non trovato">
