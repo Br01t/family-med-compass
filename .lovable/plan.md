@@ -1,99 +1,115 @@
-# Piano — Notifiche affidabili, calendario, badge
+# Refactor notifiche: da push a modali in-app + calendario
 
-## 1. Diagnosi: perché le push della terapia non arrivano
+## Obiettivi
+1. Zero notifiche push (paziente e caregiver).
+2. Paziente: reminder / conferma / conferma-post-snooze come **modali nella dashboard**.
+3. Caregiver: solo centro notifiche (nessun push); notifica letta = archiviata.
+4. Calendario: 1 evento per orario con `RRULE`, senza foto, con link che riapre l'app.
+5. Sessione utente persistente fino a logout esplicito.
 
-Il push di test funziona → VAPID, subscription e `push-sender` sono OK.
-Le push generate da `dose-scheduler` no. Le cause probabili sono due, e vanno verificate entrambe con una query SQL sul tuo Supabase prima di toccare il codice:
+---
 
-```sql
--- (a) il cron è davvero schedulato?
-select jobname, schedule, active from cron.job;
--- (b) sta girando davvero ogni minuto e con che esito?
-select status, return_message, start_time
-from cron.job_run_details
-where jobname = 'familymed-dose-scheduler'
-order by start_time desc limit 20;
--- (c) ci sono subscription per il paziente e per il caregiver?
-select user_id, endpoint, user_agent from public.push_subscriptions;
--- (d) le dosi vengono generate?
-select id, therapy_id, scheduled_at, status, stage
-from public.events order by scheduled_at desc limit 20;
-```
+## 1. Rimozione push
 
-In base al risultato correggo:
+**Frontend**
+- Eliminati: `src/lib/push-subscription.ts`, `src/hooks/use-app-badge.ts`, `src/hooks/use-notification-toasts.ts`, `public/sw.js` (o ridotto a shell PWA senza `push`/`notificationclick`), `public/icons/badge-caregiver.png`, `src/lib/vapid.ts`.
+- Rimosse le chiamate a registrazione SW/push da `AppShell.tsx`, `PatientShell.tsx`, `impostazioni.tsx`.
+- Manifest PWA resta (install banner OK), ma senza permesso Notifiche.
 
-- se (a) è vuoto → il cron non è mai stato creato davvero, ti ridò il comando esatto con i tuoi valori
-- se (b) mostra 4xx/5xx → sistemo l'invocazione (URL / apikey / body)
-- se (c) mostra solo il paziente Android → il caregiver PC non è iscritto (bisogna cliccare "Attiva notifiche" anche da PC — al momento probabilmente non l'hai fatto perché non è chiaro)
-- se (d) è vuoto → problema nella generazione (recurrence / date), lo aggiusto
+**Edge functions**
+- `push-sender` → cancellata (`supabase--delete_edge_functions`).
+- `dose-scheduler` → rimosso ogni `sendPush(...)`; continua a scrivere solo righe in `notifications` e ad avanzare gli `events.stage/status`.
+- `dose-action` → non più chiamata dal SW; l'endpoint viene rimosso (le azioni paziente ora passano dal client autenticato con RLS).
 
-Questo passaggio va fatto per primo, prima di aggiungere feature — altrimenti rischiamo di ricostruire su una base rotta.
+**DB**
+- Migrazione: `DROP TABLE public.push_subscriptions` (+ policy).
+- Nessun'altra modifica di schema.
 
-## 2. Notifiche caregiver realtime e distinte
+---
 
-Oggi:
+## 2. Modali paziente nella dashboard
 
-- il caregiver riceve notifiche solo se `dose-scheduler` gira e solo con lo stesso stile del paziente
-- quando il paziente conferma/rimanda, il trigger DB `handle_dose_taken` scrive solo la riga in `notifications` ma **non manda push** → il caregiver non riceve niente in tempo reale
+Nuovo componente `src/components/DoseModal.tsx` renderizzato in `paziente.tsx`. Un solo modale attivo alla volta, priorità: `final_due` > `due` > `reminder_pre`.
 
-Modifiche:
+Trigger: polling ogni 15s sugli `events` del paziente + realtime `postgres_changes` sulla tabella `events` filtrato per `patient_id`.
 
-- in `dose-action` (funzione già chiamata da paziente / dal SW): dopo il cambio di stato della dose (`taken` / `snoozed`), chiamare direttamente `push-sender` per ogni caregiver del paziente, così la notifica al caregiver è immediata e non deve aspettare il prossimo giro di cron
-- stile visivo distinto per il caregiver, sia in push che in-app:
-  - prefisso titolo `👨‍👩‍👧 [Familiare]` per il caregiver, `💊 [Terapia]` per il paziente
-  - icona badge diversa (`/icons/badge-caregiver.png` vs `/icons/badge-patient.png` — genero le 2 immagini)
-  - `tag` diverso così non si sovrascrivono a vicenda
-  - suono/vibrazione più discreta per il caregiver (nessun `requireInteraction`, vibrate corto), sveglia solo per il paziente
-- realtime in-app: sottoscrivere `postgres_changes` sulla tabella `notifications` filtrata per `target_user_id = auth.uid()` per mostrare un toast immediato in app (paziente + caregiver) anche quando la push arriva o si perde
+Stati mostrati:
+- **reminder_pre**: "Tra N minuti: <farmaco>". Bottoni: *Ho capito* (chiude), *Posticipa* (disabilitato se `now < scheduled_at`).
+- **due**: "È ora di <farmaco>". Bottoni: *Ho preso* / *Rimanda N min* / *Salta*. Attivi solo da `scheduled_at`.
+- **final_due** (post-snooze): "Ultima chiamata". Solo *Ho preso* / *Salta*.
 
-## 3. Aggiungi al calendario (.ics) con immagini
+Dismiss: il modale si può chiudere solo dopo un'azione, oppure con "Ricordamelo tra poco" (riappare al prossimo tick).
 
-`src/lib/ics.ts` esiste già ma non è esposto in UI. Aggiungo:
+**Timeline dashboard** (`paziente.tsx`):
+- Ordinamento decrescente per `scheduled_at` (più recenti in alto).
+- La card di una dose diventa "attiva" (evidenziata, azioni abilitate) quando `now >= scheduled_at` e `status ∈ {scheduled, snoozed}`.
+- Le azioni sulla card producono lo stesso effetto del modale.
 
-- pulsante **"Aggiungi al calendario"** nella card di ogni terapia in `src/routes/le-mie-terapie.tsx` (vista paziente) e in `src/routes/pazienti.$id.tsx` (vista caregiver)
-- nel `.ics` includo nella `DESCRIPTION`:
-  - farmaco, dosaggio, quantità, note
-  - **URL assoluto delle foto** del farmaco / confezione (Google Calendar Android mostra il link cliccabile; gli allegati binari `ATTACH` non sono supportati da tutti i client, quindi il link è la strada più affidabile — te l'avevo confermato nella domanda)
-  - `VALARM` a 0 min e uno aggiuntivo `-PT10M` (allineato al primo `reminder_intervals`) così il calendario suona anche se le push del server non partono
-- il file `.ics` si apre nativamente su Android → apre Google Calendar / Samsung Calendar con l'evento ricorrente pre-compilato
+**Rimosse le azioni dal centro notifiche paziente**: `/notifiche` per il paziente diventa storico read-only.
 
-## 4. Badge sull'icona dell'app (PWA installata)
+---
 
-Uso la [Badging API](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/setAppBadge) (supportata da Chrome Android quando la PWA è installata):
+## 3. Caregiver: notifiche "read = done"
 
-- hook `useAppBadge()` che tiene sincronizzato `navigator.setAppBadge(n)` con il conteggio delle notifiche non lette dell'utente loggato (query su `notifications` filtrata `read=false` + realtime)
-- reset con `navigator.clearAppBadge()` quando l'utente entra in `/notifiche`
-- funziona su Android per PWA installate; su desktop Chrome funziona solo se installata; su iOS non è supportato — mostro comunque il badge in-app come fallback
+- `notifications` ha già `read_at`. Regola nuova: appena il caregiver apre `/notifiche`, tutte le righe non lette vengono marcate `read_at = now()`.
+- La lista mostra **solo** `read_at IS NULL` (default) + toggle "Mostra storico".
+- Rimosso il badge/counter permanente; il conteggio si azzera all'apertura.
+- Nessun toast, nessun push, nessun re-prompt.
 
-## 5. Notifiche in-app più visibili
+---
 
-- nella navbar (`AppShell` / `PatientShell`): pallino rosso con contatore sull'icona 🔔 "Notifiche", legato allo stesso contatore del badge
-- toast realtime (via sonner, già presente) quando arriva un nuovo record in `notifications`, con colore diverso per severity (`info` / `warning` / `alert`) e prefisso ruolo
-- pagina `/notifiche`: raggruppa per giorno, header per severity, marca come lette al click, pulsante "segna tutte come lette"
+## 4. Calendario (ICS) senza foto, con link app
 
-## 6. Cose che potresti dover fare tu manualmente
+`src/lib/ics.ts`:
+- Rimossi `ATTACH` e `URL` che puntano alle foto.
+- `URL:` = deep link all'app: `https://<app-origin>/paziente?therapy=<id>` (caregiver: `/pazienti/<id>?therapy=<id>`).
+- `DESCRIPTION` include solo: nome, dosaggio, quantità, note, e in fondo "Apri in FamilyMed: <url>".
+- Ricorrenza: già `RRULE` (daily / weekly / interval / byday) → resta 1 `VEVENT` per orario, non uno per giorno. Aggiunto `COUNT`/`UNTIL` corretto per `endDate`.
+- Rimossi i due `VALARM` (il calendario nativo gestisce già i propri promemoria).
+- Pulsante "Aggiungi al calendario" già presente in `le-mie-terapie` + esposto anche in `pazienti.$id` per il caregiver.
 
-- **Solo la prima volta**: eseguire la query diagnostica al §1 e incollarmi il risultato — così capiamo se il problema è il cron, le subscription o la generazione dosi, e sistemo di conseguenza
-- iscrivere anche il browser del **caregiver su PC** cliccando "Attiva notifiche" nella pagina Impostazioni (oggi probabilmente hai iscritto solo l'Android del paziente — è il motivo principale per cui sul PC non arriva niente)
-- reinstallare la PWA su Android dopo il deploy per attivare il badge sull'icona (Android cache la registrazione al primo install)
+---
 
-## File toccati
+## 5. Sessione persistente
 
-- `src/lib/push-subscription.ts` — nessuna modifica, già ok
-- `supabase/functions/dose-action/index.ts` — push immediata al caregiver dopo azione paziente
-- `supabase/functions/dose-scheduler/index.ts` — stile push distinto caregiver/paziente
-- `src/lib/ics.ts` — includi URL foto e VALARM extra
-- `src/routes/le-mie-terapie.tsx`, `src/routes/pazienti.$id.tsx`, `src/routes/terapie.tsx` — pulsante "Aggiungi al calendario"
-- `src/hooks/use-app-badge.ts` — nuovo, sincronizza Badging API
-- `src/hooks/use-realtime-notifications.ts` — nuovo, toast + refresh contatore
-- `src/components/AppShell.tsx`, `src/components/PatientShell.tsx` — badge sulla voce Notifiche
-- `src/routes/notifiche.tsx` — raggruppamento per giorno, mark-as-read
-- `src/assets/badge-*.png` — 2 icone badge generate
+`src/integrations/supabase/client.ts` è auto-generato, ma la persistenza dipende dal fatto che Supabase JS usa già `localStorage` con `persistSession: true` di default → la sessione **è già persistente**. Verifiche da fare:
+- Nessun `signOut()` involontario in `AppShell` / `RequireAuth` / route guards → rimuovere eventuali auto-logout su focus/visibility.
+- `_authenticated/route.tsx` (integration-managed) fa `supabase.auth.getUser()` client-side, quindi la sessione salvata è sufficiente per non ripassare da `/auth`.
+- Aggiunto solo un listener `onAuthStateChange` per invalidare le query quando l'utente fa logout esplicito.
 
-## Ordine di esecuzione (una volta approvato)
+---
 
-1. Chiedo il risultato della query diagnostica → sistemo la causa
-2. Push caregiver immediata da `dose-action` + stile distinto
-3. Realtime in-app + badge navbar
-4. Badging API su icona
-5. Pulsante calendario .ics con foto
+## 6. Cron / dose-scheduler
+Resta schedulato ogni minuto perché serve ancora per:
+- generare le righe `events` future,
+- avanzare `stage` (`due`, `final_due`, `missed`),
+- scrivere le righe in `notifications` per il caregiver.
+Solo eliminata la parte di invio push.
+
+---
+
+## File toccati (sintesi)
+
+| File | Azione |
+|---|---|
+| `supabase/functions/push-sender/*` | delete |
+| `supabase/functions/dose-action/*` | delete |
+| `supabase/functions/dose-scheduler/index.ts` | rimuovi push, mantieni notifications |
+| `supabase/migrations/<new>.sql` | drop `push_subscriptions` |
+| `src/lib/push-subscription.ts`, `src/lib/vapid.ts` | delete |
+| `src/hooks/use-app-badge.ts`, `src/hooks/use-notification-toasts.ts` | delete |
+| `public/sw.js` | ridotto o rimosso |
+| `src/components/DoseModal.tsx` | **new** |
+| `src/routes/paziente.tsx` | timeline ordinata + modale + realtime, no push |
+| `src/routes/notifiche.tsx` | mark-read on view, filtro `unread`, no azioni per paziente |
+| `src/components/AppShell.tsx`, `PatientShell.tsx` | rimozione hook push |
+| `src/routes/impostazioni.tsx` | rimossa sezione "Notifiche push" |
+| `src/lib/ics.ts` | no foto, no VALARM, URL = deep link, RRULE con UNTIL |
+| `src/routes/pazienti.$id.tsx` | bottone "Aggiungi al calendario" |
+
+Nessuna modifica alle tabelle esistenti a parte il drop di `push_subscriptions`.
+
+---
+
+## Domanda aperta
+Per il modale paziente: quando l'utente **chiude l'app** e la riapre 30 min dopo, vuoi che il modale della dose passata (non confermata, non ancora `missed`) si ripresenti al rientro, oppure solo la card "attiva" evidenziata in timeline senza modale automatico? Default proposto: **sì, il modale si ripresenta** finché lo stato è `due`/`final_due`.
