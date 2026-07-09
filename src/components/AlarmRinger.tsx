@@ -414,9 +414,9 @@ export function AlarmRinger() {
           {isFinal && (
             <>
               <TimerRow
-                label="Ritardo massimo prima di dimenticata"
+                label="Ultima occasione: confermare ora"
                 value={formatMMSS(msFinalRemaining)}
-                hint={`hai ${timeoutMin} min da adesso`}
+                hint="Allo scadere la dose sarà segnata come dimenticata"
                 tone={alarmCritical ? "danger" : "primary"}
               />
               <p className="pt-1 text-[11px] text-muted-foreground">
