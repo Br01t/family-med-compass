@@ -1,135 +1,79 @@
 ## Obiettivo
-Rendere completo il centro notifiche in-app (paziente + caregiver), notificare al caregiver anche le azioni del paziente (confermata / rimandata / saltata / dimenticata / scorta bassa), e far apparire il contatore "Alert attivi" nella dashboard caregiver — che torna a 0 quando le notifiche vengono viste in `/notifiche`.
 
-## Diagnosi
-- Il centro notifiche legge già `notifications` con realtime (`subscribeNotifications`) e auto-marca lette all'apertura di `/notifiche`.
-- Il badge "Alert attivi" già mostra `notifications.filter(n => !n.read && n.severity !== "info").length`, quindi torna a 0 dopo l'apertura del centro notifiche.
-- La funzione `handle_dose_taken` esiste nel DB **ma non ha un trigger collegato** (`db-triggers: There are no triggers`) → nessuna notifica di "confermata" e "scorta bassa" viene mai generata.
-- Non esiste alcuna logica DB per notificare al caregiver quando il paziente **rimanda** o **salta** una dose (le azioni oggi aggiornano solo `events` lato client).
-- Le notifiche `missed` e le `reminder_pre / due / reminder_post / final_due` sono già generate dalla edge `dose-scheduler` → basta assicurarsi che il cron sia attivo.
+Rendere le notifiche di caregiver e paziente coerenti, chiare e complete, con timer visibili nelle modali del paziente.
 
-## Cosa cambia lato codice (frontend)
-- `src/routes/caregiver.tsx`: piccolo aggiustamento al calcolo "Alert attivi" per includere esplicitamente i `kind` che contano come alert (`missed`, `final_due`, `snoozed`, `skipped`, `low_stock`, `reminder_post`) invece di basarsi solo su `severity !== "info"`, così il numero è coerente con la richiesta.
-- Nessun'altra modifica: subscribe realtime + auto-mark-read già funzionano.
+## 1. Notifiche caregiver — semplificazione
 
-## Cosa devi eseguire sul tuo DB Supabase esterno
+Oggi il caregiver riceve un mix di notifiche dallo scheduler (`reminder_pre`, `due`, `reminder_post`, `final_due`, `missed`) e dai trigger DB (`taken`, `snoozed`, `skipped`, `missed`, `low_stock`) con titoli/messaggi inconsistenti.
 
-### 1) Migration SQL — trigger sulle azioni delle dosi
-Da eseguire una volta nell'SQL editor. È idempotente.
+Nuova regola: per ogni dose il caregiver vede **esattamente le stesse notifiche del paziente** + **una notifica per ogni azione del paziente** sulla relativa modale.
 
-```sql
--- A) Trigger per "taken" (usa la funzione handle_dose_taken già esistente)
-DROP TRIGGER IF EXISTS trg_dose_taken ON public.events;
-CREATE TRIGGER trg_dose_taken
-AFTER UPDATE OF status ON public.events
-FOR EACH ROW
-WHEN (NEW.status = 'taken' AND (OLD.status IS DISTINCT FROM 'taken'))
-EXECUTE FUNCTION public.handle_dose_taken();
+- Notifiche "specchio" del paziente (dallo scheduler, invariato ma con testo caregiver-friendly):
+  - `reminder_pre` — "Tra N min: {paziente} deve prendere {farmaco}"
+  - `due` — "{paziente} deve prendere ora {farmaco}"
+  - `reminder_post` — "{paziente} non ha ancora preso {farmaco}"
+  - `final_due` — "Ultima chiamata per {paziente}: {farmaco}"
+  - `missed` — "{paziente} non ha preso {farmaco} (dimenticata)"
+- Notifiche azione del paziente (dai trigger DB):
+  - `taken` — "{paziente} ha confermato {farmaco}"
+  - `taken_after_snooze` — "{paziente} ha confermato dopo rimando"
+  - `snoozed` — "{paziente} ha rimandato {farmaco} di N min"
+  - `skipped` — "{paziente} ha rifiutato {farmaco}"
+- Rimosso: `low_stock` dal flusso dose (rimane come alert separato, non per ogni dose).
 
--- B) Nuova funzione: notifica caregiver su snoozed / skipped / missed
-CREATE OR REPLACE FUNCTION public.handle_dose_status_change()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_therapy public.therapies%rowtype;
-  v_patient public.patients%rowtype;
-  v_caregiver uuid;
-  v_kind text; v_sev text; v_title text; v_msg text;
-BEGIN
-  IF NEW.status = OLD.status THEN RETURN NEW; END IF;
-  IF NEW.status NOT IN ('snoozed','skipped','missed') THEN RETURN NEW; END IF;
+Il testo di ogni notifica dirà chiaramente **a quale modale/evento si riferisce l'azione** (es. "in risposta al reminder delle 08:00").
 
-  SELECT * INTO v_therapy FROM public.therapies WHERE id = NEW.therapy_id;
-  SELECT * INTO v_patient FROM public.patients  WHERE id = NEW.patient_id;
+## 2. Notifiche paziente — completezza
 
-  IF NEW.status = 'snoozed' THEN
-    v_kind := 'snoozed'; v_sev := 'warning';
-    v_title := v_patient.name || ' ha rimandato ' || v_therapy.name;
-    v_msg   := 'Dose delle ' || to_char(NEW.scheduled_at AT TIME ZONE 'Europe/Rome','HH24:MI') || ' rimandata.';
-  ELSIF NEW.status = 'skipped' THEN
-    v_kind := 'skipped'; v_sev := 'alert';
-    v_title := v_patient.name || ' ha saltato ' || v_therapy.name;
-    v_msg   := 'Dose delle ' || to_char(NEW.scheduled_at AT TIME ZONE 'Europe/Rome','HH24:MI') || ' rifiutata.';
-  ELSE  -- missed
-    v_kind := 'missed'; v_sev := 'alert';
-    v_title := v_patient.name || ' non ha preso ' || v_therapy.name;
-    v_msg   := 'Dose delle ' || to_char(NEW.scheduled_at AT TIME ZONE 'Europe/Rome','HH24:MI') || ' dimenticata.';
-  END IF;
+Oggi il paziente riceve `reminder_pre`, `due`, `reminder_post`, `final_due`, `missed` come modali. `AlarmRinger` le marca **subito come lette** → nel centro notifiche non compaiono più tra le "nuove".
 
-  FOR v_caregiver IN
-    SELECT caregiver_id FROM public.caregiver_patients WHERE patient_id = NEW.patient_id
-  LOOP
-    INSERT INTO public.notifications
-      (target_user_id, kind, severity, title, message, patient_id, therapy_id, event_id, dose_key)
-    VALUES
-      (v_caregiver, v_kind, v_sev, v_title, v_msg,
-       NEW.patient_id, NEW.therapy_id, NEW.id,
-       NEW.therapy_id || '@' || NEW.scheduled_at::text || '@' || v_kind || '@cg@' || v_caregiver)
-    ON CONFLICT DO NOTHING;
-  END LOOP;
+Modifiche:
+- `AlarmRinger` non marca più `read=true` all'apertura della modale. Marca `read=true` solo quando l'utente clicca un'azione (conferma / rimanda / salta / ho capito) o quando la modale viene sostituita da una successiva della stessa dose.
+- Il centro notifiche del paziente mostra quindi tutte le tappe: `reminder_pre`, `due`, `reminder_post`, `final_due`, `missed`, oltre a `taken` / `snoozed` / `skipped` inserite dai trigger.
+- Notifica `missed` al paziente: quando lo scheduler segna una dose `missed`, il testo per il paziente diventa: *"Non hai confermato la dose delle HH:MM di {farmaco}. È stata segnata come dimenticata: probabilmente verrai contattato da un familiare."* (già inserita da `notifyBoth`, ma serve testo dedicato).
 
-  -- Eco al paziente (per storico personale) solo su skipped/missed
-  IF NEW.status IN ('skipped','missed') AND v_patient.user_id IS NOT NULL THEN
-    INSERT INTO public.notifications
-      (target_user_id, kind, severity, title, message, patient_id, therapy_id, event_id, dose_key)
-    VALUES
-      (v_patient.user_id, v_kind, v_sev,
-       CASE WHEN NEW.status='missed' THEN 'Cura dimenticata: '||v_therapy.name
-            ELSE 'Hai saltato '||v_therapy.name END,
-       'Dose delle ' || to_char(NEW.scheduled_at AT TIME ZONE 'Europe/Rome','HH24:MI'),
-       NEW.patient_id, NEW.therapy_id, NEW.id,
-       NEW.therapy_id || '@' || NEW.scheduled_at::text || '@' || v_kind || '@patient')
-    ON CONFLICT DO NOTHING;
-  END IF;
+## 3. Modali con timer visibili
 
-  RETURN NEW;
-END;
-$$;
+Nelle modali `AlarmRinger` del paziente aggiungere un pannello "Tempi della dose" sempre visibile con countdown live:
 
-DROP TRIGGER IF EXISTS trg_dose_status_change ON public.events;
-CREATE TRIGGER trg_dose_status_change
-AFTER UPDATE OF status ON public.events
-FOR EACH ROW
-EXECUTE FUNCTION public.handle_dose_status_change();
+- **Reminder pre** — mostra "Mancano MM:SS all'orario della dose (HH:MM)".
+- **Due / Reminder post** — mostra tre timer:
+  1. "Preavviso: N min" (informativo, statico)
+  2. "Tempo per confermare la dose: MM:SS" (countdown fino a `scheduled_at + post_reminder_minutes`, poi passa a `reminder_post`)
+  3. "Ritardo massimo prima di dimenticata: MM:SS" (countdown fino a `scheduled_at + timeout_minutes`)
+- **Final due** — mostra "Ritardo massimo: MM:SS" (countdown fino a `snoozed_until + timeout_minutes`), con avviso in rosso quando <2 min.
 
--- C) Assicura vincolo di deduplica sulle notifiche (necessario per ON CONFLICT)
-CREATE UNIQUE INDEX IF NOT EXISTS notifications_dose_key_target_uniq
-  ON public.notifications (target_user_id, dose_key)
-  WHERE dose_key IS NOT NULL;
-```
+I countdown si aggiornano ogni secondo con `setInterval`.
 
-### 2) Edge function `dose-scheduler`
-Nessuna modifica: la versione già in `supabase/functions/dose-scheduler/index.ts` copre `reminder_pre`, `due`, `reminder_post`, `final_due`, `missed` con `notifyBoth`. Basta essere sicuri che sia deployata.
+## 4. Cosa devi fare tu sul DB Supabase esterno
 
-### 3) Cron job (pg_cron) — ogni minuto
-Se non l'hai già impostato o vuoi ricrearlo:
+Ti serve un **nuovo file SQL** `MIGRATION_notifications_v2.sql` da eseguire una volta, che:
 
-```sql
-CREATE EXTENSION IF NOT EXISTS pg_cron;
-CREATE EXTENSION IF NOT EXISTS pg_net;
+- Aggiorna `handle_dose_taken()` per distinguere `taken` vs `taken_after_snooze` (in base a `OLD.status = 'snoozed'`) e rimuovere la generazione di `low_stock` come notifica per dose (spostata in evento separato o disattivata).
+- Aggiorna `handle_dose_status_change()` per generare per il **caregiver** anche testo che referenzia la modale ("in risposta al reminder delle HH:MM").
+- Aggiorna la funzione per generare la notifica `snoozed` per il caregiver includendo i minuti di rimando.
+- Aggiunge una migration idempotente che ricrea trigger `trg_dose_taken` e `trg_dose_status_change` senza duplicarli.
 
-SELECT cron.unschedule('dose-scheduler-every-minute')
-WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname='dose-scheduler-every-minute');
+Nessuna modifica a schema tabelle. Nessuna nuova edge function. Il cron esistente (`dose-scheduler-every-minute`) resta invariato.
 
-SELECT cron.schedule(
-  'dose-scheduler-every-minute',
-  '* * * * *',
-  $$
-  SELECT net.http_post(
-    url := 'https://acnkryjihmhwgwnostvs.functions.supabase.co/dose-scheduler',
-    headers := '{"Content-Type":"application/json","Authorization":"Bearer <TUO_SUPABASE_ANON_KEY>"}'::jsonb,
-    body := '{}'::jsonb
-  );
-  $$
-);
-```
+## 5. Edge function `dose-scheduler`
 
-Sostituisci `<TUO_SUPABASE_ANON_KEY>` con la anon key del tuo progetto esterno.
+Piccole modifiche di testo:
+- Testo `missed` per paziente esplicita "probabilmente verrai contattato da un familiare".
+- Testi caregiver riformulati per essere allineati a quelli del paziente (specchio).
 
-## Risultato atteso
-- Paziente: riceve nel centro notifiche `reminder_pre`, `due`, `reminder_post`, `final_due`, `missed`, `skipped` (dai trigger + scheduler).
-- Caregiver: riceve `reminder_pre`, `due`, `reminder_post`, `final_due` dallo scheduler + `taken`, `low_stock`, `snoozed`, `skipped`, `missed` dai trigger DB.
-- Dashboard caregiver: "Alert attivi" mostra il numero di notifiche non lette rilevanti; aprendo `/notifiche` vengono marcate come lette (già implementato) e il contatore torna a 0 in tempo reale via realtime.
+Da ridistribuire con `supabase functions deploy dose-scheduler`.
+
+## Dettagli tecnici (per riferimento)
+
+File modificati:
+- `src/components/AlarmRinger.tsx` — rimosso auto-mark-as-read, aggiunto pannello timer con countdown.
+- `MIGRATION_notifications_v2.sql` — nuovo file con aggiornamento funzioni + trigger.
+- `supabase/functions/dose-scheduler/index.ts` — testi aggiornati.
+- (nessuna modifica a `caregiver.tsx` / `notifiche.tsx`: già mostrano tutte le kind).
+
+## Deliverables per te (utente, DB esterno)
+
+1. Eseguire `MIGRATION_notifications_v2.sql` nel SQL editor del tuo Supabase.
+2. Ridispiegare la edge function `dose-scheduler`.
+3. Nessuna modifica al cron.

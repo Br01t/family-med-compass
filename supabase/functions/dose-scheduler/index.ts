@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
       severity: "info",
       patientTitle: `Tra ${before} min: ${th?.name ?? "farmaco"}`,
       patientBody: `Alle ${romeHM(ev.scheduled_at)} — ${th?.dosage ?? ""}`,
-      caregiverTitle: `${pt?.name ?? "Paziente"} — tra ${before} min: ${th?.name ?? "farmaco"}`,
+      caregiverTitle: `Tra ${before} min: ${pt?.name ?? "paziente"} deve prendere ${th?.name ?? "il farmaco"}`,
       caregiverBody: `Alle ${romeHM(ev.scheduled_at)} — ${th?.dosage ?? ""}`,
     });
   }
@@ -212,8 +212,8 @@ Deno.serve(async (req) => {
       severity: "warning",
       patientTitle: `È ora: ${th?.name ?? "farmaco"}`,
       patientBody: `${th?.quantity ?? 1} unità — ${th?.dosage ?? ""}`,
-      caregiverTitle: `${pt?.name ?? "Paziente"} deve prendere ${th?.name ?? "il farmaco"}`,
-      caregiverBody: `Ora: ${romeHM(ev.scheduled_at)} — ${th?.dosage ?? ""}`,
+      caregiverTitle: `È ora: ${pt?.name ?? "paziente"} deve prendere ${th?.name ?? "il farmaco"}`,
+      caregiverBody: `Orario: ${romeHM(ev.scheduled_at)} — ${th?.dosage ?? ""}`,
     });
   }
 
@@ -287,9 +287,9 @@ Deno.serve(async (req) => {
       kind: "missed",
       severity: "alert",
       patientTitle: `Cura dimenticata: ${th?.name ?? "farmaco"}`,
-      patientBody: `La dose delle ${romeHM(ev.scheduled_at)} è stata segnata come dimenticata.`,
-      caregiverTitle: `${pt?.name ?? "Paziente"} non ha preso ${th?.name ?? "il farmaco"}`,
-      caregiverBody: `Prevista alle ${romeHM(ev.scheduled_at)}. Segnata come dimenticata.`,
+      patientBody: `La dose delle ${romeHM(ev.scheduled_at)} è stata segnata come dimenticata. Probabilmente verrai contattato da un familiare.`,
+      caregiverTitle: `${pt?.name ?? "Paziente"} non ha preso ${th?.name ?? "il farmaco"} (dimenticata)`,
+      caregiverBody: `Dose delle ${romeHM(ev.scheduled_at)} — segnata come dimenticata dopo il tempo massimo.`,
     });
   }
 
