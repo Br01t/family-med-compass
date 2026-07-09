@@ -1,7 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertOctagon, AlertTriangle, Bell, Check, CheckCheck, Clock, Info, Package, PillIcon, XCircle } from "lucide-react";
-import { toast } from "sonner";
+import { AlertOctagon, AlertTriangle, Bell, Check, Clock, Info, Package, PillIcon, XCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { PatientShell } from "@/components/PatientShell";
 import { Button } from "@/components/ui/button";
@@ -32,31 +31,12 @@ const KIND_META: Record<
   info: { label: "Info", icon: Info, tone: "bg-secondary text-muted-foreground" },
 };
 
-const CAREGIVER_FILTERS: Array<{ id: "all" | "missed" | "taken" | "action" | "reminder" | "stock"; label: string }> = [
-  { id: "all", label: "Tutte" },
-  { id: "reminder", label: "Promemoria" },
-  { id: "taken", label: "Confermate" },
-  { id: "missed", label: "Saltate" },
-  { id: "action", label: "Azioni paziente" },
-  { id: "stock", label: "Scorte" },
-];
-
-const PATIENT_FILTERS: Array<{ id: "all" | "reminder" | "taken" | "missed"; label: string }> = [
-  { id: "all", label: "Tutte" },
-  { id: "reminder", label: "Promemoria" },
-  { id: "taken", label: "Confermate" },
-  { id: "missed", label: "Saltate" },
-];
-
 function NotificationsPage() {
   const {
     data,
     user,
     userProfile,
     markNotificationRead,
-    markAllRead,
-    confirmDose,
-    snoozeDose,
   } = useFamilyMed();
   const isPatient = userProfile?.role === "paziente";
 
@@ -75,21 +55,22 @@ function NotificationsPage() {
     );
   }, [data.notifications, isPatient, patient]);
 
-  const unread = items.filter((n) => !n.read).length;
+  // Auto-mark come lette all'apertura: le notifiche viste non devono essere
+  // riproposte al prossimo mount o su altri dispositivi.
+  useEffect(() => {
+    if (!user) return;
+    const unread = items.filter(
+      (n) => !n.read && (!n.targetUserId || n.targetUserId === user.id),
+    );
+    for (const n of unread) {
+      void markNotificationRead(n.id);
+    }
+  }, [user, items, markNotificationRead]);
 
   if (isPatient) {
     return (
-      <PatientShell title="Le tue notifiche" subtitle={`${unread} non lette · ${items.length} totali`}>
-        <PatientView
-          items={items}
-          data={data}
-          patientName={patient?.name ?? userProfile?.name ?? "Paziente"}
-          markRead={markNotificationRead}
-          markAllRead={markAllRead}
-          unread={unread}
-          onConfirmDose={confirmDose}
-          onSnoozeDose={snoozeDose}
-        />
+      <PatientShell title="Storico notifiche" subtitle="Le azioni recenti sulle tue terapie">
+        <NotificationList items={items} data={data} />
       </PatientShell>
     );
   }
@@ -97,165 +78,97 @@ function NotificationsPage() {
   return (
     <AppShell
       title="Centro notifiche"
-      subtitle={`${unread} non lette · ${items.length} totali`}
-      actions={
-        <Button size="sm" variant="outline" onClick={markAllRead} disabled={unread === 0}>
-          <CheckCheck className="mr-2 size-4" /> Segna tutte lette
-        </Button>
-      }
+      subtitle="Le azioni recenti dei tuoi pazienti"
     >
-      <CaregiverView items={items} data={data} userId={user?.id} markRead={markNotificationRead} />
+      <CaregiverView items={items} data={data} />
     </AppShell>
   );
 }
 
-function PatientView({
+function NotificationList({
   items,
   data,
-  patientName,
-  markRead,
-  markAllRead,
-  unread,
-  onConfirmDose,
-  onSnoozeDose,
 }: {
   items: Notification[];
   data: ReturnType<typeof useFamilyMed>["data"];
-  patientName: string;
-  markRead: (id: string) => void;
-  markAllRead: () => void;
-  unread: number;
-  onConfirmDose: ReturnType<typeof useFamilyMed>["confirmDose"];
-  onSnoozeDose: ReturnType<typeof useFamilyMed>["snoozeDose"];
 }) {
-  const [filter, setFilter] = useState<(typeof PATIENT_FILTERS)[number]["id"]>("all");
+  const [showAll, setShowAll] = useState(false);
+  // Di default nasconde tutto ciò che era già read prima dell'apertura di questa
+  // sessione (in pratica: nulla è "nuovo" perché al mount marchiamo tutte lette).
+  // Il toggle mostra l'intero storico.
+  const [initialUnreadIds] = useState(() => new Set(items.filter((n) => !n.read).map((n) => n.id)));
+  const filtered = showAll ? items : items.filter((n) => initialUnreadIds.has(n.id));
 
-  const filtered = items.filter((n) => {
-    if (filter === "all") return true;
-    if (filter === "reminder") return n.kind === "reminder" || n.kind === "reminder_pre" || n.kind === "reminder_post" || n.kind === "due" || n.kind === "final_due";
-    if (filter === "taken") return n.kind === "taken" || n.kind === "taken_after_snooze";
-    if (filter === "missed") return n.kind === "missed" || n.kind === "skipped" || n.kind === "snoozed";
-    return true;
-  });
+  if (filtered.length === 0) {
+    return (
+      <div className="space-y-4">
+        <EmptyState
+          title={showAll ? "Nessuna notifica" : "Tutto letto"}
+          message={
+            showAll
+              ? "Non è ancora arrivata nessuna notifica."
+              : "Non ci sono nuove notifiche da vedere."
+          }
+        />
+        {!showAll && items.length > 0 && (
+          <div className="flex justify-center">
+            <Button variant="outline" size="sm" onClick={() => setShowAll(true)}>
+              Mostra storico ({items.length})
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {PATIENT_FILTERS.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setFilter(f.id)}
-            className={cn(
-              "rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition",
-              filter === f.id
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card text-muted-foreground hover:bg-secondary",
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={markAllRead}
-          disabled={unread === 0}
-          className="ml-auto"
-        >
-          <CheckCheck className="mr-2 size-4" /> Segna tutte lette
-        </Button>
-      </div>
-
-      {filtered.length === 0 ? (
-        <EmptyState
-          title="Nessuna notifica"
-          message="Qui vedrai i promemoria dei tuoi farmaci e le conferme."
-        />
-      ) : (
-        <ol className="space-y-3">
-          {filtered.map((n) => {
-            const meta = KIND_META[n.kind] ?? KIND_META.info;
-            const Icon = meta.icon;
-            const event = data.events.find((e) => e.id === n.eventId);
-            const therapy = data.therapies.find((t) => t.id === n.therapyId);
-            const scheduledAt = event?.scheduledAt ? new Date(event.scheduledAt) : extractScheduledFromEventId(n.eventId);
-            const canSnooze = n.kind === "due";
-            const canConfirm = n.kind === "due" || n.kind === "final_due";
-            const actionDose = canConfirm && therapy && scheduledAt ? { therapy, scheduledAt, canSnooze } : null;
-            const snoozeMinutes = therapy?.snoozeMinutes ?? 10;
-            return (
-              <li
-                key={n.id}
-                className={cn(
-                  "flex flex-col gap-4 rounded-2xl border-2 bg-card p-4 shadow-sm sm:flex-row sm:items-start",
-                  !n.read ? "border-primary/60 bg-primary-soft/20" : "border-border/60",
+      <ol className="space-y-3">
+        {filtered.map((n) => {
+          const meta = KIND_META[n.kind] ?? KIND_META.info;
+          const Icon = meta.icon;
+          return (
+            <li
+              key={n.id}
+              className="flex items-start gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-sm"
+            >
+              <div className={cn("grid size-12 shrink-0 place-items-center rounded-xl", meta.tone)}>
+                <Icon className="size-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  {meta.label}
+                </p>
+                <p className="mt-0.5 text-base font-black leading-tight">{n.title}</p>
+                {n.message && (
+                  <p className="mt-1 text-sm text-muted-foreground">{n.message}</p>
                 )}
-              >
-                <div className="flex min-w-0 flex-1 items-start gap-4">
-                  <div className={cn("grid size-14 shrink-0 place-items-center rounded-xl", meta.tone)}>
-                    <Icon className="size-7" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                      {meta.label}
-                    </p>
-                    <p className="mt-0.5 text-lg font-black leading-tight">{n.title}</p>
-                    {n.message && (
-                      <p className="mt-1 text-sm text-muted-foreground">{n.message}</p>
-                    )}
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {new Date(n.createdAt).toLocaleString("it-IT", {
-                        day: "numeric",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                    {actionDose && (
-                      <div className={cn("mt-3 grid gap-2", actionDose.canSnooze ? "grid-cols-2" : "grid-cols-1")}>
-                        <Button
-                          size="sm"
-                          onClick={async () => {
-                            await onConfirmDose({
-                              therapyId: actionDose.therapy.id,
-                              scheduledAt: actionDose.scheduledAt,
-                              confirmedBy: patientName,
-                            });
-                            markRead(n.id);
-                            toast.success(`${actionDose.therapy.name} confermata`);
-                          }}
-                        >
-                          <Check className="mr-2 size-4" /> Conferma
-                        </Button>
-                        {actionDose.canSnooze && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={async () => {
-                              await onSnoozeDose({ therapyId: actionDose.therapy.id, scheduledAt: actionDose.scheduledAt, minutes: snoozeMinutes });
-                              markRead(n.id);
-                              toast.info(`Rimandata di ${snoozeMinutes} min`, { description: actionDose.therapy.name });
-                            }}
-                          >
-                            <Clock className="mr-2 size-4" /> Rimanda
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {!n.read && (
-                  <button
-                    onClick={() => markRead(n.id)}
-                    className="shrink-0 rounded-lg border border-primary/40 px-3 py-1 text-xs font-bold text-primary hover:bg-primary-soft"
-                  >
-                    Segna letta
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ol>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {new Date(n.createdAt).toLocaleString("it-IT", {
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+      {!showAll && items.length > filtered.length && (
+        <div className="flex justify-center">
+          <Button variant="outline" size="sm" onClick={() => setShowAll(true)}>
+            Mostra storico ({items.length - filtered.length} più vecchie)
+          </Button>
+        </div>
+      )}
+      {showAll && (
+        <div className="flex justify-center">
+          <Button variant="ghost" size="sm" onClick={() => setShowAll(false)}>
+            Nascondi lo storico
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -264,52 +177,28 @@ function PatientView({
 function CaregiverView({
   items,
   data,
-  userId,
-  markRead,
 }: {
   items: Notification[];
   data: ReturnType<typeof useFamilyMed>["data"];
-  userId?: string;
-  markRead: (id: string) => void;
 }) {
-  const [filter, setFilter] = useState<(typeof CAREGIVER_FILTERS)[number]["id"]>("all");
   const [patientFilter, setPatientFilter] = useState<string>("");
+  const [showAll, setShowAll] = useState(false);
+  const [initialUnreadIds] = useState(() => new Set(items.filter((n) => !n.read).map((n) => n.id)));
 
   const filtered = items.filter((n) => {
     if (patientFilter && n.patientId !== patientFilter) return false;
-    if (filter === "all") return true;
-    if (filter === "reminder")
-      return n.kind === "reminder" || n.kind === "reminder_pre" || n.kind === "reminder_post" || n.kind === "due";
-    if (filter === "missed") return n.kind === "missed";
-    if (filter === "taken") return n.kind === "taken";
-    if (filter === "action")
-      return n.kind === "skipped" || n.kind === "snoozed";
-    if (filter === "stock") return n.kind === "low_stock";
+    if (!showAll && !initialUnreadIds.has(n.id)) return false;
     return true;
   });
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        {CAREGIVER_FILTERS.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setFilter(f.id)}
-            className={cn(
-              "rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition",
-              filter === f.id
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card text-muted-foreground hover:bg-secondary",
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
         {data.patients.length > 0 && (
           <select
             value={patientFilter}
             onChange={(e) => setPatientFilter(e.target.value)}
-            className="ml-auto rounded-full border border-border bg-card px-4 py-1.5 text-xs font-bold text-foreground"
+            className="rounded-full border border-border bg-card px-4 py-1.5 text-xs font-bold text-foreground"
           >
             <option value="">Tutti i pazienti</option>
             {data.patients.map((p) => (
@@ -319,27 +208,33 @@ function CaregiverView({
             ))}
           </select>
         )}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setShowAll((v) => !v)}
+          className="ml-auto"
+        >
+          {showAll ? "Solo nuove" : `Mostra storico (${items.length})`}
+        </Button>
       </div>
 
       <div className="rounded-3xl border border-border/60 bg-card shadow-card">
         <ul className="divide-y divide-border/60">
           {filtered.length === 0 && (
             <li className="p-8 text-center text-sm text-muted-foreground">
-              Nessuna notifica con questo filtro.
+              {showAll
+                ? "Nessuna notifica con questo filtro."
+                : "Nessuna nuova notifica. Tutte le azioni recenti sono già state viste."}
             </li>
           )}
           {filtered.map((n) => {
             const patient = data.patients.find((p) => p.id === n.patientId);
             const meta = KIND_META[n.kind] ?? KIND_META.info;
             const Icon = meta.icon;
-            const canMarkRead = !n.read && n.targetUserId === userId;
             return (
               <li
                 key={n.id}
-                className={cn(
-                  "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 p-5 transition",
-                  !n.read && "bg-primary-soft/30",
-                )}
+                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 p-5"
               >
                 <div className={cn("grid size-11 shrink-0 place-items-center rounded-xl", meta.tone)}>
                   <Icon className="size-5" />
@@ -366,22 +261,13 @@ function CaregiverView({
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-xs text-muted-foreground">
-                    {new Date(n.createdAt).toLocaleTimeString("it-IT", {
+                    {new Date(n.createdAt).toLocaleString("it-IT", {
+                      day: "numeric",
+                      month: "short",
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
                   </p>
-                  {canMarkRead && (
-                    <button
-                      onClick={() => markRead(n.id)}
-                      className="mt-1 text-xs font-semibold text-primary hover:underline"
-                    >
-                      Segna letta
-                    </button>
-                  )}
-                  {!n.read && !canMarkRead && (
-                    <p className="mt-1 text-xs font-semibold text-muted-foreground">Non letta</p>
-                  )}
                 </div>
               </li>
             );
@@ -390,12 +276,6 @@ function CaregiverView({
       </div>
     </div>
   );
-}
-
-function extractScheduledFromEventId(eventId?: string): Date | undefined {
-  if (!eventId) return undefined;
-  const ms = Number(eventId.split("_").at(-1));
-  return Number.isFinite(ms) ? new Date(ms) : undefined;
 }
 
 function EmptyState({ title, message }: { title: string; message: string }) {
