@@ -122,7 +122,8 @@ async function notifyBoth(
   // (reminder_pre / due / reminder_post / final_due) sono modali del paziente
   // e NON devono generare notifiche al caregiver.
   if (!spec.notifyCaregiver) return;
-  therapy;
+
+
 
   const { data: cps } = await sb
     .from("caregiver_patients").select("caregiver_id").eq("patient_id", ev.patient_id);
