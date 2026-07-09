@@ -253,22 +253,33 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     };
   }, [user, userProfile]);
 
-  // Subscribe to Therapies and Events for the active patient
+  // Subscribe to Therapies and Events. Caregiver: tutti i pazienti seguiti.
+  // Paziente: solo il suo record.
   useEffect(() => {
-    if (!currentPatientId || !user) {
+    if (!user || !userProfile) {
       setTherapies([]);
       setEvents([]);
       return;
     }
-
-    const unsubTherapies = subscribeTherapies(currentPatientId, setTherapies);
-    const unsubEvents = subscribeEvents(currentPatientId, setEvents);
-
+    const ids =
+      userProfile.role === "caregiver"
+        ? patients.map((p) => p.id)
+        : currentPatientId
+          ? [currentPatientId]
+          : [];
+    if (ids.length === 0) {
+      setTherapies([]);
+      setEvents([]);
+      return;
+    }
+    const unsubTherapies = subscribeTherapiesForPatients(ids, setTherapies);
+    const unsubEvents = subscribeEventsForPatients(ids, setEvents);
     return () => {
       unsubTherapies();
       unsubEvents();
     };
-  }, [currentPatientId, user]);
+  }, [user, userProfile, currentPatientId, patients]);
+
 
   // Merge Supabase database and Local configuration state
   const data = useMemo<FamilyMedData>(() => {
