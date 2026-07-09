@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
       severity: "info",
       patientTitle: `Tra ${before} min: ${th?.name ?? "farmaco"}`,
       patientBody: `Alle ${romeHM(ev.scheduled_at)} — ${th?.dosage ?? ""}`,
-      caregiverTitle: `${pt?.name ?? "Paziente"} — tra ${before} min: ${th?.name ?? "farmaco"}`,
+      caregiverTitle: `Tra ${before} min: ${pt?.name ?? "paziente"} deve prendere ${th?.name ?? "il farmaco"}`,
       caregiverBody: `Alle ${romeHM(ev.scheduled_at)} — ${th?.dosage ?? ""}`,
     });
   }
@@ -212,8 +212,8 @@ Deno.serve(async (req) => {
       severity: "warning",
       patientTitle: `È ora: ${th?.name ?? "farmaco"}`,
       patientBody: `${th?.quantity ?? 1} unità — ${th?.dosage ?? ""}`,
-      caregiverTitle: `${pt?.name ?? "Paziente"} deve prendere ${th?.name ?? "il farmaco"}`,
-      caregiverBody: `Ora: ${romeHM(ev.scheduled_at)} — ${th?.dosage ?? ""}`,
+      caregiverTitle: `È ora: ${pt?.name ?? "paziente"} deve prendere ${th?.name ?? "il farmaco"}`,
+      caregiverBody: `Orario: ${romeHM(ev.scheduled_at)} — ${th?.dosage ?? ""}`,
     });
   }
 
