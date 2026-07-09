@@ -1,0 +1,1 @@
+ALTER TABLE public.therapies REPLICA IDENTITY FULL;
