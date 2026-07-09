@@ -93,7 +93,13 @@ function CaregiverHome() {
         />
         <MetricCard
           label="Alert attivi"
-          value={String(data.notifications.filter((n) => !n.read && n.severity !== "info").length)}
+          value={String(
+            data.notifications.filter(
+              (n) =>
+                !n.read &&
+                ["missed", "final_due", "snoozed", "skipped", "low_stock", "reminder_post"].includes(n.kind),
+            ).length,
+          )}
           hint="Richiedono attenzione"
           icon={AlertTriangle}
           tone="accent"
