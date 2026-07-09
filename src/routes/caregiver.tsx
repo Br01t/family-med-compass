@@ -33,11 +33,9 @@ function CaregiverHome() {
     return () => clearInterval(id);
   }, []);
   void tick;
-  const caregiver =
-    data.caregivers.find((c) => c.id === data.currentCaregiverId) ??
-    data.caregivers[0];
   const patients = data.patients;
   const now = new Date();
+
 
 
 
