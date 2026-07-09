@@ -22,8 +22,8 @@ import {
 import {
   subscribePatients,
   subscribeCaregivers,
-  subscribeTherapies,
-  subscribeEvents,
+  subscribeTherapiesForPatients,
+  subscribeEventsForPatients,
   subscribeNotifications,
   addPatientDoc,
   deletePatientDoc,
@@ -38,6 +38,7 @@ import {
   insertNotificationDoc,
   fetchCaregiverIdsForPatient,
 } from "./supabase-service";
+
 
 
 
