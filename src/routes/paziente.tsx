@@ -67,9 +67,9 @@ function PatientPage() {
   // Tick ogni 30s per aggiornare gli stati derivati (reminder → due → late)
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 30_000);
-    return () => clearInterval(id);
-  }, []);
+      const id = setInterval(() => setTick((t) => t + 1), 1000);
+      return () => clearInterval(id);
+    }, []);
   const now = new Date();
   void tick;
 
@@ -400,6 +400,16 @@ function ActiveDoseCard({
   onSnooze: () => void;
   onSkip: () => void;
 }) {
+  const [secondTick, setSecondTick] = useState(0);
+    useEffect(() => {
+      const timer = setInterval(() => {
+        setSecondTick((value) => value + 1);
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }, []);
+
+void secondTick;  
   const isLate = dose.status === "late";
   const isReminder = dose.status === "reminder";
   const isSnoozed = dose.status === "snoozed";
@@ -415,10 +425,19 @@ function ActiveDoseCard({
   const snoozedUntilMs = dose.event?.snoozedUntil
     ? new Date(dose.event.snoozedUntil).getTime()
     : 0;
-  const hardDeadlineMs = dose.scheduledAt.getTime() + timeoutMin * 60_000;
-  const msToHardDeadline = hardDeadlineMs - now.getTime();
-  const hardMM = Math.max(0, Math.floor(msToHardDeadline / 60000));
-  const hardSS = Math.max(0, Math.floor((msToHardDeadline % 60000) / 1000));
+  const hardDeadlineMs =
+    dose.scheduledAt.getTime() + timeoutMin * 60_000;
+
+  const msToHardDeadline = Math.max(
+    0,
+    hardDeadlineMs - Date.now(),
+  );
+
+  const hardMM = Math.floor(msToHardDeadline / 60000);
+
+  const hardSS = Math.floor(
+    (msToHardDeadline % 60000) / 1000,
+  );
   const snoozedCritical = msToHardDeadline <= 2 * 60_000;
 
   return (

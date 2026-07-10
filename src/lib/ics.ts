@@ -102,9 +102,21 @@ export function therapyToIcs(
     const endH = h + Math.floor(endM / 60);
     const end = localStamp(therapy.startDate, endH % 24, endM % 60);
     const alarms = [
-  alarm("-PT10M", `Tra 10 minuti: ${therapy.name} ${therapy.dosage}`),
-  alarm("PT0M", `È ora di assumere ${therapy.name} ${therapy.dosage}`),
-];
+      ...preTriggers.map((minutes) =>
+        alarm(
+          `-PT${minutes}M`,
+          `Tra ${minutes} minuti: ${therapy.name} ${therapy.dosage}`,
+        ),
+      ),
+      alarm(
+        "PT0M",
+        `È ora di assumere ${therapy.name} ${therapy.dosage}`,
+      ),
+      alarm(
+        `PT${postTrigger}M`,
+        `Ricorda: ${therapy.name} ${therapy.dosage} non ancora confermata`,
+      ),
+    ];
     const parts = [
       "BEGIN:VEVENT",
       `UID:familymed-${therapy.id}-${i}@familymed.app`,
