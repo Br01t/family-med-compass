@@ -116,7 +116,7 @@ export function GuidaContent() {
           <GuideRow
             icon={CalendarPlus}
             title="Aggiungere la terapia al calendario"
-            description="Dal dettaglio della terapia puoi aggiungere automaticamente l'assunzione al calendario personale del telefono. Il calendario aiuta a ricordare gli orari delle cure con un reminder preimpostato, mentre FamilyMed mantiene paziente e caregiver sincronizzati sulle informazioni della terapia."
+            description="Dal dettaglio della terapia puoi aggiungere automaticamente l'evento al calendario personale del telefono. Il calendario aiuta a ricordare gli orari delle cure con un reminder preimpostato e link all'app, mentre FamilyMed mantiene paziente e caregiver sincronizzati sulle informazioni della terapia. Per assicurare la sincronizzazione corretta, modifica manualmente l'orario del promemoria nel tuo calendario in modo che coincida con i tempi indicati nella terapia!"
           />
         </div>
 
