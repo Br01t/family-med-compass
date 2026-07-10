@@ -123,10 +123,6 @@ function LandingPage() {
                 </Link>
               </Button>
             </div>
-
-            <p className="mt-4 text-[10px] sm:text-xs text-muted-foreground">
-              L'app ricorda la tua scelta. Puoi cambiarla in qualsiasi momento.
-            </p>
           </div>
 
           {/* MOCK UI - Blindata per schermi microscopici */}
