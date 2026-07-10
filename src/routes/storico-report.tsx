@@ -27,6 +27,7 @@ function HistoryReportPage() {
   const [patientId, setPatientId] = useState<string | undefined>(patients[0]?.id);
   const [period, setPeriod] = useState<PeriodDays>(30);
   const [selected, setSelected] = useState<Date | null>(null);
+  const [hoveredBar, setHoveredBar] = useState<number | null>(null);
 
   const now = new Date();
 
@@ -235,7 +236,32 @@ function HistoryReportPage() {
         </div>
         <div className="mt-5 flex h-32 items-end gap-[3px]">
           {stats.bars.map((b, i) => (
-            <div key={i} className="group relative flex flex-1 flex-col items-center">
+            <div
+              key={i}
+              className="group relative flex flex-1 flex-col items-center"
+              onMouseEnter={() => setHoveredBar(i)}
+              onMouseLeave={() => setHoveredBar(null)}
+              onClick={() =>
+                setHoveredBar((current) => (current === i ? null : i))
+              }
+            >
+              {hoveredBar === i && b.count > 0 && (
+                <div className="absolute bottom-full z-10 mb-2 rounded-xl bg-card px-3 py-2 text-xs shadow-lg border border-border whitespace-nowrap">
+                  <p className="font-bold">
+                    {b.pct}% aderenza
+                  </p>
+                  <p className="text-muted-foreground">
+                    {b.count} dosi programmate
+                  </p>
+                  <p className="text-muted-foreground">
+                    {b.date.toLocaleDateString("it-IT", {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </p>
+                </div>
+              )}
+
               <div className="flex h-28 w-full items-end">
                 <div
                   className={cn(
@@ -248,10 +274,15 @@ function HistoryReportPage() {
                           ? "bg-warning"
                           : "bg-accent",
                   )}
-                  style={{ height: `${Math.max(b.pct, b.count === 0 ? 4 : 6)}%` }}
-                  title={`${b.date.toLocaleDateString("it-IT")}: ${b.pct}% (${b.count} dosi)`}
+                  style={{
+                    height: `${Math.max(
+                      b.pct,
+                      b.count === 0 ? 4 : 6,
+                    )}%`,
+                  }}
                 />
               </div>
+
               {period <= 30 && (
                 <span className="mt-1 text-[9px] text-muted-foreground">
                   {b.date.getDate()}
@@ -391,7 +422,7 @@ function HistoryReportPage() {
               <thead>
                 <tr className="text-left text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                   <th className="pb-2">Terapia</th>
-                  <th className="pb-2 text-right">Programmate</th>
+                  {/* <th className="pb-2 text-right">Programmate</th> */}
                   <th className="pb-2 text-right">Prese</th>
                   <th className="pb-2 text-right">Ritardo</th>
                   <th className="pb-2 text-right">Saltate</th>
@@ -402,7 +433,7 @@ function HistoryReportPage() {
                 {stats.perTherapy.map((t) => (
                   <tr key={t.therapyId}>
                     <td className="py-2 pr-3 font-semibold">{t.name}</td>
-                    <td className="py-2 text-right font-mono">{t.scheduled}</td>
+                    {/* <td className="py-2 text-right font-mono">{t.scheduled}</td> */}
                     <td className="py-2 text-right font-mono text-success">
                       {t.taken}
                     </td>

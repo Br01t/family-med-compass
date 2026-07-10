@@ -102,7 +102,7 @@ function CaregiverHome() {
         <MetricCard
           label="Aderenza media 7gg"
           value={`${totalAdherence}%`}
-          hint={totalAdherence >= 90 ? "Ottimo" : totalAdherence >= 75 ? "Buono" : "Da migliorare"}
+          hint="Indica quanto il paziente ha seguito fedelmente la terapia prescritta."
           icon={TrendingUp}
           tone="primary"
         />
@@ -271,7 +271,7 @@ function MetricCard({
             {label}
           </p>
           <p className="mt-1 text-3xl font-black tracking-tight">{value}</p>
-          <p className="truncate text-xs text-muted-foreground">{hint}</p>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground whitespace-normal">{hint}</p>
         </div>
       </div>
     </div>

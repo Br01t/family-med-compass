@@ -54,7 +54,7 @@ function PatientDetail() {
   const doses = getDosesForPatientOnDate(data, patient.id, now, now);
   const adherence = getAdherenceForPatient(data, patient.id);
   const therapies = data.therapies.filter((t) => t.patientId === patient.id);
-  const caregivers = data.caregivers.filter((c) => patient.caregiverIds.includes(c.id));
+  // const caregivers = data.caregivers.filter((c) => patient.caregiverIds.includes(c.id));
   const todayEvents = data.events
     .filter((e) => e.patientId === patient.id)
     .flatMap((e) =>
@@ -192,7 +192,7 @@ function PatientDetail() {
             </Button>
           </div>
 
-          <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+          {/* <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
             <h3 className="text-lg font-black tracking-tight">Caregiver</h3>
             <ul className="mt-3 space-y-3">
               {caregivers.map((c) => (
@@ -207,7 +207,7 @@ function PatientDetail() {
                 </li>
               ))}
             </ul>
-          </div>
+          </div> */}
         </aside>
       </div>
     </AppShell>

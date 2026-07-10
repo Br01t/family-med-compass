@@ -161,7 +161,7 @@ function LandingPage() {
             {
               icon: ShieldCheck,
               title: "Notifiche & scorte",
-              body: "Push, email, WhatsApp e alert automatici quando le pillole finiscono.",
+              body: "Alert automatici per le azioni del paziente e quando le pillole finiscono, sincronizzazione Calendar.",
             },
           ].map((f) => (
             <div
@@ -181,7 +181,7 @@ function LandingPage() {
       {/* FOOTER */}
       <footer className="border-t border-border/60 py-6">
         <p className="text-center text-xs text-muted-foreground">
-          © FamilyMed · MVP demo. I dati sono locali al tuo browser.
+          © FamilyMed · Uso interno esclusivo. Non distribuire.
         </p>
       </footer>
     </div>

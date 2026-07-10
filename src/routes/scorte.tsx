@@ -30,7 +30,7 @@ function InventoryPage() {
   };
 
   return (
-    <AppShell title="Gestione scorte" subtitle="Confezioni, compresse residue e verifica periodica">
+    <AppShell title="Gestione scorte" subtitle="Confezioni e compresse residue">
       <div className="space-y-8">
         {grouped.map(({ patient, items }) => (
           <section key={patient.id}>
@@ -54,7 +54,16 @@ function InventoryPage() {
                       100,
                       Math.round((t.pillsRemaining / (t.pillsPerPack * Math.max(t.packs, 1))) * 100),
                     );
-                    const low = t.pillsRemaining <= t.lowStockThreshold;
+                    const level =
+                      pct <= 10
+                        ? "Critico"
+                        : pct <= 25
+                          ? "Basso"
+                          : pct <= 50
+                            ? "Medio"
+                            : pct <= 75
+                              ? "Buono"
+                              : "Pieno";
                     return (
                       <tr key={t.id} className="border-t border-border/50">
                         <td className="px-4 py-4">
@@ -83,17 +92,32 @@ function InventoryPage() {
                             <div className="h-2 w-24 overflow-hidden rounded-full bg-secondary">
                               <div
                                 className={cn(
-                                  "h-full",
-                                  low ? "bg-accent" : pct < 50 ? "bg-warning" : "bg-success",
+                                  "h-full transition-all",
+                                  pct <= 10
+                                    ? "bg-accent"
+                                    : pct <= 25
+                                      ? "bg-warning"
+                                      : pct <= 50
+                                        ? "bg-warning/70"
+                                        : pct <= 75
+                                          ? "bg-primary"
+                                          : "bg-success",
                                 )}
                                 style={{ width: `${pct}%` }}
                               />
                             </div>
-                            {low && (
-                              <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-bold uppercase text-accent">
-                                Bassa
-                              </span>
-                            )}
+                            <span
+                              className={cn(
+                                "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
+                                pct <= 25
+                                  ? "bg-accent-soft text-accent"
+                                  : pct <= 50
+                                    ? "bg-warning/15 text-warning-foreground"
+                                    : "bg-success/10 text-success",
+                              )}
+                            >
+                              {level}
+                            </span>
                           </div>
                         </td>
                         <td className="px-4 py-4 text-right">
@@ -109,6 +133,20 @@ function InventoryPage() {
             </div>
           </section>
         ))}
+        <div className="rounded-3xl border border-primary/20 bg-primary-soft p-6 shadow-card">
+          <h3 className="text-lg font-black tracking-tight text-primary">
+            Verifica scorte con il paziente
+          </h3>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Questa sezione può essere utilizzata come <b>controllo aggiuntivo</b> insieme al paziente.
+            Quando arriva un avviso di scorte in esaurimento (ad esempio quando rimangono 10 pillole), puoi contattare il paziente e chiedere conferma della quantità realmente disponibile.
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Questo doppio controllo permette di individuare eventuali differenze tra le scorte
+            registrate nell'app e quelle effettivamente presenti, migliorando la sicurezza e
+            l'affidabilità della gestione della terapia.
+          </p>
+        </div>
       </div>
     </AppShell>
   );

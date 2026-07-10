@@ -139,8 +139,8 @@ function GuidaPage() {
             />
           </div>
 
-          <SectionTitle>Sezioni dell'app</SectionTitle>
-          <NavGrid />
+          {/* <SectionTitle>Sezioni dell'app</SectionTitle>
+          <NavGrid /> */}
         </TabsContent>
 
         {/* ─────────────── PAZIENTE ─────────────── */}
@@ -339,15 +339,6 @@ function GuidaPage() {
           </div>
         </TabsContent>
       </Tabs>
-
-      <div className="mt-8 flex justify-center">
-        <Button asChild variant="outline" size="lg" className="h-12 px-6">
-          <Link to="/caregiver">
-            <ChevronRight className="mr-2 size-4" />
-            Vai alla dashboard
-          </Link>
-        </Button>
-      </div>
     </AppShell>
   );
 }
@@ -498,29 +489,29 @@ function TimelineItem({
   );
 }
 
-function NavGrid() {
-  const items = [
-    { icon: LayoutDashboard, label: "Dashboard", url: "/caregiver" },
-    { icon: Users, label: "Pazienti", url: "/pazienti" },
-    { icon: Pill, label: "Terapie", url: "/terapie" },
-    { icon: PieChart, label: "Storico", url: "/storico" },
-    { icon: Package, label: "Scorte", url: "/scorte" },
-    { icon: Bell, label: "Notifiche", url: "/notifiche" },
-  ];
-  return (
-    <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-      {items.map((item) => (
-        <Link
-          key={item.url}
-          to={item.url}
-          className="flex flex-col items-center gap-2 rounded-2xl border border-border/60 bg-card p-4 text-center shadow-card transition hover:shadow-lift hover:border-primary/30"
-        >
-          <div className="grid size-9 place-items-center rounded-xl bg-primary-soft text-primary">
-            <item.icon className="size-4" />
-          </div>
-          <span className="text-[11px] font-bold">{item.label}</span>
-        </Link>
-      ))}
-    </div>
-  );
-}
+// function NavGrid() {
+//   const items = [
+//     { icon: LayoutDashboard, label: "Dashboard", url: "/caregiver" },
+//     { icon: Users, label: "Pazienti", url: "/pazienti" },
+//     { icon: Pill, label: "Terapie", url: "/terapie" },
+//     { icon: PieChart, label: "Storico", url: "/storico" },
+//     { icon: Package, label: "Scorte", url: "/scorte" },
+//     { icon: Bell, label: "Notifiche", url: "/notifiche" },
+//   ];
+//   return (
+//     <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+//       {items.map((item) => (
+//         <Link
+//           key={item.url}
+//           to={item.url}
+//           className="flex flex-col items-center gap-2 rounded-2xl border border-border/60 bg-card p-4 text-center shadow-card transition hover:shadow-lift hover:border-primary/30"
+//         >
+//           <div className="grid size-9 place-items-center rounded-xl bg-primary-soft text-primary">
+//             <item.icon className="size-4" />
+//           </div>
+//           <span className="text-[11px] font-bold">{item.label}</span>
+//         </Link>
+//       ))}
+//     </div>
+//   );
+// }
