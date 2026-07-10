@@ -235,9 +235,9 @@ function PatientPage() {
               snoozeDose({
                 therapyId: activeDose.therapy.id,
                 scheduledAt: activeDose.scheduledAt,
-                minutes: 10,
+                minutes: activeDose.therapy.timeoutMinutes,
               });
-              toast(`Ritarda di 10 min`, { description: activeDose.therapy.name });
+              toast(`Ritarda`, { description: activeDose.therapy.name });
             }}
             onSkip={() => {
               skipDose({
@@ -368,7 +368,7 @@ function ActiveDoseCard({
   const snoozedUntilMs = dose.event?.snoozedUntil
     ? new Date(dose.event.snoozedUntil).getTime()
     : 0;
-  const hardDeadlineMs = snoozedUntilMs + timeoutMin * 60_000;
+  const hardDeadlineMs = dose.scheduledAt.getTime() + timeoutMin * 60_000;
   const msToHardDeadline = hardDeadlineMs - now.getTime();
   const hardMM = Math.max(0, Math.floor(msToHardDeadline / 60000));
   const hardSS = Math.max(0, Math.floor((msToHardDeadline % 60000) / 1000));
