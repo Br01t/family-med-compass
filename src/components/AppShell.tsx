@@ -10,7 +10,6 @@ import {
   PieChart,
   Pill,
   Settings,
-
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -133,7 +132,6 @@ function AppSidebar() {
             Esci
           </Button>
         </div>
-
       </SidebarFooter>
     </Sidebar>
   );
@@ -163,10 +161,10 @@ export function AppShell({
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background">
+      <div className="flex min-h-screen w-full bg-background overflow-x-hidden">
         <AppSidebar />
-        <div className="flex flex-1 flex-col">
-          <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-border/60 bg-background/85 px-4 backdrop-blur-md md:px-8">
+        <div className="flex flex-1 flex-col min-w-0 max-w-full w-full overflow-x-hidden">
+          <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-border/60 bg-background/85 px-4 backdrop-blur-md md:px-8 w-full max-w-full shrink-0">
             <SidebarTrigger className="-ml-1" />
             <div className="min-w-0 flex-1">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
@@ -194,7 +192,10 @@ export function AppShell({
               </div>
             </div>
           </header>
-          <main className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
+          {/* Corretto qui: impedisce l'overflow orizzontale ed espansioni anomale su mobile */}
+          <main className="flex-1 w-full max-w-full min-w-0 px-4 py-6 md:px-8 md:py-8 overflow-x-hidden block">
+            {children}
+          </main>
         </div>
       </div>
     </SidebarProvider>
