@@ -512,7 +512,7 @@ function ActiveDoseCard({
           aria-disabled={!canAct}
           className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-sm font-semibold text-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface"
         >
-          <Clock className="size-4" /> Ritarda 10 min
+          <Clock className="size-4" /> Ritarda
         </button>
         <button
           onClick={onSkip}

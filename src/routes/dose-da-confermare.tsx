@@ -6,7 +6,6 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { formatTime } from "@/lib/therapy";
-import { saveEventDoc } from "@/lib/supabase-service";
 import type { MedicationEvent } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +30,7 @@ function isAcknowledged(e: MedicationEvent): boolean {
 }
 
 function DoseDaConfermarePage() {
-  const { data, user, confirmDose } = useFamilyMed();
+  const { data, user, confirmDose, acknowledgeDose } = useFamilyMed();
   const [patientFilter, setPatientFilter] = useState<string>("");
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -73,22 +72,11 @@ function DoseDaConfermarePage() {
     if (busy) return;
     setBusy(e.id);
     try {
-      const nowIso = new Date().toISOString();
-      const updated: MedicationEvent = {
-        ...e,
-        note: [e.note, ACK_TAG].filter(Boolean).join(" | "),
-        timeline: [
-          ...e.timeline,
-          {
-            at: nowIso,
-            kind: e.status,
-            message: "Segnalata come gestita dal caregiver",
-          },
-        ],
-      };
-      if (user) {
-        await saveEventDoc(updated);
-      }
+      await acknowledgeDose({
+        therapyId: e.therapyId,
+        scheduledAt: new Date(e.scheduledAt),
+        note: ACK_TAG,
+      });
       toast.success("Segnata come gestita");
     } catch (err) {
       console.error(err);

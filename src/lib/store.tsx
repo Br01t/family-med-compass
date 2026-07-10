@@ -67,6 +67,7 @@ type Ctx = {
   }) => void;
   skipDose: (params: { therapyId: string; scheduledAt: Date }) => void;
   snoozeDose: (params: { therapyId: string; scheduledAt: Date; minutes?: number }) => void;
+  acknowledgeDose: (params: { therapyId: string; scheduledAt: Date; note?: string }) => Promise<void>;
   addTherapy: (t: Therapy) => void;
   updateTherapy: (id: string, patch: Partial<Therapy>) => void;
   deleteTherapy: (id: string) => void;
@@ -413,6 +414,54 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
   );
 
 
+  // "Segnala come gestita" (caregiver): non cambia lo status della dose
+  // (resta "missed"/"skipped") né tocca le scorte, ma marca l'evento come
+  // gestito così l'alert sparisce dalla lista "Dose da confermare".
+  // Deve funzionare sia online (Supabase) sia in modalità locale/demo,
+  // altrimenti l'alert resta visibile per sempre quando non c'è un utente
+  // autenticato (nessun aggiornamento veniva applicato a setLocalData).
+  const acknowledgeDose = useCallback(
+    async ({
+      therapyId,
+      scheduledAt,
+      note,
+    }: {
+      therapyId: string;
+      scheduledAt: Date;
+      note?: string;
+    }) => {
+      const existingEvent = events.find(
+        (e) =>
+          e.therapyId === therapyId &&
+          Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000
+      );
+      if (!existingEvent) return;
+      // Idempotenza: già gestita.
+      if (typeof existingEvent.note === "string" && existingEvent.note.includes("caregiver_ack")) return;
+
+      const nowIso = new Date().toISOString();
+      const updatedEvent: MedicationEvent = {
+        ...existingEvent,
+        note: [existingEvent.note, note ?? "caregiver_ack"].filter(Boolean).join(" | "),
+        timeline: [
+          ...existingEvent.timeline,
+          { at: nowIso, kind: existingEvent.status, message: "Segnalata come gestita dal caregiver" },
+        ],
+      };
+
+      if (user) {
+        await saveEventDoc(updatedEvent);
+      } else {
+        setLocalData((d) => ({
+          ...d,
+          events: d.events.map((e) => (e === existingEvent ? updatedEvent : e)),
+        }));
+      }
+    },
+    [user, events]
+  );
+
+
   const snoozeDose = useCallback(
     async ({
       therapyId,
@@ -680,6 +729,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       confirmDose,
       skipDose,
       snoozeDose,
+      acknowledgeDose,
       addTherapy,
       updateTherapy,
       deleteTherapy,
@@ -704,6 +754,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       confirmDose,
       skipDose,
       snoozeDose,
+      acknowledgeDose,
       addTherapy,
       updateTherapy,
       deleteTherapy,
