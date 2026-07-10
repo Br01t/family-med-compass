@@ -458,7 +458,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
             snoozedUntil,
             timeline: [
               ...existingEvent.timeline,
-              { at: nowIso, kind: "snoozed", message: `Rimandata di ${minutes} min` },
+              { at: nowIso, kind: "snoozed", message: `Rimandata di ${snoozeMinutes} min` },
             ],
           }
         : {
@@ -470,7 +470,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
             snoozedUntil,
             timeline: [
               { at: scheduledIso, kind: "scheduled", message: "Dose programmata" },
-              { at: nowIso, kind: "snoozed", message: `Rimandata di ${minutes} min` },
+              { at: nowIso, kind: "snoozed", message: `Rimandata di ${snoozeMinutes} min` },
             ],
           };
       try {
