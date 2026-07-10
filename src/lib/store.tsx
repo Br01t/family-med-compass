@@ -417,7 +417,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     async ({
       therapyId,
       scheduledAt,
-      minutes = 10,
+      minutes,
     }: {
       therapyId: string;
       scheduledAt: Date;
@@ -425,18 +425,31 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     }) => {
       const therapy = therapies.find((t) => t.id === therapyId);
       if (!therapy) return;
+      // Il rimando dura ESATTAMENTE quanto il "post-reminder" impostato sulla
+      // terapia. Nessun default di 10 min: se il parametro non è passato,
+      // usiamo postReminderMinutes (fallback 5 min minimo).
+      const snoozeMinutes = Math.max(
+        1,
+        Number(minutes ?? therapy.postReminderMinutes ?? 5),
+      );
       const nowIso = new Date().toISOString();
       const scheduledIso = scheduledAt.toISOString();
       const actionKey = `${therapyId}@${scheduledIso}@snooze`;
       if (pendingDoseActionsRef.current.has(actionKey)) return;
-      const snoozedUntil = new Date(Date.now() + minutes * 60_000).toISOString();
+      const snoozedUntil = new Date(Date.now() + snoozeMinutes * 60_000).toISOString();
       const existingEvent = events.find(
         (e) =>
           e.therapyId === therapyId &&
           Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000,
       );
-      // Idempotenza: se già presa o saltata, non si può rimandare.
+      // Idempotenza: se già presa/saltata, o già rimandata una volta, non fare nulla.
       if (existingEvent?.status === "taken" || existingEvent?.status === "skipped") return;
+      const alreadySnoozed = Boolean(
+        existingEvent?.snoozedUntil ||
+          existingEvent?.status === "snoozed" ||
+          existingEvent?.timeline?.some((t) => t.kind === "snoozed"),
+      );
+      if (alreadySnoozed) return;
       pendingDoseActionsRef.current.add(actionKey);
       const updatedEvent: MedicationEvent = existingEvent
         ? {
@@ -445,7 +458,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
             snoozedUntil,
             timeline: [
               ...existingEvent.timeline,
-              { at: nowIso, kind: "snoozed", message: `Rimandata di ${minutes} min` },
+              { at: nowIso, kind: "snoozed", message: `Rimandata di ${snoozeMinutes} min` },
             ],
           }
         : {
@@ -457,7 +470,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
             snoozedUntil,
             timeline: [
               { at: scheduledIso, kind: "scheduled", message: "Dose programmata" },
-              { at: nowIso, kind: "snoozed", message: `Rimandata di ${minutes} min` },
+              { at: nowIso, kind: "snoozed", message: `Rimandata di ${snoozeMinutes} min` },
             ],
           };
       try {
