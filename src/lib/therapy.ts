@@ -209,6 +209,17 @@ export function recurrenceLabel(r: Recurrence): string {
   }
 }
 
+// Tag usato dal caregiver per marcare una dose "missed"/"skipped" come
+// gestita (es. dopo aver chiamato il paziente) senza cambiarne lo stato né
+// toccare le scorte. Condiviso tra la pagina "Dose da confermare" e i
+// contatori di alert (dashboard caregiver) così restano sempre allineati:
+// un evento "gestito" non deve più contare come alert attivo.
+export const CAREGIVER_ACK_TAG = "caregiver_ack";
+
+export function isDoseAcknowledged(e: MedicationEvent): boolean {
+  return typeof e.note === "string" && e.note.includes(CAREGIVER_ACK_TAG);
+}
+
 export function formatTime(d: Date) {
   return d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
 }

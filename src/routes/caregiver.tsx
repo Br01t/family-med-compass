@@ -9,6 +9,7 @@ import {
   getAdherenceForPatient,
   getDosesForPatientOnDate,
   getNextDose,
+  isDoseAcknowledged,
   statusDot,
   statusLabel,
   statusTone,
@@ -80,11 +81,13 @@ function CaregiverHome() {
 
   // Alert: solo dosi non assunte (dimenticate o saltate) da confermare a mano
   // dopo aver contattato il paziente. Il conteggio torna a 0 quando il caregiver
-  // le processa dalla pagina dedicata (segna come confermate o conferma il salto).
+  // le processa dalla pagina dedicata (segna come confermate o conferma il salto)
+  // -- va escluso chi è già stato "gestito" (isDoseAcknowledged), altrimenti
+  // questo contatore non torna mai allineato con la lista in /dose-da-confermare.
   const pendingMissedDoses = useMemo(
     () =>
       data.events.filter(
-        (e) => e.status === "missed" || e.status === "skipped",
+        (e) => (e.status === "missed" || e.status === "skipped") && !isDoseAcknowledged(e),
       ),
     [data.events],
   );

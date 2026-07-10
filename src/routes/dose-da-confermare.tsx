@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
-import { formatTime } from "@/lib/therapy";
+import { CAREGIVER_ACK_TAG, formatTime, isDoseAcknowledged } from "@/lib/therapy";
 import type { MedicationEvent } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -23,11 +23,7 @@ export const Route = createFileRoute("/dose-da-confermare")({
   component: DoseDaConfermarePage,
 });
 
-const ACK_TAG = "caregiver_ack";
-
-function isAcknowledged(e: MedicationEvent): boolean {
-  return typeof e.note === "string" && e.note.includes(ACK_TAG);
-}
+const ACK_TAG = CAREGIVER_ACK_TAG;
 
 function DoseDaConfermarePage() {
   const { data, user, confirmDose, acknowledgeDose } = useFamilyMed();
@@ -39,7 +35,7 @@ function DoseDaConfermarePage() {
       .filter(
         (e) =>
           (e.status === "missed" || e.status === "skipped") &&
-          !isAcknowledged(e) &&
+          !isDoseAcknowledged(e) &&
           (!patientFilter || e.patientId === patientFilter),
       )
       .sort(

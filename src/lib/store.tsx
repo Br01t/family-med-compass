@@ -21,6 +21,8 @@ import {
   type MedicationEvent,
   type Notification,
 } from "./mock-data";
+import { CAREGIVER_ACK_TAG, isDoseAcknowledged } from "./therapy";
+
 import {
   subscribePatients,
   subscribeCaregivers,
@@ -437,12 +439,12 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       );
       if (!existingEvent) return;
       // Idempotenza: già gestita.
-      if (typeof existingEvent.note === "string" && existingEvent.note.includes("caregiver_ack")) return;
+      if (isDoseAcknowledged(existingEvent)) return;
 
       const nowIso = new Date().toISOString();
       const updatedEvent: MedicationEvent = {
         ...existingEvent,
-        note: [existingEvent.note, note ?? "caregiver_ack"].filter(Boolean).join(" | "),
+        note: [existingEvent.note, note ?? CAREGIVER_ACK_TAG].filter(Boolean).join(" | "),
         timeline: [
           ...existingEvent.timeline,
           { at: nowIso, kind: existingEvent.status, message: "Segnalata come gestita dal caregiver" },
