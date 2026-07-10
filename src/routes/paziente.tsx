@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Bell,
@@ -58,15 +58,42 @@ function PatientPage() {
     data?.patients?.find((p) => p.id === data.currentPatientId) ??
     data?.patients?.[0];
 
-  const [now, setNow] = useState(() => new Date());
-
+  // Tick ogni 30s per aggiornare gli stati derivati (reminder → due → late)
+  const [tick, setTick] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => {
-      setNow(new Date());
-    }, 1000);
-
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
     return () => clearInterval(id);
   }, []);
+  const now = new Date();
+  void tick;
+
+  // Watchdog: se una dose "rimandata" (snoozed) supera il suo termine
+  // ultimo per confermare (lo stesso calcolo usato per decidere se la card
+  // "Ultimo momento per confermare" è ancora attiva, vedi ActiveDoseCard),
+  // viene segnata automaticamente come saltata (equivalente a
+  // "dimenticata"). Senza questo controllo la card sparisce allo scadere
+  // del countdown ma la dose resta con lo stato "snoozed" (tag
+  // "Rimandata") finché non arriva il prossimo giro del cron server-side
+  // (dose-scheduler).
+  const autoSkippedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!patient) return;
+    const list = getDosesForPatientOnDate(data, patient.id, now, now);
+    for (const d of list) {
+      if (d.status !== "snoozed") continue;
+      const snoozedUntilMs = d.event?.snoozedUntil
+        ? new Date(d.event.snoozedUntil).getTime()
+        : 0;
+      if (!snoozedUntilMs) continue;
+      const hardDeadline = snoozedUntilMs + (d.therapy.timeoutMinutes ?? 10) * 60_000;
+      if (Date.now() < hardDeadline) continue;
+      const key = `${d.therapy.id}@${d.scheduledAt.toISOString()}`;
+      if (autoSkippedRef.current.has(key)) continue;
+      autoSkippedRef.current.add(key);
+      skipDose({ therapyId: d.therapy.id, scheduledAt: d.scheduledAt });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick, data, patient, skipDose]);
 
   // Loading / recovery skeleton
   if (loadingAuth || (user && userProfile?.role === "paziente" && !patient)) {
@@ -485,7 +512,7 @@ function ActiveDoseCard({
           aria-disabled={!canAct}
           className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-sm font-semibold text-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface"
         >
-          <Clock className="size-4" /> Ritarda
+          <Clock className="size-4" /> Ritarda 10 min
         </button>
         <button
           onClick={onSkip}
