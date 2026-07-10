@@ -11,6 +11,7 @@ import {
   Settings,
   Sparkles,
   X,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,6 +27,11 @@ import {
   type ScheduledDose,
 } from "@/lib/therapy";
 import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export const Route = createFileRoute("/paziente")({
   head: () => ({
@@ -227,9 +233,15 @@ function PatientPage() {
           {totalToday > 0 && (
             <div className="mt-5 rounded-2xl border border-border/60 bg-surface-muted p-4">
               <div className="flex items-baseline justify-between">
-                <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                  Progresso di oggi
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                    Progresso di oggi
+                  </p>
+                  <InfoPopover>
+                    Mostra quante medicine hai già confermato rispetto al totale previsto
+                    per oggi.
+                  </InfoPopover>
+                </div>
                 <p className="font-mono text-sm font-bold">
                   {takenToday}/{totalToday}
                 </p>
@@ -279,9 +291,16 @@ function PatientPage() {
 
         {/* Timeline giornaliera */}
         <section className="mt-10 fm-reveal [animation-delay:120ms]">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-            Timeline di oggi
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+              Timeline di oggi
+            </h2>
+            <InfoPopover>
+              Qui puoi vedere tutte le cure previste nella giornata, ordinate per orario.
+              Ogni elemento indica se una dose è stata presa, rimandata, saltata o deve
+              ancora essere assunta.
+            </InfoPopover>
+          </div>
 
           {activeTherapies.length === 0 ? (
             <EmptyTherapies name={firstName} />
@@ -618,5 +637,25 @@ function EmptyTherapies({ name }: { name: string }) {
         </Button>
       </div>
     </div>
+  );
+}
+
+function InfoPopover({ children }: { children: React.ReactNode }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground transition"
+          aria-label="Informazioni"
+        >
+          <Info className="size-4" />
+        </button>
+      </PopoverTrigger>
+
+      <PopoverContent className="max-w-xs text-sm leading-relaxed">
+        {children}
+      </PopoverContent>
+    </Popover>
   );
 }
