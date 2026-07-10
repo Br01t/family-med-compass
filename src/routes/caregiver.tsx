@@ -196,7 +196,7 @@ function CaregiverHome() {
         </section>
 
         <aside className="space-y-4 lg:col-span-4">
-          <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+          {/* <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
               <h3 className="truncate text-lg font-black tracking-tight">
                 Scorte in esaurimento
@@ -233,7 +233,7 @@ function CaregiverHome() {
                 );
               })}
             </ul>
-          </div>
+          </div> */}
 
           <WeeklyAdherenceCard />
         </aside>

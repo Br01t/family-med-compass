@@ -64,21 +64,20 @@ function LandingPage() {
           </div>
           <div>
             <p className="text-lg font-black tracking-tight leading-none">FamilyMed</p>
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
-              ❤️
-            </p>
           </div>
         </div>
 
-        {!user ? (
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/login">Accedi</Link>
-          </Button>
-        ) : (
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/impostazioni">Impostazioni</Link>
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {!user ? (
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/login">Accedi</Link>
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/impostazioni">Impostazioni</Link>
+            </Button>
+          )}
+        </div>
       </header>
 
       {/* HERO */}
@@ -87,7 +86,7 @@ function LandingPage() {
           <div className="fm-reveal">
             <span className="inline-flex items-center gap-2 rounded-full bg-primary-soft px-3 py-1 text-xs font-bold uppercase tracking-widest text-primary">
               <span className="size-1.5 rounded-full bg-primary" />
-              Nuova Progressive Web App
+              Un piccolo aiuto per chi vuoi bene 💙
             </span>
 
             <h1 className="mt-5 text-4xl font-black leading-[1.05] tracking-tight md:text-6xl">
@@ -110,8 +109,18 @@ function LandingPage() {
                 {user ? "Entra" : "Accedi"}
                 <ArrowRight className="ml-2 size-5" />
               </Button>
-            </div>
 
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-14 px-6 text-base font-bold"
+                asChild
+              >
+                <Link to="/guida-pubblica">
+                  Guarda come funziona
+                </Link>
+              </Button>
+            </div>
 
             <p className="mt-4 text-xs text-muted-foreground">
               L'app ricorda la tua scelta. Puoi cambiarla in qualsiasi momento.

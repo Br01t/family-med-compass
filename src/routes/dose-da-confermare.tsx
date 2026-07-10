@@ -114,11 +114,6 @@ function DoseDaConfermarePage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Nessuna dose non assunta da rivedere.
           </p>
-          <div className="mt-6">
-            <Button asChild variant="outline" size="sm">
-              <Link to="/caregiver">Torna alla dashboard</Link>
-            </Button>
-          </div>
         </div>
       ) : (
         <ul className="space-y-3">

@@ -15,6 +15,7 @@ import {
 } from "@/lib/therapy";
 import { downloadIcs, therapyToIcs } from "@/lib/ics";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 export const Route = createFileRoute("/pazienti/$id")({
@@ -169,21 +170,38 @@ function PatientDetail() {
                       {t.suspended ? "Sospesa" : t.active ? "Attiva" : "Off"}
                     </span>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => {
-                      const ics = therapyToIcs(t, patient, "caregiver");
-                      downloadIcs(`${t.name.replace(/\s+/g, "_")}.ics`, ics);
-                      toast.success("Evento calendario esportato", {
-                        description: "Apri il file per aggiungerlo al calendario.",
-                      });
-                    }}
-                  >
-                    <CalendarPlus className="mr-1.5 size-3.5" />
-                    Aggiungi al calendario
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => {
+                            const ics = therapyToIcs(t, patient, "caregiver");
+                            downloadIcs(`${t.name.replace(/\s+/g, "_")}.ics`, ics);
+                            toast.success("Evento calendario esportato", {
+                              description: "Apri il file per aggiungerlo al calendario.",
+                            });
+                          }}
+                        >
+                          <CalendarPlus className="mr-1.5 size-3.5" />
+                          Aggiungi al calendario
+                        </Button>
+                      </TooltipTrigger>
+
+                      <TooltipContent className="max-w-xs text-center">
+                        <p className="font-semibold">
+                          Sincronizza la terapia con il calendario
+                        </p>
+                        <p className="mt-1 text-xs">
+                          Verrà scaricato un file calendario. Aprendolo verrà creato
+                          automaticamente l'evento all'orario previsto con un promemoria
+                          predefinito 30 minuti prima.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </li>
               ))}
             </ul>

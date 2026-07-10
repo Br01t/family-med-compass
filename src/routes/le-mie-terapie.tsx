@@ -6,6 +6,7 @@ import { useFamilyMed } from "@/lib/store";
 import { recurrenceLabel } from "@/lib/therapy";
 import { downloadIcs, therapyToIcs } from "@/lib/ics";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export const Route = createFileRoute("/le-mie-terapie")({
   head: () => ({
@@ -216,20 +217,38 @@ function MyTherapiesPage() {
                   )}
 
                   <div className="mt-4 flex justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const ics = therapyToIcs(t, patient);
-                        downloadIcs(`${t.name.replace(/\s+/g, "_")}.ics`, ics);
-                        toast.success("Evento calendario esportato", {
-                          description: "Apri il file per aggiungerlo al calendario del telefono.",
-                        });
-                      }}
-                    >
-                      <CalendarPlus className="mr-1.5 size-3.5" />
-                      Aggiungi al calendario
-                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const ics = therapyToIcs(t, patient);
+                              downloadIcs(`${t.name.replace(/\s+/g, "_")}.ics`, ics);
+                              toast.success("Evento calendario esportato", {
+                                description:
+                                  "Apri il file per aggiungerlo al calendario del telefono.",
+                              });
+                            }}
+                          >
+                            <CalendarPlus className="mr-1.5 size-3.5" />
+                            Aggiungi al calendario
+                          </Button>
+                        </TooltipTrigger>
+
+                        <TooltipContent className="max-w-xs text-center">
+                          <p className="font-semibold">
+                            Aggiungi la terapia al calendario
+                          </p>
+                          <p className="mt-1 text-xs">
+                            Verrà scaricato un file calendario. Aprendolo verrà creato
+                            automaticamente l'evento all'orario della cura con un promemoria
+                            30 minuti prima.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </article>
               );

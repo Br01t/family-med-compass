@@ -160,16 +160,46 @@ function SettingsPage() {
               ? "✓ Dati sincronizzati sul cloud in tempo reale. Ogni azione è condivisa istantaneamente tra paziente e caregiver."
               : "Accedi per sincronizzare i tuoi dati sul cloud."}
           </p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-border/50 p-3">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Stato
+              </p>
+              <p className="mt-1 font-bold text-success">
+                Online
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border/50 p-3">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Aggiornamenti
+              </p>
+              <p className="mt-1 font-bold">
+                In tempo reale
+              </p>
+            </div>
+          </div>
         </section>
 
         <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
-          <h2 className="text-lg font-black tracking-tight">Promemoria</h2>
+          <h2 className="text-lg font-black tracking-tight">Uno strumento in più per la famiglia</h2>
           <p className="mt-3 text-sm text-muted-foreground">
-            I promemoria delle cure appaiono come modali dentro l'app quando è aperta.
-            Per ricevere avvisi anche quando l'app è chiusa, aggiungi ogni terapia al
-            calendario del telefono dalla pagina <b>Le mie terapie</b>: il sistema del
-            calendario notificherà autonomamente all'orario esatto.
+            FamilyMed nasce per aiutare paziente e familiari a rimanere sincronizzati
+            nella gestione delle terapie. <b>Continua sempre a seguire la normale procedura
+            prevista per l'assunzione delle cure</b> e utilizza questa app come <b>supporto
+            aggiuntivo</b> per avere più ordine, promemoria e <b>condivisione</b> delle informazioni.
           </p>
+          <div className="mt-4 rounded-2xl border border-primary/20 bg-primary-soft/40 p-4">
+            <p className="text-sm font-semibold text-primary">
+              L'app è in continua evoluzione
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Nuove idee, funzioni o miglioramenti possono essere aggiunti nel tempo per
+              renderla sempre più utile alle esigenze della famiglia. Se noti errori o
+              comportamenti imprevisti, verranno analizzati e risolti per migliorare
+              continuamente l'esperienza.
+            </p>
+          </div>
         </section>
       </div>
     </AppShell>
