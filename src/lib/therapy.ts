@@ -108,6 +108,29 @@ export function getDosesForPatientOnDate(
   return doses.sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
 }
 
+// Ritardo (in minuti) tra orario programmato e conferma, se la dose è stata
+// confermata. Restituisce null se la dose non ha ancora un evento con
+// confirmedAt (es. non ancora presa).
+export function doseDelayMinutes(dose: ScheduledDose): number | null {
+  if (!dose.event?.confirmedAt) return null;
+  return (
+    (new Date(dose.event.confirmedAt).getTime() - dose.scheduledAt.getTime()) /
+    60000
+  );
+}
+
+// Una dose "taken" perde lo stato "late" appena viene confermata (vedi
+// computeStatus, che ritorna "taken" prima di valutare il timeout). Questa
+// funzione recupera l'informazione dal confronto tra confirmedAt e
+// scheduledAt + timeoutMinutes, così il ritardo resta visibile nello storico
+// anche dopo la conferma.
+export function wasTakenLate(dose: ScheduledDose): boolean {
+  if (dose.status !== "taken") return false;
+  const delay = doseDelayMinutes(dose);
+  if (delay === null) return false;
+  return delay >= dose.therapy.timeoutMinutes;
+}
+
 export function getAdherenceForPatient(
   data: FamilyMedData,
   patientId: string,

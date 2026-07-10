@@ -2,7 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useFamilyMed } from "@/lib/store";
-import { formatTime, getDosesForPatientOnDate } from "@/lib/therapy";
+import {
+  doseDelayMinutes,
+  formatTime,
+  getDosesForPatientOnDate,
+  wasTakenLate,
+} from "@/lib/therapy";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/storico-report")({
@@ -102,12 +107,13 @@ function HistoryReportPage() {
           taken++;
           dayTaken++;
           entry.taken++;
-          if (dose.event?.confirmedAt) {
-            const delay =
-              (new Date(dose.event.confirmedAt).getTime() -
-                dose.scheduledAt.getTime()) /
-              60000;
-            if (delay >= 0) delays.push(delay);
+          const delay = doseDelayMinutes(dose);
+          if (delay !== null && delay >= 0) delays.push(delay);
+          // Anche se ormai confermata, se è stata presa oltre il timeout va
+          // comunque contata come dose "in ritardo" nello storico.
+          if (wasTakenLate(dose)) {
+            late++;
+            entry.late++;
           }
         } else if (dose.status === "late") {
           late++;
@@ -157,7 +163,9 @@ function HistoryReportPage() {
     const doses = getDosesForPatientOnDate(data, patientId, d, now);
     const past = doses.filter((x) => x.scheduledAt <= now);
     if (past.length === 0) return null;
-    const late = past.some((x) => x.status === "late" || x.status === "skipped");
+    const late = past.some(
+      (x) => x.status === "late" || x.status === "skipped" || wasTakenLate(x),
+    );
     const missing = past.some((x) => x.status !== "taken" && x.scheduledAt < now);
     const allTaken = past.every((x) => x.status === "taken");
     return { total: past.length, allTaken, late, missing };
@@ -384,7 +392,10 @@ function HistoryReportPage() {
                     Nessuna terapia programmata in questo giorno.
                   </li>
                 )}
-                {dayDoses.map((d) => (
+                {dayDoses.map((d) => {
+                  const takenLate = wasTakenLate(d);
+                  const delay = doseDelayMinutes(d);
+                  return (
                   <li
                     key={d.id}
                     className="rounded-xl border border-border/50 p-3"
@@ -397,13 +408,15 @@ function HistoryReportPage() {
                         className={cn(
                           "text-[9px] sm:text-[10px] font-bold uppercase tracking-widest",
                           d.status === "taken"
-                            ? "text-success"
+                            ? takenLate
+                              ? "text-accent"
+                              : "text-success"
                             : d.status === "late" || d.status === "skipped"
                               ? "text-accent"
                               : "text-muted-foreground",
                         )}
                       >
-                        {d.status}
+                        {takenLate ? "in ritardo" : d.status}
                       </span>
                     </div>
                     <p className="mt-1 truncate text-sm font-semibold">
@@ -413,12 +426,21 @@ function HistoryReportPage() {
                       {d.therapy.dosage} · {d.therapy.quantity} unità
                     </p>
                     {d.event?.confirmedAt && (
-                      <p className="mt-1 text-xs text-success">
+                      <p
+                        className={cn(
+                          "mt-1 text-xs",
+                          takenLate ? "text-accent" : "text-success",
+                        )}
+                      >
                         Confermata alle {formatTime(new Date(d.event.confirmedAt))}
+                        {takenLate && delay !== null
+                          ? ` (${Math.round(delay)} min di ritardo)`
+                          : ""}
                       </p>
                     )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </>
           )}
