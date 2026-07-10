@@ -31,31 +31,51 @@ function getFallbackProfile(user: Partial<User> | null | undefined): UserProfile
   };
 }
 
-export async function getUserProfile(uid: string, fallbackUser?: Partial<User> | null): Promise<UserProfile | null> {
+export async function getUserProfile(
+  uid: string,
+  fallbackUser?: Partial<User> | null,
+  retries = 2,
+): Promise<UserProfile | null> {
   if (!supabase) return null;
-  try {
-    const { data, error } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
 
-    if (error) {
-      console.warn("Profilo non disponibile o accesso non consentito:", error.message);
-      return getFallbackProfile(fallbackUser);
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
+
+      if (error) {
+        // Errore di rete/RLS momentaneo (tipico quando l'app torna in
+        // foreground dopo essere stata chiusa/in background e la connessione
+        // non è ancora pronta): riprova prima di arrenderti. Altrimenti
+        // l'utente verrebbe sloggato pur avendo una sessione Supabase
+        // ancora perfettamente valida.
+        console.warn(`Profilo non disponibile (tentativo ${attempt + 1}/${retries + 1}):`, error.message);
+        if (attempt < retries) {
+          await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+          continue;
+        }
+        return getFallbackProfile(fallbackUser);
+      }
+
+      if (!data) {
+        return getFallbackProfile(fallbackUser);
+      }
+
+      const fallback = getFallbackProfile(fallbackUser);
+
+      return {
+        uid: data.id,
+        email: data.email ?? fallback?.email ?? "",
+        name: data.name ?? fallback?.name ?? "",
+        role: (data.role as Role) ?? fallback?.role ?? "caregiver",
+        createdAt: data.created_at ?? fallback?.createdAt ?? new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error(`Errore nel recupero del profilo utente (tentativo ${attempt + 1}/${retries + 1}):`, error);
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+        continue;
+      }
     }
-
-    if (!data) {
-      return getFallbackProfile(fallbackUser);
-    }
-
-    const fallback = getFallbackProfile(fallbackUser);
-
-    return {
-      uid: data.id,
-      email: data.email ?? fallback?.email ?? "",
-      name: data.name ?? fallback?.name ?? "",
-      role: (data.role as Role) ?? fallback?.role ?? "caregiver",
-      createdAt: data.created_at ?? fallback?.createdAt ?? new Date().toISOString(),
-    };
-  } catch (error) {
-    console.error("Errore nel recupero del profilo utente:", error);
   }
   return getFallbackProfile(fallbackUser);
 }

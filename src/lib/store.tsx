@@ -100,6 +100,14 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [currentPatientId, setCurrentPatientId] = useState<string>("");
 
+  // Tiene traccia dell'ultimo profilo valido, leggibile in modo sincrono
+  // (senza stale-closure) dentro finalizeAuth per non sloggare l'utente
+  // in caso di un fallimento transitorio nel refetch del profilo.
+  const userProfileRef = useRef<UserProfile | null>(null);
+  useEffect(() => {
+    userProfileRef.current = userProfile;
+  }, [userProfile]);
+
   // Listen to Supabase Auth state changes
   useEffect(() => {
     if (!supabase) {
@@ -109,17 +117,25 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
     const finalizeAuth = async (u: User | null, profile: UserProfile | null) => {
       setUser(u);
-      setUserProfile(profile);
-      if (profile) {
+      // Se il fetch del profilo fallisce (anche dopo i retry interni a
+      // getUserProfile) ma abbiamo già un profilo valido in memoria per lo
+      // stesso utente, non sloggarlo: è quasi certamente solo un errore di
+      // rete transitorio (es. refresh silenzioso del token quando l'app
+      // torna in foreground dopo essere stata chiusa). Il profilo verrà
+      // ri-sincronizzato al prossimo evento utile.
+      const resolvedProfile =
+        profile ?? (u && userProfileRef.current?.uid === u.id ? userProfileRef.current : null);
+      setUserProfile(resolvedProfile);
+      if (resolvedProfile) {
         setLocalData((d) => ({
           ...d,
-          currentRole: profile.role,
+          currentRole: resolvedProfile.role,
         }));
         // Backfill user_roles se mancante (utenti creati prima del trigger)
         if (u && supabase) {
           supabase
             .from("user_roles")
-            .upsert({ user_id: u.id, role: profile.role }, { onConflict: "user_id,role" })
+            .upsert({ user_id: u.id, role: resolvedProfile.role }, { onConflict: "user_id,role" })
             .then(({ error }) => {
               if (error) console.warn("[store] backfill user_roles:", error.message);
             });
@@ -137,7 +153,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      getUserProfile(u.id)
+      getUserProfile(u.id, u)
         .then((profile) => finalizeAuth(u, profile))
         .catch(() => finalizeAuth(u, null));
     });
