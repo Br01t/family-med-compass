@@ -58,14 +58,15 @@ function PatientPage() {
     data?.patients?.find((p) => p.id === data.currentPatientId) ??
     data?.patients?.[0];
 
-  // Tick ogni 30s per aggiornare gli stati derivati (reminder → due → late)
-  const [tick, setTick] = useState(0);
+  const [now, setNow] = useState(() => new Date());
+
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    const id = setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+
     return () => clearInterval(id);
   }, []);
-  const now = new Date();
-  void tick;
 
   // Loading / recovery skeleton
   if (loadingAuth || (user && userProfile?.role === "paziente" && !patient)) {
@@ -484,7 +485,7 @@ function ActiveDoseCard({
           aria-disabled={!canAct}
           className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-sm font-semibold text-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface"
         >
-          <Clock className="size-4" /> Ritarda 10 min
+          <Clock className="size-4" /> Ritarda
         </button>
         <button
           onClick={onSkip}

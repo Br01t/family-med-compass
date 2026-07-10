@@ -246,6 +246,40 @@ export function AlarmRinger() {
     return () => window.clearInterval(id);
   }, [modal]);
 
+  // Auto-skip: se il countdown "tempo per confermare" (due/reminder_post) o
+  // "ultima occasione" (final_due) arriva a zero senza un'azione
+  // dell'utente, la dose viene segnata automaticamente come saltata
+  // (equivalente a "dimenticata"). Così la modale non resta bloccata su
+  // 00:00 e la dose smette subito di comparire come "rimandata" invece di
+  // aspettare il prossimo giro del cron server-side (dose-scheduler) che
+  // la marcherebbe "missed" con ritardo.
+  const autoHandledIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!modal || !therapy) return;
+    if (
+      modal.kind !== "final_due" &&
+      modal.kind !== "due" &&
+      modal.kind !== "reminder_post"
+    ) return;
+    if (autoHandledIdRef.current === modal.id) return;
+
+    const postMinLocal = Math.max(1, Number(therapy.postReminderMinutes ?? 5));
+    const snoozedUntilLocal = eventForModal?.snoozedUntil
+      ? new Date(eventForModal.snoozedUntil).getTime()
+      : null;
+    // final_due: la scadenza è lo snoozed_until reale (o, in sua assenza,
+    // orario + postReminderMinutes). due/reminder_post: orario + postReminderMinutes.
+    const deadline =
+      modal.kind === "final_due"
+        ? snoozedUntilLocal ?? scheduledAt.getTime() + postMinLocal * 60_000
+        : scheduledAt.getTime() + postMinLocal * 60_000;
+
+    if (nowTs < deadline) return;
+
+    autoHandledIdRef.current = modal.id;
+    void handleAction("skip");
+  }, [modal, therapy, eventForModal, scheduledAt, nowTs, handleAction]);
+
   if (!modal || !isPatient) return null;
 
   const postMin = Math.max(1, Number(therapy?.postReminderMinutes ?? 5));
