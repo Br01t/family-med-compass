@@ -6,6 +6,7 @@ import {
   doseDelayMinutes,
   formatTime,
   getDosesForPatientOnDate,
+  statusLabel,
   wasTakenLate,
 } from "@/lib/therapy";
 import { cn } from "@/lib/utils";
