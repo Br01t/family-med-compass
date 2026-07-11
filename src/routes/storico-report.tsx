@@ -26,6 +26,14 @@ export const Route = createFileRoute("/storico-report")({
 
 type PeriodDays = 7 | 30 | 90;
 
+type PerTherapyEntry = {
+  name: string;
+  scheduled: number;
+  taken: number;
+  late: number;
+  skipped: number;
+};
+
 function HistoryReportPage() {
   const { data } = useFamilyMed();
   const patients = data.patients;
@@ -61,15 +69,10 @@ function HistoryReportPage() {
         avgDelay: 0,
         adherence: 0,
         bars: [] as { date: Date; pct: number; count: number }[],
-        perTherapy: [] as {
+        perTherapy: [] as (PerTherapyEntry & {
           therapyId: string;
-          name: string;
-          scheduled: number;
-          taken: number;
-          late: number;
-          skipped: number;
           adherence: number;
-        }[],
+        })[],
       };
     }
     let scheduled = 0;
@@ -78,10 +81,7 @@ function HistoryReportPage() {
     let skipped = 0;
     const delays: number[] = [];
     const bars: { date: Date; pct: number; count: number }[] = [];
-    const perTherapy = new Map<
-      string,
-      { name: string; scheduled: number; taken: number; late: number; skipped: number }
-    >();
+    const perTherapy = new Map<string, PerTherapyEntry>();
 
     for (let i = period - 1; i >= 0; i--) {
       const d = new Date(now);
@@ -163,12 +163,13 @@ function HistoryReportPage() {
     const doses = getDosesForPatientOnDate(data, patientId, d, now);
     const past = doses.filter((x) => x.scheduledAt <= now);
     if (past.length === 0) return null;
-    const late = past.some(
-      (x) => x.status === "late" || x.status === "skipped" || wasTakenLate(x),
-    );
-    const missing = past.some((x) => x.status !== "taken" && x.scheduledAt < now);
-    const allTaken = past.every((x) => x.status === "taken");
-    return { total: past.length, allTaken, late, missing };
+    // "Dimenticate": almeno una dose saltata o mai confermata (missed/skipped).
+    const missed = past.some((x) => x.status === "skipped" || x.status === "missed");
+    // "Qualche ritardo": nessuna dimenticata, ma almeno una presa/segnata in
+    // ritardo rispetto all'orario previsto (anche se poi confermata).
+    const someLate = past.some((x) => x.status === "late" || wasTakenLate(x));
+    const allTaken = past.every((x) => x.status === "taken") && !someLate;
+    return { total: past.length, allTaken, someLate, missed };
   };
 
   const dayDoses =
@@ -324,12 +325,20 @@ function HistoryReportPage() {
               const inMonth = d.getMonth() === now.getMonth();
               const isToday = d.toDateString() === now.toDateString();
               const s = summary(d);
+              // Stessa priorità ovunque: dimenticate > qualche ritardo > tutte prese.
               const tone = s
-                ? s.allTaken
-                  ? "bg-success/15 text-success ring-success/30"
-                  : s.late || s.missing
-                    ? "bg-accent-soft text-accent ring-accent/30"
-                    : "bg-warning/15 text-warning-foreground ring-warning/30"
+                ? s.missed
+                  ? "bg-accent-soft text-accent ring-accent/30"
+                  : s.someLate
+                    ? "bg-warning/15 text-warning-foreground ring-warning/30"
+                    : "bg-success/15 text-success ring-success/30"
+                : "";
+              const dotColor = s
+                ? s.missed
+                  ? "bg-accent"
+                  : s.someLate
+                    ? "bg-warning"
+                    : "bg-success"
                 : "";
               return (
                 <button
@@ -347,9 +356,7 @@ function HistoryReportPage() {
                   <div className="flex h-full flex-col items-center justify-between">
                     <span className="font-semibold">{d.getDate()}</span>
                     {s ? (
-                      <span className="text-[9px] sm:text-[10px]">
-                        {s.allTaken ? "✓" : s.late || s.missing ? "✕" : "⚠"}
-                      </span>
+                      <span className={cn("size-1.5 sm:size-2 rounded-full", dotColor)} />
                     ) : (
                       <span className="h-2 w-2" />
                     )}

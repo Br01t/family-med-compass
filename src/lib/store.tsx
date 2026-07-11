@@ -310,7 +310,16 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       const actionKey = `${therapyId}@${scheduledIso}@confirm`;
       if (pendingDoseActionsRef.current.has(actionKey)) return;
 
-      const existingEvent = events.find(
+      // NOTA: lo state "events" del provider è popolato SOLO dalla
+      // sottoscrizione Supabase (utente loggato). In modalità locale/demo
+      // (senza login) resta sempre [], quindi la ricerca dell'evento
+      // esistente deve avvenire su localData.events, altrimenti questa
+      // azione crea sempre un evento "taken" duplicato invece di aggiornare
+      // quello già presente (es. "skipped"), e getDosesForPatientOnDate
+      // continuerebbe a mostrare il primo evento trovato (quello vecchio,
+      // non confermato) in timeline, storico e calcolo dell'aderenza.
+      const eventsSource = user ? events : localData.events;
+      const existingEvent = eventsSource.find(
         (e) =>
           e.therapyId === therapyId &&
           Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000
@@ -366,7 +375,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         pendingDoseActionsRef.current.delete(actionKey);
       }
     },
-    [user, therapies, events, patients]
+    [user, therapies, events, localData.events, patients]
   );
 
 
@@ -380,7 +389,11 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       const actionKey = `${therapyId}@${scheduledIso}@skip`;
       if (pendingDoseActionsRef.current.has(actionKey)) return;
 
-      const existingEvent = events.find(
+      // Vedi nota in confirmDose: in modalità locale/demo bisogna cercare
+      // l'evento esistente in localData.events, non nello state "events"
+      // (che è popolato solo per utenti Supabase loggati).
+      const eventsSource = user ? events : localData.events;
+      const existingEvent = eventsSource.find(
         (e) =>
           e.therapyId === therapyId &&
           Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000
@@ -428,7 +441,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         pendingDoseActionsRef.current.delete(actionKey);
       }
     },
-    [user, therapies, events, patients]
+    [user, therapies, events, localData.events, patients]
   );
 
 
@@ -448,7 +461,10 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       scheduledAt: Date;
       note?: string;
     }) => {
-      const existingEvent = events.find(
+      // Vedi nota in confirmDose: in modalità locale/demo bisogna cercare
+      // l'evento esistente in localData.events.
+      const eventsSource = user ? events : localData.events;
+      const existingEvent = eventsSource.find(
         (e) =>
           e.therapyId === therapyId &&
           Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000
@@ -476,7 +492,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         }));
       }
     },
-    [user, events]
+    [user, events, localData.events]
   );
 
 
@@ -504,7 +520,10 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       const actionKey = `${therapyId}@${scheduledIso}@snooze`;
       if (pendingDoseActionsRef.current.has(actionKey)) return;
       const snoozedUntil = new Date(Date.now() + snoozeMinutes * 60_000).toISOString();
-      const existingEvent = events.find(
+      // Vedi nota in confirmDose: in modalità locale/demo bisogna cercare
+      // l'evento esistente in localData.events.
+      const eventsSource = user ? events : localData.events;
+      const existingEvent = eventsSource.find(
         (e) =>
           e.therapyId === therapyId &&
           Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000,
@@ -557,7 +576,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         pendingDoseActionsRef.current.delete(actionKey);
       }
     },
-    [user, therapies, events, patients],
+    [user, therapies, events, localData.events, patients],
   );
 
 
