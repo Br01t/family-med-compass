@@ -7,6 +7,7 @@ import {
   formatTime,
   getDosesForPatientOnDate,
   statusLabel,
+  statusTone,
   wasTakenLate,
 } from "@/lib/therapy";
 import { cn } from "@/lib/utils";
@@ -414,14 +415,8 @@ function HistoryReportPage() {
                       </span>
                       <span
                         className={cn(
-                          "text-[9px] sm:text-[10px] font-bold uppercase tracking-widest",
-                          d.status === "taken"
-                            ? takenLate
-                              ? "text-accent"
-                              : "text-success"
-                            : d.status === "late" || d.status === "skipped"
-                              ? "text-accent"
-                              : "text-muted-foreground",
+                          "text-[9px] sm:text-[10px] font-bold uppercase tracking-widest rounded-full px-2 py-0.5",
+                          takenLate ? "bg-accent-soft text-accent" : statusTone[d.status],
                         )}
                       >
                         {takenLate ? "In ritardo" : statusLabel[d.status]}
