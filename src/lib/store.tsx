@@ -39,7 +39,7 @@ import {
   fetchAllPatients,
   followPatient as followPatientDoc,
   unfollowPatient as unfollowPatientDoc,
-  
+  insertNotificationDoc,
   fetchCaregiverIdsForPatient,
 } from "./supabase-service";
 
