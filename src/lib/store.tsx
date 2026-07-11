@@ -751,6 +751,180 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     [user],
   );
 
+  // -----------------------------------------------------------------
+  // Auto-transizione a "dimenticata" (missed)
+  // -----------------------------------------------------------------
+  // Ogni 30 secondi controlla le dosi passate: se sono trascorse
+  // `timeoutMinutes` dall'orario programmato e la dose non è stata
+  // confermata / saltata / già segnata come missed, crea l'evento
+  // "missed" e la notifica di alert per i caregiver del paziente.
+  // Fondamentale per la modalità locale/demo (DB vuoto) e come
+  // fallback quando lo scheduler DB non arriva a tempo.
+  const missedProcessedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const tick = async () => {
+      const now = Date.now();
+      const activeTherapies = data.therapies.filter(
+        (t) => t.active && !t.suspended,
+      );
+      for (const th of activeTherapies) {
+        if (!th.times || th.times.length === 0) continue;
+        // Solo dosi di oggi (evita di ri-processare storico vecchio)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const start = new Date(th.startDate + "T00:00:00");
+        if (today < start) continue;
+        if (th.endDate && new Date(th.endDate) < today) continue;
+        for (const time of th.times) {
+          const [h, m] = time.split(":").map(Number);
+          const scheduledAt = new Date(today);
+          scheduledAt.setHours(h ?? 0, m ?? 0, 0, 0);
+          const scheduledMs = scheduledAt.getTime();
+          const timeoutMs = (th.timeoutMinutes ?? 10) * 60_000;
+          if (now < scheduledMs + timeoutMs) continue;
+
+          const dedupeKey = `${th.id}@${scheduledAt.toISOString()}@missed`;
+          if (missedProcessedRef.current.has(dedupeKey)) continue;
+
+          const existing = data.events.find(
+            (e) =>
+              e.therapyId === th.id &&
+              Math.abs(new Date(e.scheduledAt).getTime() - scheduledMs) < 60_000,
+          );
+          if (
+            existing?.status === "taken" ||
+            existing?.status === "skipped" ||
+            existing?.status === "missed"
+          ) {
+            missedProcessedRef.current.add(dedupeKey);
+            continue;
+          }
+
+          const nowIso = new Date().toISOString();
+          const scheduledIso = scheduledAt.toISOString();
+          const missedEvent: MedicationEvent = existing
+            ? {
+                ...existing,
+                status: "missed" as const,
+                timeline: [
+                  ...existing.timeline,
+                  { at: nowIso, kind: "missed", message: "Dose non confermata entro il tempo massimo" },
+                ],
+              }
+            : {
+                id: `e_${th.id}_${scheduledMs}`,
+                therapyId: th.id,
+                patientId: th.patientId,
+                scheduledAt: scheduledIso,
+                status: "missed" as const,
+                timeline: [
+                  { at: scheduledIso, kind: "scheduled", message: "Dose programmata" },
+                  { at: nowIso, kind: "missed", message: "Dose non confermata entro il tempo massimo" },
+                ],
+              };
+
+          missedProcessedRef.current.add(dedupeKey);
+
+          const patient = data.patients.find((p) => p.id === th.patientId);
+          const hhmm = scheduledAt.toLocaleTimeString("it-IT", {
+            hour: "2-digit", minute: "2-digit",
+          });
+
+          if (user) {
+            try {
+              await saveEventDoc(missedEvent);
+              // Fallback client: se il trigger DB non ha già generato la
+              // notifica (dose_key unico → nessun duplicato), inseriscila.
+              const caregiverIds = await fetchCaregiverIdsForPatient(th.patientId);
+              for (const cgId of caregiverIds) {
+                await insertNotificationDoc({
+                  targetUserId: cgId,
+                  kind: "missed",
+                  severity: "alert",
+                  title: `👨‍👩‍👧 ${patient?.name ?? "Paziente"} non ha preso ${th.name} (dimenticata)`,
+                  message: `Dose delle ${hhmm} — segnata come dimenticata dopo il tempo massimo. Contatta il paziente e conferma la dose dalla pagina "Dose da confermare".`,
+                  patientId: th.patientId,
+                  therapyId: th.id,
+                  eventId: missedEvent.id,
+                  doseKey: `${th.id}@${scheduledIso}@missed@cg@${cgId}`,
+                });
+              }
+              // Notifica al paziente
+              if (patient?.userId) {
+                await insertNotificationDoc({
+                  targetUserId: patient.userId,
+                  kind: "missed",
+                  severity: "alert",
+                  title: `Cura dimenticata: ${th.name}`,
+                  message: `La dose delle ${hhmm} è stata segnata come dimenticata. Probabilmente verrai contattato da un familiare.`,
+                  patientId: th.patientId,
+                  therapyId: th.id,
+                  eventId: missedEvent.id,
+                  doseKey: `${th.id}@${scheduledIso}@missed@patient`,
+                });
+              }
+            } catch (err) {
+              console.warn("[auto-missed] save failed", err);
+            }
+          } else {
+            // Modalità locale/demo
+            setLocalData((d) => {
+              const alreadyEvent = d.events.some(
+                (e) =>
+                  e.therapyId === th.id &&
+                  Math.abs(new Date(e.scheduledAt).getTime() - scheduledMs) < 60_000 &&
+                  e.status === "missed",
+              );
+              const nextEvents = alreadyEvent
+                ? d.events
+                : existing
+                  ? d.events.map((e) => (e === existing ? missedEvent : e))
+                  : [...d.events, missedEvent];
+              const alreadyNotif = d.notifications.some(
+                (n) => n.doseKey === `${th.id}@${scheduledIso}@missed@cg`,
+              );
+              const nextNotifications = alreadyNotif
+                ? d.notifications
+                : [
+                    ...d.notifications,
+                    {
+                      id: `n_${th.id}_${scheduledMs}_missed_cg`,
+                      createdAt: nowIso,
+                      kind: "missed" as const,
+                      patientId: th.patientId,
+                      therapyId: th.id,
+                      eventId: missedEvent.id,
+                      doseKey: `${th.id}@${scheduledIso}@missed@cg`,
+                      severity: "alert" as const,
+                      title: `👨‍👩‍👧 ${patient?.name ?? "Paziente"} non ha preso ${th.name} (dimenticata)`,
+                      message: `Dose delle ${hhmm} — segnata come dimenticata dopo il tempo massimo. Contatta il paziente e conferma la dose dalla pagina "Dose da confermare".`,
+                      read: false,
+                    },
+                    {
+                      id: `n_${th.id}_${scheduledMs}_missed_pt`,
+                      createdAt: nowIso,
+                      kind: "missed" as const,
+                      patientId: th.patientId,
+                      therapyId: th.id,
+                      eventId: missedEvent.id,
+                      doseKey: `${th.id}@${scheduledIso}@missed@patient`,
+                      severity: "alert" as const,
+                      title: `Cura dimenticata: ${th.name}`,
+                      message: `La dose delle ${hhmm} è stata segnata come dimenticata. Probabilmente verrai contattato da un familiare.`,
+                      read: false,
+                    },
+                  ];
+              return { ...d, events: nextEvents, notifications: nextNotifications };
+            });
+          }
+        }
+      }
+    };
+    tick();
+    const iv = setInterval(tick, 30_000);
+    return () => clearInterval(iv);
+  }, [user, data.therapies, data.events, data.patients]);
+
   const value = useMemo<Ctx>(
     () => ({
       data,
