@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { recurrenceLabel } from "@/lib/therapy";
-import { downloadIcs, therapyToIcs } from "@/lib/ics";
+import { addTherapyToCalendar } from "@/lib/ics";
 import { downloadTherapyReportPdf } from "@/lib/therapy-report";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -258,12 +258,18 @@ function MyTherapiesPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              const ics = therapyToIcs(t, patient);
-                              downloadIcs(`${t.name.replace(/\s+/g, "_")}.ics`, ics);
-                              toast.success("Evento calendario esportato", {
-                                description:
-                                  "Apri il file per aggiungerlo al calendario del telefono.",
-                              });
+                              const method = addTherapyToCalendar(t, patient);
+                              if (method === "google") {
+                                toast.success("Apri Google Calendar per salvare l'evento", {
+                                  description:
+                                    "Si è aperta una nuova scheda per ogni orario: tocca \"Salva\" per confermare.",
+                                });
+                              } else {
+                                toast.success("Evento calendario esportato", {
+                                  description:
+                                    "Apri il file per aggiungerlo al calendario del telefono.",
+                                });
+                              }
                             }}
                           >
                             <CalendarPlus className="mr-1.5 size-3.5" />

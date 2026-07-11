@@ -1,13 +1,13 @@
-
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarPlus, Pill, Plus, Power, PowerOff } from "lucide-react";
+import { CalendarPlus, FileDown, Pill, Plus, Power, PowerOff } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { AddTherapyDialog } from "@/components/AddTherapyDialog";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { recurrenceLabel } from "@/lib/therapy";
-import { downloadIcs, therapyToIcs } from "@/lib/ics";
+import { addTherapyToCalendar } from "@/lib/ics";
+import { downloadTherapyReportPdf } from "@/lib/therapy-report";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -31,7 +31,7 @@ function TherapiesPage() {
           const therapies = data.therapies.filter((t) => t.patientId === p.id);
           return (
             <section key={p.id}>
-              <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="grid size-10 place-items-center rounded-xl bg-primary-soft font-black text-primary">
                     {p.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
@@ -43,14 +43,48 @@ function TherapiesPage() {
                     </p>
                   </div>
                 </div>
-                <AddTherapyDialog
-                  initialPatientId={p.id}
-                  trigger={
-                    <Button variant="outline" size="sm" id={`add-therapy-${p.id}`}>
-                      <Plus className="mr-1.5 size-3.5" /> Terapia
-                    </Button>
-                  }
-                />
+                <div className="flex flex-wrap gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (therapies.length === 0) {
+                              toast.error("Nessuna terapia da includere nel resoconto");
+                              return;
+                            }
+                            downloadTherapyReportPdf(data, p, new Date());
+                            toast.success("Resoconto PDF scaricato", {
+                              description: p.name,
+                            });
+                          }}
+                        >
+                          <FileDown className="mr-1.5 size-3.5" />
+                          Resoconto PDF
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-center">
+                        <p className="font-semibold">
+                          Scarica il resoconto completo
+                        </p>
+                        <p className="mt-1 text-xs">
+                          Un PDF con tutte le terapie di {p.name} e la timeline
+                          delle dosi di oggi (orari, stato, conferme).
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <AddTherapyDialog
+                    initialPatientId={p.id}
+                    trigger={
+                      <Button variant="outline" size="sm" id={`add-therapy-${p.id}`}>
+                        <Plus className="mr-1.5 size-3.5" /> Terapia
+                      </Button>
+                    }
+                  />
+                </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {therapies.map((t) => (
@@ -163,11 +197,17 @@ function TherapiesPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                const ics = therapyToIcs(t, p);
-                                downloadIcs(`${t.name.replace(/\s+/g, "_")}.ics`, ics);
-                                toast.success("Evento calendario esportato", {
-                                  description: "Apri il file per aggiungerlo al calendario del telefono.",
-                                });
+                                const method = addTherapyToCalendar(t, p);
+                                if (method === "google") {
+                                  toast.success("Apri Google Calendar per salvare l'evento", {
+                                    description:
+                                      "Si è aperta una nuova scheda per ogni orario: tocca \"Salva\" per confermare.",
+                                  });
+                                } else {
+                                  toast.success("Evento calendario esportato", {
+                                    description: "Apri il file per aggiungerlo al calendario del telefono.",
+                                  });
+                                }
                               }}
                             >
                               <CalendarPlus className="mr-1.5 size-3.5" />

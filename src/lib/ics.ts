@@ -203,3 +203,98 @@ export function downloadIcs(filename: string, content: string) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+// --- Fallback Android: link "Aggiungi a Google Calendar" -----------------
+//
+// Su Android il download diretto di un .ics grezzo è inaffidabile: molti
+// browser/telefoni non hanno un'app associata pronta a intercettare il file
+// scaricato e mostrano "Impossibile aprire il file", indipendentemente da
+// quanto il contenuto ICS sia corretto. La soluzione robusta e ampiamente
+// usata in produzione è aprire invece l'URL "template" di Google Calendar:
+// apre direttamente l'app (o il sito) già precompilata, l'utente tocca
+// "Salva" e l'evento viene creato con certezza. Si perde qualche dettaglio
+// (i promemoria multipli configurati come VALARM non sono supportati da
+// questo URL, solo il promemoria di default di Google Calendar), ma la
+// creazione dell'evento è garantita.
+function isAndroidDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /android/i.test(navigator.userAgent);
+}
+
+// Converte un orario "locale" (Europe/Rome) in UTC usando l'API Intl,
+// gestendo automaticamente il cambio ora legale/solare senza bisogno di
+// una libreria come date-fns-tz.
+function zonedTimeToUtc(dateStr: string, hh: number, mm: number): Date {
+  const naiveUtc = new Date(`${dateStr}T${pad(hh)}:${pad(mm)}:00.000Z`);
+  const asRomeWallClock = new Date(
+    naiveUtc.toLocaleString("en-US", { timeZone: "Europe/Rome" }),
+  );
+  const offset = naiveUtc.getTime() - asRomeWallClock.getTime();
+  return new Date(naiveUtc.getTime() + offset);
+}
+
+function toGoogleUtcStamp(d: Date): string {
+  return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
+}
+
+function googleCalendarUrl(
+  therapy: Therapy,
+  patient: Patient,
+  role: "paziente" | "caregiver",
+  time: string,
+): string {
+  const [h, m] = time.split(":").map(Number);
+  const start = zonedTimeToUtc(therapy.startDate, h, m);
+  const end = new Date(start.getTime() + 15 * 60_000);
+  const deepLink = appDeepLink(role, therapy.id, patient.id);
+
+  const details = [
+    `Farmaco: ${therapy.name} ${therapy.dosage}`,
+    `Quantità: ${therapy.quantity} unità`,
+    `Paziente: ${patient.name}`,
+    therapy.notes ? `Note: ${therapy.notes}` : null,
+    "",
+    `Apri in FamilyMed: ${deepLink}`,
+  ]
+    .filter((v): v is string => v !== null)
+    .join("\n");
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `💊 ${therapy.name} ${therapy.dosage} — ${patient.name}`,
+    dates: `${toGoogleUtcStamp(start)}/${toGoogleUtcStamp(end)}`,
+    details,
+    recur: rrule(therapy),
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+export type CalendarAddMethod = "google" | "ics";
+
+/**
+ * Punto d'ingresso unico per il pulsante "Aggiungi al calendario":
+ * - su Android apre un link Google Calendar per ogni orario della terapia
+ *   (metodo affidabile, l'evento viene sempre creato correttamente)
+ * - altrove (iOS, desktop) scarica il file .ics come in precedenza
+ *
+ * Ritorna quale metodo è stato usato, così la UI può mostrare un toast
+ * coerente.
+ */
+export function addTherapyToCalendar(
+  therapy: Therapy,
+  patient: Patient,
+  role: "paziente" | "caregiver" = "paziente",
+): CalendarAddMethod {
+  if (isAndroidDevice()) {
+    therapy.times.forEach((time) => {
+      const url = googleCalendarUrl(therapy, patient, role, time);
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+    return "google";
+  }
+
+  const ics = therapyToIcs(therapy, patient, role);
+  downloadIcs(`${therapy.name.replace(/\s+/g, "_")}.ics`, ics);
+  return "ics";
+}
