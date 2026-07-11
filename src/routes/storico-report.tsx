@@ -424,7 +424,7 @@ function HistoryReportPage() {
                               : "text-muted-foreground",
                         )}
                       >
-                        {takenLate ? "in ritardo" : d.status}
+                        {takenLate ? "In ritardo" : statusLabel[d.status]}
                       </span>
                     </div>
                     <p className="mt-1 truncate text-sm font-semibold">
