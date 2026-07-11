@@ -57,7 +57,9 @@ function computeStatus(
     const reminderBefore = Math.abs(reminderIntervals?.[0] ?? 10);
     return minutesUntilScheduled <= reminderBefore ? "reminder" : "scheduled";
   }
-  if (minutesFromScheduled >= timeoutMinutes) return "late";
+  // Superata la deadline massima (timeoutMinutes) la dose è
+  // definitivamente "dimenticata": non si può più confermare dal paziente.
+  if (minutesFromScheduled >= timeoutMinutes) return "missed";
   return "due";
 }
 
