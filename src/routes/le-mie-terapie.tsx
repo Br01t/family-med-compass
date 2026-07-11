@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Bell, CalendarPlus, Clock, Info, Package, Pill, Settings } from "lucide-react";
+import { ArrowLeft, Bell, CalendarPlus, Clock, FileDown, Info, Package, Pill, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { recurrenceLabel } from "@/lib/therapy";
 import { downloadIcs, therapyToIcs } from "@/lib/ics";
+import { downloadTherapyReportPdf } from "@/lib/therapy-report";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -68,6 +69,11 @@ function MyTherapiesPage() {
   const therapies = data.therapies.filter(
     (t) => t.patientId === patient.id && t.active && !t.suspended,
   );
+  // Il resoconto include TUTTE le terapie del paziente (anche sospese), non
+  // solo quelle attive mostrate in questa pagina.
+  const allTherapiesCount = data.therapies.filter(
+    (t) => t.patientId === patient.id,
+  ).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,6 +108,34 @@ function MyTherapiesPage() {
                   therapies.length > 1 ? "e" : "a"
                 }.`}
           </p>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="mt-4 w-full sm:w-auto"
+                  disabled={allTherapiesCount === 0}
+                  onClick={() => {
+                    downloadTherapyReportPdf(data, patient, new Date());
+                    toast.success("Resoconto PDF scaricato", {
+                      description: patient.name,
+                    });
+                  }}
+                >
+                  <FileDown className="mr-1.5 size-4" />
+                  Scarica resoconto PDF
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs text-center">
+                <p className="font-semibold">Resoconto completo delle terapie</p>
+                <p className="mt-1 text-xs">
+                  Un PDF con tutte le tue terapie e la timeline delle dosi di
+                  oggi (orari, stato, conferme), da stampare o condividere.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </section>
 
         {therapies.length === 0 ? (
