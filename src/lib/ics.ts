@@ -19,6 +19,35 @@ function nowStamp() {
   return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
 }
 
+// Blocco VTIMEZONE per "Europe/Rome" (CET/CEST), le uniche transizioni DST
+// usate in tutto il file. Molti parser Android (incluso Google Calendar in
+// import locale di file .ics) sono più severi di iOS/Apple Calendar: se un
+// evento referenzia un TZID ma il VCALENDAR non definisce quel timezone,
+// considerano l'intero file non valido e rifiutano l'import. Includere
+// questo blocco risolve l'errore "file non valido" su Android, senza dover
+// rinunciare all'orario locale corretto (che una conversione fissa in UTC
+// romperebbe comunque durante i cambi ora legale/solare, dato che gli eventi
+// sono ricorrenti).
+const VTIMEZONE_EUROPE_ROME = [
+  "BEGIN:VTIMEZONE",
+  "TZID:Europe/Rome",
+  "BEGIN:DAYLIGHT",
+  "TZOFFSETFROM:+0100",
+  "TZOFFSETTO:+0200",
+  "TZNAME:CEST",
+  "DTSTART:19700329T020000",
+  "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU",
+  "END:DAYLIGHT",
+  "BEGIN:STANDARD",
+  "TZOFFSETFROM:+0200",
+  "TZOFFSETTO:+0100",
+  "TZNAME:CET",
+  "DTSTART:19701025T030000",
+  "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU",
+  "END:STANDARD",
+  "END:VTIMEZONE",
+].join("\r\n");
+
 function rrule(therapy: Therapy): string {
   const r = therapy.recurrence;
   const until = therapy.endDate
@@ -42,6 +71,23 @@ function rrule(therapy: Therapy): string {
 
 function escape(text: string) {
   return text.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/;/g, "\\;").replace(/\n/g, "\\n");
+}
+
+// Piega le righe a max 75 ottetti come richiesto da RFC 5545 §3.1: alcuni
+// parser Android (oltre al VTIMEZONE mancante) sono severi anche su questo
+// e rifiutano righe troppo lunghe (tipicamente SUMMARY/DESCRIPTION con link
+// o note lunghe). Ogni riga di continuazione inizia con uno spazio.
+function foldLine(line: string): string {
+  const maxLen = 75;
+  if (line.length <= maxLen) return line;
+  let result = line.slice(0, maxLen);
+  let rest = line.slice(maxLen);
+  while (rest.length > 0) {
+    const chunk = rest.slice(0, maxLen - 1);
+    result += "\r\n " + chunk;
+    rest = rest.slice(maxLen - 1);
+  }
+  return result;
 }
 
 function appDeepLink(role: "paziente" | "caregiver", therapyId: string, patientId?: string): string {
@@ -91,7 +137,7 @@ export function therapyToIcs(
       "BEGIN:VALARM",
       "ACTION:DISPLAY",
       `TRIGGER:${trigger}`,
-      `DESCRIPTION:${escape(description)}`,
+      foldLine(`DESCRIPTION:${escape(description)}`),
       "END:VALARM",
     ].join("\r\n");
 
@@ -123,9 +169,9 @@ export function therapyToIcs(
       `DTSTAMP:${dtstamp}`,
       `DTSTART;TZID=Europe/Rome:${start}`,
       `DTEND;TZID=Europe/Rome:${end}`,
-      `SUMMARY:${summary}`,
-      `DESCRIPTION:${desc}`,
-      `URL:${deepLink}`,
+      foldLine(`SUMMARY:${summary}`),
+      foldLine(`DESCRIPTION:${desc}`),
+      foldLine(`URL:${deepLink}`),
       `CATEGORIES:${escape(therapy.category)}`,
       rrule(therapy),
       ...alarms,
@@ -140,6 +186,7 @@ export function therapyToIcs(
     "PRODID:-//FamilyMed//IT",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
+    VTIMEZONE_EUROPE_ROME,
     ...events,
     "END:VCALENDAR",
   ].join("\r\n");
