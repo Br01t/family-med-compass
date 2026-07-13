@@ -46,33 +46,6 @@ function CaregiverHome() {
     (t) => t.pillsRemaining <= t.lowStockThreshold,
   );
 
-  // Timeline dosi: passate (ultimi 3gg) + oggi + prossime 24h, ordinate desc (più recenti in alto)
-  const timelineDays = 4; // oggi + 3 giorni passati
-  const allDoses: Array<ScheduledDose & { patientId: string }> = [];
-  for (let i = 0; i < timelineDays; i++) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    for (const p of patients) {
-      const doses = getDosesForPatientOnDate(data, p.id, d, now);
-      for (const dose of doses) {
-        allDoses.push({ ...dose, patientId: p.id });
-      }
-    }
-  }
-  // Prossime 24h (domani)
-  {
-    const d = new Date(now);
-    d.setDate(d.getDate() + 1);
-    for (const p of patients) {
-      const doses = getDosesForPatientOnDate(data, p.id, d, now);
-      for (const dose of doses) {
-        allDoses.push({ ...dose, patientId: p.id });
-      }
-    }
-  }
-  const timeline = allDoses
-    .sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime())
-    .slice(0, 20);
 
   const totalAdherence = Math.round(
     patients.reduce((sum, p) => sum + getAdherenceForPatient(data, p.id), 0) /
@@ -106,22 +79,24 @@ function CaregiverHome() {
           icon={TrendingUp}
           tone="primary"
         />
-        <Link to="/dose-da-confermare" className="block">
+        <Link to="/dose-da-confermare" className="block rounded-3xl transition hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
           <MetricCard
             label="Alert attivi"
             value={String(activeAlerts)}
             hint={activeAlerts > 0 ? "Dose da confermare con il paziente" : "Nessuna dose in sospeso"}
             icon={AlertTriangle}
             tone="accent"
+            clickable
           />
         </Link>
-        <Link to="/scorte" className="block">
+        <Link to="/scorte" className="block rounded-3xl transition hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning">
           <MetricCard
             label="Scorte in esaurimento"
             value={String(lowStock.length)}
             hint={lowStock.length > 0 ? lowStock.map((t) => t.name).join(", ") : "Tutto ok"}
             icon={Package}
             tone="warning"
+            clickable
           />
         </Link>
       </div>
@@ -145,56 +120,8 @@ function CaregiverHome() {
             ))}
           </div>
 
-          <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-              <h3 className="truncate text-lg font-black tracking-tight">
-                Timeline dosi
-              </h3>
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {timeline.length} dosi
-              </span>
-            </div>
-            <div className="relative mt-6 space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-border">
-              {timeline.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Nessuna dose recente.
-                </p>
-              )}
-              {timeline.map((d) => {
-                const patient = data.patients.find((p) => p.id === d.patientId);
-                const isFuture = d.scheduledAt > now;
-                const dayLabel = d.scheduledAt.toDateString() === now.toDateString()
-                  ? "Oggi"
-                  : d.scheduledAt.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
-                return (
-                  <div key={d.id} className="relative pl-10">
-                    <div className="absolute left-0 top-1.5 grid size-6 place-items-center rounded-full bg-background ring-2 ring-border">
-                      <div className={cn("size-2 rounded-full", statusDot[d.status])} />
-                    </div>
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-                      <p className="truncate text-sm font-semibold">
-                        {d.therapy.name}
-                      </p>
-                      <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                        {dayLabel} · {formatTime(d.scheduledAt)}
-                      </span>
-                    </div>
-                    <div className="mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                      <p className="truncate text-xs text-muted-foreground">
-                        {patient?.name} {isFuture ? "· in programma" : ""}
-                      </p>
-                      <span className={cn(
-                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                        statusTone[d.status],
-                      )}>
-                        {statusLabel[d.status]}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <TimelineCard now={now} />
+
         </section>
 
         <aside className="space-y-4 lg:col-span-4">
@@ -250,21 +177,33 @@ function MetricCard({
   hint,
   icon: Icon,
   tone,
+  clickable = false,
 }: {
   label: string;
   value: string;
   hint: string;
   icon: React.ComponentType<{ className?: string }>;
   tone: "primary" | "accent" | "warning";
+  clickable?: boolean;
 }) {
   const styles = {
     primary: "bg-primary-soft text-primary",
     accent: "bg-accent-soft text-accent",
     warning: "bg-warning/15 text-warning-foreground",
   }[tone];
+  const ringStyles = {
+    primary: "",
+    accent: "ring-1 ring-accent/30 hover:ring-accent/60",
+    warning: "ring-1 ring-warning/40 hover:ring-warning/70",
+  }[tone];
   return (
-    <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
+    <div
+      className={cn(
+        "relative rounded-3xl border border-border/60 bg-card p-6 shadow-card",
+        clickable && ringStyles,
+      )}
+    >
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4">
         <div className={cn("grid size-12 place-items-center rounded-2xl", styles)}>
           <Icon className="size-5" />
         </div>
@@ -275,7 +214,17 @@ function MetricCard({
           <p className="mt-1 text-3xl font-black tracking-tight">{value}</p>
           <p className="mt-2 text-xs leading-5 text-muted-foreground whitespace-normal">{hint}</p>
         </div>
+        {clickable && (
+          <div className={cn("grid size-8 shrink-0 place-items-center self-start rounded-full", styles)}>
+            <ArrowRight className="size-4" />
+          </div>
+        )}
       </div>
+      {clickable && (
+        <span className="pointer-events-none absolute bottom-3 right-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+          Apri →
+        </span>
+      )}
     </div>
   );
 }
@@ -409,6 +358,90 @@ function WeeklyAdherenceCard() {
             </span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function TimelineCard({ now }: { now: Date }) {
+  const { data } = useFamilyMed();
+  const [dayOffset, setDayOffset] = useState<-1 | 0 | 1>(0);
+
+  const targetDate = new Date(now);
+  targetDate.setDate(targetDate.getDate() + dayOffset);
+
+  const doses: Array<ScheduledDose & { patientId: string }> = [];
+  for (const p of data.patients) {
+    const dd = getDosesForPatientOnDate(data, p.id, targetDate, now);
+    for (const dose of dd) doses.push({ ...dose, patientId: p.id });
+  }
+  doses.sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
+
+  const tabs: Array<{ id: -1 | 0 | 1; label: string }> = [
+    { id: -1, label: "Ieri" },
+    { id: 0, label: "Oggi" },
+    { id: 1, label: "Domani" },
+  ];
+
+  return (
+    <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+        <h3 className="truncate text-lg font-black tracking-tight">Timeline dosi</h3>
+        <span className="shrink-0 text-xs text-muted-foreground">{doses.length} dosi</span>
+      </div>
+
+      <div className="mt-4 inline-flex rounded-full border border-border/60 bg-surface-muted p-1">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setDayOffset(t.id)}
+            className={cn(
+              "rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest transition",
+              dayOffset === t.id
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative mt-6 space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-border">
+        {doses.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nessuna dose in questo giorno.</p>
+        )}
+        {doses.map((d) => {
+          const patient = data.patients.find((p) => p.id === d.patientId);
+          const isFuture = d.scheduledAt > now;
+          return (
+            <div key={d.id} className="relative pl-10">
+              <div className="absolute left-0 top-1.5 grid size-6 place-items-center rounded-full bg-background ring-2 ring-border">
+                <div className={cn("size-2 rounded-full", statusDot[d.status])} />
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                <p className="truncate text-sm font-semibold">{d.therapy.name}</p>
+                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                  {formatTime(d.scheduledAt)}
+                </span>
+              </div>
+              <div className="mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                <p className="truncate text-xs text-muted-foreground">
+                  {patient?.name} {isFuture ? "· in programma" : ""}
+                </p>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                    statusTone[d.status],
+                  )}
+                >
+                  {statusLabel[d.status]}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
