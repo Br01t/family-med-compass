@@ -252,21 +252,33 @@ function MetricCard({
   hint,
   icon: Icon,
   tone,
+  clickable = false,
 }: {
   label: string;
   value: string;
   hint: string;
   icon: React.ComponentType<{ className?: string }>;
   tone: "primary" | "accent" | "warning";
+  clickable?: boolean;
 }) {
   const styles = {
     primary: "bg-primary-soft text-primary",
     accent: "bg-accent-soft text-accent",
     warning: "bg-warning/15 text-warning-foreground",
   }[tone];
+  const ringStyles = {
+    primary: "",
+    accent: "ring-1 ring-accent/30 hover:ring-accent/60",
+    warning: "ring-1 ring-warning/40 hover:ring-warning/70",
+  }[tone];
   return (
-    <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
+    <div
+      className={cn(
+        "relative rounded-3xl border border-border/60 bg-card p-6 shadow-card",
+        clickable && ringStyles,
+      )}
+    >
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4">
         <div className={cn("grid size-12 place-items-center rounded-2xl", styles)}>
           <Icon className="size-5" />
         </div>
@@ -277,7 +289,17 @@ function MetricCard({
           <p className="mt-1 text-3xl font-black tracking-tight">{value}</p>
           <p className="mt-2 text-xs leading-5 text-muted-foreground whitespace-normal">{hint}</p>
         </div>
+        {clickable && (
+          <div className={cn("grid size-8 shrink-0 place-items-center self-start rounded-full", styles)}>
+            <ArrowRight className="size-4" />
+          </div>
+        )}
       </div>
+      {clickable && (
+        <span className="pointer-events-none absolute bottom-3 right-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+          Apri →
+        </span>
+      )}
     </div>
   );
 }
