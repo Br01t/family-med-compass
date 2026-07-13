@@ -387,9 +387,6 @@ export function AlarmRinger() {
             </div>
           </div>
 
-          <Button size="lg" className="mt-6 h-14 w-full text-lg font-bold" onClick={() => handleAction("dismiss")} disabled={busy}>
-            Ho capito
-          </Button>
         </div>
       </div>
     );
