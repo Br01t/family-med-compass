@@ -362,3 +362,87 @@ function WeeklyAdherenceCard() {
     </div>
   );
 }
+
+function TimelineCard({ now }: { now: Date }) {
+  const { data } = useFamilyMed();
+  const [dayOffset, setDayOffset] = useState<-1 | 0 | 1>(0);
+
+  const targetDate = new Date(now);
+  targetDate.setDate(targetDate.getDate() + dayOffset);
+
+  const doses: Array<ScheduledDose & { patientId: string }> = [];
+  for (const p of data.patients) {
+    const dd = getDosesForPatientOnDate(data, p.id, targetDate, now);
+    for (const dose of dd) doses.push({ ...dose, patientId: p.id });
+  }
+  doses.sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
+
+  const tabs: Array<{ id: -1 | 0 | 1; label: string }> = [
+    { id: -1, label: "Ieri" },
+    { id: 0, label: "Oggi" },
+    { id: 1, label: "Domani" },
+  ];
+
+  return (
+    <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+        <h3 className="truncate text-lg font-black tracking-tight">Timeline dosi</h3>
+        <span className="shrink-0 text-xs text-muted-foreground">{doses.length} dosi</span>
+      </div>
+
+      <div className="mt-4 inline-flex rounded-full border border-border/60 bg-surface-muted p-1">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setDayOffset(t.id)}
+            className={cn(
+              "rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest transition",
+              dayOffset === t.id
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative mt-6 space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-border">
+        {doses.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nessuna dose in questo giorno.</p>
+        )}
+        {doses.map((d) => {
+          const patient = data.patients.find((p) => p.id === d.patientId);
+          const isFuture = d.scheduledAt > now;
+          return (
+            <div key={d.id} className="relative pl-10">
+              <div className="absolute left-0 top-1.5 grid size-6 place-items-center rounded-full bg-background ring-2 ring-border">
+                <div className={cn("size-2 rounded-full", statusDot[d.status])} />
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                <p className="truncate text-sm font-semibold">{d.therapy.name}</p>
+                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                  {formatTime(d.scheduledAt)}
+                </span>
+              </div>
+              <div className="mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                <p className="truncate text-xs text-muted-foreground">
+                  {patient?.name} {isFuture ? "· in programma" : ""}
+                </p>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                    statusTone[d.status],
+                  )}
+                >
+                  {statusLabel[d.status]}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
