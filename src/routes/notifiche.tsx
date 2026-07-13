@@ -234,32 +234,36 @@ function CaregiverView({
             return (
               <li
                 key={n.id}
-                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 p-5"
+                className="flex flex-col gap-3 p-5 sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start sm:gap-4"
               >
-                <div className={cn("grid size-11 shrink-0 place-items-center rounded-xl", meta.tone)}>
-                  <Icon className="size-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      {meta.label}
-                    </span>
-                    {patient && (
-                      <Link
-                        to="/pazienti/$id"
-                        params={{ id: patient.id }}
-                        className="text-xs font-bold text-primary hover:underline"
-                      >
-                        {patient.name}
-                      </Link>
+                <div className="flex items-start gap-4 sm:contents">
+                  <div className={cn("grid size-11 shrink-0 place-items-center rounded-xl", meta.tone)}>
+                    <Icon className="size-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        {meta.label}
+                      </span>
+                      {patient && (
+                        <Link
+                          to="/pazienti/$id"
+                          params={{ id: patient.id }}
+                          className="text-xs font-bold text-primary hover:underline"
+                        >
+                          {patient.name}
+                        </Link>
+                      )}
+                    </div>
+                    <p className="mt-1 whitespace-normal break-words font-bold">{n.title}</p>
+                    {n.message && (
+                      <p className="whitespace-normal break-words text-sm text-muted-foreground">
+                        {n.message}
+                      </p>
                     )}
                   </div>
-                  <p className="mt-1 truncate font-bold">{n.title}</p>
-                  {n.message && (
-                    <p className="truncate text-sm text-muted-foreground">{n.message}</p>
-                  )}
                 </div>
-                <div className="shrink-0 text-right">
+                <div className="shrink-0 pl-15 text-left sm:pl-0 sm:text-right">
                   <p className="text-xs text-muted-foreground">
                     {new Date(n.createdAt).toLocaleString("it-IT", {
                       day: "numeric",
