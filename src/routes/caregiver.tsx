@@ -106,22 +106,24 @@ function CaregiverHome() {
           icon={TrendingUp}
           tone="primary"
         />
-        <Link to="/dose-da-confermare" className="block">
+        <Link to="/dose-da-confermare" className="block rounded-3xl transition hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
           <MetricCard
             label="Alert attivi"
             value={String(activeAlerts)}
             hint={activeAlerts > 0 ? "Dose da confermare con il paziente" : "Nessuna dose in sospeso"}
             icon={AlertTriangle}
             tone="accent"
+            clickable
           />
         </Link>
-        <Link to="/scorte" className="block">
+        <Link to="/scorte" className="block rounded-3xl transition hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning">
           <MetricCard
             label="Scorte in esaurimento"
             value={String(lowStock.length)}
             hint={lowStock.length > 0 ? lowStock.map((t) => t.name).join(", ") : "Tutto ok"}
             icon={Package}
             tone="warning"
+            clickable
           />
         </Link>
       </div>
