@@ -775,6 +775,23 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         const start = new Date(th.startDate + "T00:00:00");
         if (today < start) continue;
         if (th.endDate && new Date(th.endDate) < today) continue;
+        // Rispetta la ricorrenza: la dose deve essere effettivamente
+        // prevista OGGI, altrimenti non ha senso segnarla come dimenticata.
+        const r = th.recurrence;
+        const dow = today.getDay();
+        let dueToday = false;
+        switch (r.kind) {
+          case "daily": dueToday = true; break;
+          case "weekdays": dueToday = dow >= 1 && dow <= 5; break;
+          case "weekend": dueToday = dow === 0 || dow === 6; break;
+          case "every_x_days": {
+            const diff = Math.floor((today.getTime() - start.getTime()) / 86400000);
+            dueToday = r.x > 0 && diff % r.x === 0;
+            break;
+          }
+          case "specific_days": dueToday = r.days.includes(dow); break;
+        }
+        if (!dueToday) continue;
         for (const time of th.times) {
           const [h, m] = time.split(":").map(Number);
           const scheduledAt = new Date(today);
