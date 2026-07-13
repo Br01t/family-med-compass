@@ -115,13 +115,15 @@ function CaregiverHome() {
             tone="accent"
           />
         </Link>
-        <MetricCard
-          label="Scorte in esaurimento"
-          value={String(lowStock.length)}
-          hint={lowStock.length > 0 ? lowStock[0].name : "Tutto ok"}
-          icon={Package}
-          tone="warning"
-        />
+        <Link to="/scorte" className="block">
+          <MetricCard
+            label="Scorte in esaurimento"
+            value={String(lowStock.length)}
+            hint={lowStock.length > 0 ? lowStock.map((t) => t.name).join(", ") : "Tutto ok"}
+            icon={Package}
+            tone="warning"
+          />
+        </Link>
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-12">
