@@ -236,7 +236,7 @@ function InventoryPage() {
           <p className="mt-3 text-xs sm:text-sm leading-relaxed text-muted-foreground">
             Questo doppio controllo permette di individuare eventuali differenze tra le scorte
             registrate nell'app e quelle effettivamente presenti, migliorando la sicurezza e
-            l'affidabilità della gestione della terapia.
+            l'affidabilità nella gestione della terapia.
           </p>
         </div>
       </div>
