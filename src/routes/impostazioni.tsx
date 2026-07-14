@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { signUpUser } from "@/lib/auth-service";
 import { AppShell } from "@/components/AppShell";
 import { PatientShell } from "@/components/PatientShell";
+import { FamilyInviteCard } from "@/components/FamilyInviteCard";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
