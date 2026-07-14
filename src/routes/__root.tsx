@@ -17,6 +17,10 @@ import { InstallBanner } from "../components/InstallBanner";
 
 import { AlarmRinger } from "../components/AlarmRinger";
 import { primeAlarmAudio } from "../lib/alarm-audio";
+import { MaintenancePage } from "../components/MaintenancePage";
+
+// 🔒 MODALITÀ MANUTENZIONE — metti a false per riattivare il sito
+const MAINTENANCE_MODE = true;
 
 function NotFoundComponent() {
   return (
@@ -179,6 +183,10 @@ function RootComponent() {
       window.removeEventListener("keydown", prime);
     };
   }, []);
+
+  if (MAINTENANCE_MODE) {
+    return <MaintenancePage />;
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
