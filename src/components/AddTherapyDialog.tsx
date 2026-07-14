@@ -57,7 +57,7 @@ const schema = z.object({
   patientId: z.string().min(1, "Seleziona un paziente"),
   name: z.string().min(2, "Nome farmaco obbligatorio"),
   dosage: z.string().min(1, "Inserisci il dosaggio (es. 100mg)"),
-  quantity: z.number({ invalid_type_error: "Quantità obbligatoria" }).min(1).max(20),
+  quantity: z.number({ message: "Quantità obbligatoria" }).min(1).max(20),
   category: z.string().min(1, "Seleziona una categoria"),
   times: z.array(z.object({ value: z.string().regex(/^\d{2}:\d{2}$/, "Formato HH:MM") })).min(1, "Aggiungi almeno un orario"),
   recurrenceKind: z.enum(["daily", "weekdays", "weekend", "every_x_days"]),
