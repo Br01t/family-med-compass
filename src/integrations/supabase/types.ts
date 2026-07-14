@@ -130,6 +130,53 @@ export type Database = {
           },
         ]
       }
+      family_invites: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          max_uses: number
+          patient_id: string
+          used_at: string | null
+          used_by: string | null
+          uses: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          id?: string
+          max_uses?: number
+          patient_id: string
+          used_at?: string | null
+          used_by?: string | null
+          uses?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          max_uses?: number
+          patient_id?: string
+          used_at?: string | null
+          used_by?: string | null
+          uses?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_invites_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -417,6 +464,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_family_invite: {
+        Args: { _max_uses?: number; _patient_id: string; _ttl_minutes?: number }
+        Returns: {
+          code: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          max_uses: number
+          patient_id: string
+          used_at: string | null
+          used_by: string | null
+          uses: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "family_invites"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -424,6 +492,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      redeem_family_invite: { Args: { _code: string }; Returns: string }
     }
     Enums: {
       app_role: "caregiver" | "paziente"

@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { signUpUser } from "@/lib/auth-service";
 import { AppShell } from "@/components/AppShell";
 import { PatientShell } from "@/components/PatientShell";
+import { FamilyInviteCard } from "@/components/FamilyInviteCard";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/impostazioni")({
 });
 
 function SettingsPage() {
-  const { user, userProfile, loadingAuth, logout } = useFamilyMed();
+  const { data, user, userProfile, loadingAuth, logout } = useFamilyMed();
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
 
   const [email, setEmail] = useState("");
@@ -63,8 +64,9 @@ function SettingsPage() {
     );
   }
 
-  // Vista paziente: profilo + installazione app.
+  // Vista paziente: profilo + inviti famiglia + installazione app.
   if (isPatient && user && userProfile) {
+    const myPatient = data.patients[0];
     return (
       <PatientShell title="Impostazioni" subtitle="Il tuo account e l'app">
         <div className="space-y-4">
@@ -82,6 +84,7 @@ function SettingsPage() {
               </Button>
             </div>
           </section>
+          {myPatient && <FamilyInviteCard patientId={myPatient.id} />}
           <InstallCard />
         </div>
       </PatientShell>

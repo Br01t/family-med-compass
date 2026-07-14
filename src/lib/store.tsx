@@ -37,10 +37,12 @@ import {
   saveEventDoc,
   updateNotificationReadState,
   fetchAllPatients,
-  followPatient as followPatientDoc,
   unfollowPatient as unfollowPatientDoc,
+  createFamilyInvite,
+  redeemFamilyInvite,
   insertNotificationDoc,
   fetchCaregiverIdsForPatient,
+  type FamilyInvite,
 } from "./supabase-service";
 
 
@@ -58,7 +60,8 @@ type Ctx = {
   loadingAuth: boolean;
   allPatients: Patient[];
   refreshAllPatients: () => Promise<void>;
-  followPatient: (patientId: string) => Promise<void>;
+  redeemInvite: (code: string) => Promise<string>;
+  createInvite: (patientId: string, ttlMinutes?: number, maxUses?: number) => Promise<FamilyInvite>;
   unfollowPatient: (patientId: string) => Promise<void>;
   setRole: (role: Role) => void;
   setCurrentPatient: (id: string) => void;
@@ -735,12 +738,18 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     }
   }, [user, userProfile, refreshAllPatients, patients]);
 
-  const followPatient = useCallback(
-    async (patientId: string) => {
-      if (!user) return;
-      await followPatientDoc(user.id, patientId);
+  const redeemInvite = useCallback(async (code: string) => {
+    if (!user) throw new Error("Non autenticato");
+    const patientId = await redeemFamilyInvite(code);
+    await refreshAllPatients();
+    return patientId;
+  }, [user, refreshAllPatients]);
+
+  const createInvite = useCallback(
+    async (patientId: string, ttlMinutes = 1440, maxUses = 1) => {
+      return createFamilyInvite(patientId, ttlMinutes, maxUses);
     },
-    [user],
+    [],
   );
 
   const unfollowPatient = useCallback(
@@ -950,7 +959,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       loadingAuth,
       allPatients,
       refreshAllPatients,
-      followPatient,
+      redeemInvite,
+      createInvite,
       unfollowPatient,
       setRole,
       setCurrentPatient,
@@ -975,7 +985,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       loadingAuth,
       allPatients,
       refreshAllPatients,
-      followPatient,
+      redeemInvite,
+      createInvite,
       unfollowPatient,
       setRole,
       setCurrentPatient,

@@ -29,7 +29,7 @@ const currentYear = new Date().getFullYear();
 const schema = z.object({
   name: z.string().min(2, "Inserisci almeno 2 caratteri"),
   birthYear: z
-    .number({ invalid_type_error: "Anno obbligatorio" })
+    .number({ message: "Anno obbligatorio" })
     .int()
     .min(1900, "Anno non valido")
     .max(currentYear - 1, "Anno non valido"),

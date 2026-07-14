@@ -4,6 +4,7 @@ import { CalendarPlus, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { FamilyInviteCard } from "@/components/FamilyInviteCard";
 import { useFamilyMed } from "@/lib/store";
 import {
   formatTime,
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/pazienti/$id")({
 
 function PatientDetail() {
   const { id } = Route.useParams();
-  const { data } = useFamilyMed();
+  const { data, user } = useFamilyMed();
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setTick((v) => v + 1), 30_000);
@@ -209,6 +210,10 @@ function PatientDetail() {
               <Link to="/terapie">Gestisci terapie</Link>
             </Button>
           </div>
+
+          {user && patient.ownerUserId === user.id && (
+            <FamilyInviteCard patientId={patient.id} />
+          )}
 
           {/* <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
             <h3 className="text-lg font-black tracking-tight">Caregiver</h3>

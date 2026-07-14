@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Trash2, UserCheck, UserPlus2 } from "lucide-react";
+import { useState } from "react";
+import { KeyRound, Link2Off, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { AddPatientDialog } from "@/components/AddPatientDialog";
@@ -18,44 +18,43 @@ export const Route = createFileRoute("/pazienti/")({
 function PatientsListPage() {
   const {
     data,
-    allPatients,
-    followPatient,
+    redeemInvite,
     unfollowPatient,
-    refreshAllPatients,
     deletePatient,
     userProfile,
   } = useFamilyMed();
 
   const isCaregiver = userProfile?.role === "caregiver";
-  const [query, setQuery] = useState("");
-  const followedIds = useMemo(
-    () => new Set(data.patients.map((p) => p.id)),
-    [data.patients],
-  );
+  const [code, setCode] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
 
-  const filteredAll = useMemo(() => {
-    if (!query.trim()) return allPatients;
-    const q = query.toLowerCase();
-    return allPatients.filter((p) => p.name.toLowerCase().includes(q));
-  }, [allPatients, query]);
-
-  async function handleFollow(id: string, name: string) {
+  async function handleRedeem(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = code.trim().toUpperCase();
+    if (trimmed.length < 4) {
+      toast.error("Codice invalido", { description: "Inserisci il codice che ti ha dato il paziente." });
+      return;
+    }
+    setRedeeming(true);
     try {
-      await followPatient(id);
-      toast.success("Ora segui questo paziente", { description: name });
-      await refreshAllPatients();
-    } catch (e) {
-      toast.error("Impossibile seguire", {
-        description: e instanceof Error ? e.message : "Riprova.",
+      await redeemInvite(trimmed);
+      toast.success("Collegamento riuscito", {
+        description: "Ora fai parte della famiglia di questo paziente.",
       });
+      setCode("");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Riprova.";
+      toast.error("Impossibile usare il codice", { description: msg });
+    } finally {
+      setRedeeming(false);
     }
   }
 
   async function handleUnfollow(id: string, name: string) {
+    if (!confirm(`Scollegarti dalla famiglia di ${name}? Perderai l'accesso ai suoi dati.`)) return;
     try {
       await unfollowPatient(id);
-      toast.success("Hai smesso di seguire", { description: name });
-      await refreshAllPatients();
+      toast.success("Scollegato dalla famiglia", { description: name });
     } catch (e) {
       toast.error("Impossibile scollegare", {
         description: e instanceof Error ? e.message : "Riprova.",
@@ -69,6 +68,40 @@ function PatientsListPage() {
       subtitle={`${data.patients.length} persone seguite`}
       actions={<AddPatientDialog />}
     >
+      {/* Redeem invite */}
+      {isCaregiver && (
+        <section className="mb-6 rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="grid size-10 place-items-center rounded-xl bg-primary-soft text-primary">
+              <KeyRound className="size-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-black">Collegati a un nuovo paziente</h2>
+              <p className="text-xs text-muted-foreground">
+                Inserisci il codice invito generato dal paziente dalle sue Impostazioni.
+              </p>
+            </div>
+          </div>
+          <form onSubmit={handleRedeem} className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              placeholder="Codice invito (es. A3F7K2)"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              maxLength={12}
+              className="font-mono tracking-widest"
+              autoCapitalize="characters"
+            />
+            <Button type="submit" disabled={redeeming || code.trim().length < 4}>
+              {redeeming ? "Verifica…" : "Usa codice"}
+            </Button>
+          </form>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Per motivi di privacy non esiste più un elenco pubblico dei pazienti: solo chi possiede
+            un codice valido può collegarsi a una famiglia.
+          </p>
+        </section>
+      )}
+
       {/* Seguiti */}
       <section>
         <h2 className="mb-3 text-sm font-bold uppercase tracking-widest text-muted-foreground">
@@ -76,7 +109,9 @@ function PatientsListPage() {
         </h2>
         {data.patients.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-border/60 bg-surface-muted p-8 text-center text-sm text-muted-foreground">
-            Non segui ancora nessun paziente. Scegli dalla lista sotto o creane uno nuovo.
+            {isCaregiver
+              ? "Non segui ancora nessun paziente. Chiedi al paziente un codice invito, oppure crea tu un nuovo paziente."
+              : "Nessun paziente collegato al tuo account."}
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -132,13 +167,13 @@ function PatientsListPage() {
                     {isCaregiver && (
                       <button
                         className="grid size-8 place-items-center rounded-lg border border-border/60 bg-card text-muted-foreground hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-                        aria-label="Smetti di seguire"
+                        aria-label="Scollegati dalla famiglia"
                         onClick={(e) => {
                           e.preventDefault();
                           handleUnfollow(p.id, p.name);
                         }}
                       >
-                        <UserCheck className="size-3.5" />
+                        <Link2Off className="size-3.5" />
                       </button>
                     )}
                     <button
@@ -161,72 +196,6 @@ function PatientsListPage() {
           </div>
         )}
       </section>
-
-      {/* Tutti i pazienti registrati — solo caregiver */}
-      {isCaregiver && (
-        <section className="mt-10">
-          <div className="mb-3 flex items-end justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                Tutti i pazienti registrati
-              </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Scegli chi seguire tra i pazienti presenti nel sistema.
-              </p>
-            </div>
-            <Input
-              placeholder="Cerca per nome…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="max-w-xs"
-            />
-          </div>
-
-          {filteredAll.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-border/60 bg-surface-muted p-8 text-center text-sm text-muted-foreground">
-              Nessun paziente trovato.
-            </div>
-          ) : (
-            <div className="divide-y divide-border/60 overflow-hidden rounded-3xl border border-border/60 bg-card shadow-card">
-              {filteredAll.map((p) => {
-                const followed = followedIds.has(p.id);
-                return (
-                  <div
-                    key={p.id}
-                    className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 p-4"
-                  >
-                    <div className="grid size-10 place-items-center rounded-xl bg-primary-soft text-sm font-black text-primary">
-                      {p.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {p.birthYear ? `Anno ${p.birthYear}` : "Anno non specificato"}
-                        {p.userId ? " · account paziente" : " · gestito da caregiver"}
-                      </p>
-                    </div>
-                    {followed ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleUnfollow(p.id, p.name)}
-                      >
-                        <UserCheck className="mr-2 size-4 text-primary" />
-                        Seguito
-                      </Button>
-                    ) : (
-                      <Button size="sm" onClick={() => handleFollow(p.id, p.name)}>
-                        <UserPlus2 className="mr-2 size-4" />
-                        Segui
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      )}
     </AppShell>
   );
 }
