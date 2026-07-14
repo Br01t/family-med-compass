@@ -10,6 +10,7 @@ export type Patient = {
   birthYear?: number;
   caregiverIds: string[];
   userId?: string;
+  ownerUserId?: string;
 };
 
 
