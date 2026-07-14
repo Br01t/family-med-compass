@@ -738,12 +738,18 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     }
   }, [user, userProfile, refreshAllPatients, patients]);
 
-  const followPatient = useCallback(
-    async (patientId: string) => {
-      if (!user) return;
-      await followPatientDoc(user.id, patientId);
+  const redeemInvite = useCallback(async (code: string) => {
+    if (!user) throw new Error("Non autenticato");
+    const patientId = await redeemFamilyInvite(code);
+    await refreshAllPatients();
+    return patientId;
+  }, [user, refreshAllPatients]);
+
+  const createInvite = useCallback(
+    async (patientId: string, ttlMinutes = 1440, maxUses = 1) => {
+      return createFamilyInvite(patientId, ttlMinutes, maxUses);
     },
-    [user],
+    [],
   );
 
   const unfollowPatient = useCallback(
