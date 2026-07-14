@@ -565,16 +565,20 @@ export async function deleteTherapyDoc(id: string): Promise<void> {
 }
 
 /* =========================================================
-   OPEN PATIENT LIST + FOLLOW / UNFOLLOW
+   FAMILY LINKING (invito-based)
 ========================================================= */
 
+/**
+ * Con l'isolamento per famiglia, la lista pubblica di pazienti non è più
+ * accessibile: RLS blocca ogni riga a cui l'utente non è collegato.
+ * Manteniamo la firma per compatibilità: ora ritorna solo i pazienti già
+ * visibili al chiamante (equivalente a `data.patients`).
+ */
 export async function fetchAllPatients(): Promise<Patient[]> {
   if (!supabase) return [];
-  const { data, error } = await supabase
-    .from("patients")
-    .select("*");
+  const { data, error } = await supabase.from("patients").select("*");
   if (error) {
-    console.error("fetchAllPatients:", error);
+    console.warn("fetchAllPatients:", error.message);
     return [];
   }
   return (data || []).map((p) => ({
@@ -587,15 +591,77 @@ export async function fetchAllPatients(): Promise<Patient[]> {
   }));
 }
 
-export async function followPatient(caregiverId: string, patientId: string): Promise<void> {
-  if (!supabase) throw new Error("Supabase non configurato");
-  const { error } = await supabase
-    .from("caregiver_patients")
-    .insert({ caregiver_id: caregiverId, patient_id: patientId });
-  // 23505 = duplicate key: già seguito, idempotente
-  if (error && error.code !== "23505") throw error;
+export type FamilyInvite = {
+  id: string;
+  code: string;
+  patientId: string;
+  createdBy: string;
+  expiresAt: string;
+  maxUses: number;
+  uses: number;
+  usedBy: string | null;
+  usedAt: string | null;
+  createdAt: string;
+};
+
+function mapInvite(row: any): FamilyInvite {
+  return {
+    id: row.id,
+    code: row.code,
+    patientId: row.patient_id,
+    createdBy: row.created_by,
+    expiresAt: row.expires_at,
+    maxUses: row.max_uses,
+    uses: row.uses,
+    usedBy: row.used_by,
+    usedAt: row.used_at,
+    createdAt: row.created_at,
+  };
 }
 
+export async function createFamilyInvite(
+  patientId: string,
+  ttlMinutes = 1440,
+  maxUses = 1,
+): Promise<FamilyInvite> {
+  if (!supabase) throw new Error("Supabase non configurato");
+  const { data, error } = await supabase.rpc("create_family_invite", {
+    _patient_id: patientId,
+    _ttl_minutes: ttlMinutes,
+    _max_uses: maxUses,
+  });
+  if (error) throw error;
+  return mapInvite(data);
+}
+
+export async function redeemFamilyInvite(code: string): Promise<string> {
+  if (!supabase) throw new Error("Supabase non configurato");
+  const { data, error } = await supabase.rpc("redeem_family_invite", {
+    _code: code.trim().toUpperCase(),
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function listFamilyInvites(patientId: string): Promise<FamilyInvite[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("family_invites")
+    .select("*")
+    .eq("patient_id", patientId)
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.warn("listFamilyInvites:", error.message);
+    return [];
+  }
+  return (data || []).map(mapInvite);
+}
+
+export async function revokeFamilyInvite(id: string): Promise<void> {
+  if (!supabase) throw new Error("Supabase non configurato");
+  const { error } = await supabase.from("family_invites").delete().eq("id", id);
+  if (error) throw error;
+}
 
 export async function unfollowPatient(caregiverId: string, patientId: string): Promise<void> {
   if (!supabase) throw new Error("Supabase non configurato");
@@ -606,6 +672,7 @@ export async function unfollowPatient(caregiverId: string, patientId: string): P
     .eq("patient_id", patientId);
   if (error) throw error;
 }
+
 
 /* =========================================================
    INSERT NOTIFICATION (client-side, per notificare caregiver)
