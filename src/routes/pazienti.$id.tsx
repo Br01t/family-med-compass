@@ -4,6 +4,7 @@ import { CalendarPlus, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { FamilyInviteCard } from "@/components/FamilyInviteCard";
 import { useFamilyMed } from "@/lib/store";
 import {
   formatTime,
