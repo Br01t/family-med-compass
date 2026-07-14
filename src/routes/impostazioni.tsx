@@ -64,8 +64,9 @@ function SettingsPage() {
     );
   }
 
-  // Vista paziente: profilo + installazione app.
+  // Vista paziente: profilo + inviti famiglia + installazione app.
   if (isPatient && user && userProfile) {
+    const myPatient = data.patients[0];
     return (
       <PatientShell title="Impostazioni" subtitle="Il tuo account e l'app">
         <div className="space-y-4">
@@ -83,6 +84,7 @@ function SettingsPage() {
               </Button>
             </div>
           </section>
+          {myPatient && <FamilyInviteCard patientId={myPatient.id} />}
           <InstallCard />
         </div>
       </PatientShell>
