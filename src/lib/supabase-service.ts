@@ -64,6 +64,7 @@ export function subscribePatients(
           photo: p.photo,
           caregiverIds: [],
           userId: p.user_id,
+          ownerUserId: (p as any).owner_user_id,
         }))
       );
     } catch (err) {
