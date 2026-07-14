@@ -211,6 +211,10 @@ function PatientDetail() {
             </Button>
           </div>
 
+          {user && patient.ownerUserId === user.id && (
+            <FamilyInviteCard patientId={patient.id} />
+          )}
+
           {/* <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
             <h3 className="text-lg font-black tracking-tight">Caregiver</h3>
             <ul className="mt-3 space-y-3">
