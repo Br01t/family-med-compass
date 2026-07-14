@@ -1,79 +1,65 @@
 ## Obiettivo
+Ogni famiglia (paziente + caregiver linkati) diventa un silo di dati stagno. Chiudo le due falle attuali:
+- La tabella `patients` ha una policy SELECT `true` → chiunque abbia un account vede tutti i pazienti registrati.
+- `caregiver_patients` permette a un caregiver di linkarsi a qualsiasi paziente senza consenso.
 
-Rendere le notifiche di caregiver e paziente coerenti, chiare e complete, con timer visibili nelle modali del paziente.
+La pagina Sospensione e il flusso attuale di sospensione terapia NON vengono toccati.
 
-## 1. Notifiche caregiver — semplificazione
+## Modello scelto
+Collegamento tramite **codice invito generato dal paziente**. Nessuna lista pubblica di pazienti. I caregiver della stessa famiglia si vedono tra loro (nome, relazione, foto).
 
-Oggi il caregiver riceve un mix di notifiche dallo scheduler (`reminder_pre`, `due`, `reminder_post`, `final_due`, `missed`) e dai trigger DB (`taken`, `snoozed`, `skipped`, `missed`, `low_stock`) con titoli/messaggi inconsistenti.
+## Cambi al database (migration)
 
-Nuova regola: per ogni dose il caregiver vede **esattamente le stesse notifiche del paziente** + **una notifica per ogni azione del paziente** sulla relativa modale.
+Nuova tabella `family_invites` con codice a 6 caratteri alfanumerici, scadenza (default 24h), usi rimanenti (default 1), `patient_id`, `created_by`, `used_by`, `used_at`. RLS: solo il paziente / owner del paziente può creare e vedere i propri codici; il caregiver può leggere UN singolo record solo passando codice+patient_id esatti (via RPC).
 
-- Notifiche "specchio" del paziente (dallo scheduler, invariato ma con testo caregiver-friendly):
-  - `reminder_pre` — "Tra N min: {paziente} deve prendere {farmaco}"
-  - `due` — "{paziente} deve prendere ora {farmaco}"
-  - `reminder_post` — "{paziente} non ha ancora preso {farmaco}"
-  - `final_due` — "Ultima chiamata per {paziente}: {farmaco}"
-  - `missed` — "{paziente} non ha preso {farmaco} (dimenticata)"
-- Notifiche azione del paziente (dai trigger DB):
-  - `taken` — "{paziente} ha confermato {farmaco}"
-  - `taken_after_snooze` — "{paziente} ha confermato dopo rimando"
-  - `snoozed` — "{paziente} ha rimandato {farmaco} di N min"
-  - `skipped` — "{paziente} ha rifiutato {farmaco}"
-- Rimosso: `low_stock` dal flusso dose (rimane come alert separato, non per ogni dose).
+Nuove RPC `SECURITY DEFINER`:
+- `create_family_invite(_patient_id text, _ttl_minutes int, _max_uses int)` — verifica che l'utente sia paziente o owner; genera codice unico; inserisce record.
+- `redeem_family_invite(_code text)` — verifica ruolo caregiver, codice valido, non scaduto, usi > 0; inserisce riga in `caregiver_patients`; decrementa usi; ritorna `patient_id`.
 
-Il testo di ogni notifica dirà chiaramente **a quale modale/evento si riferisce l'azione** (es. "in risposta al reminder delle 08:00").
+Sostituzione policy `patients: authenticated can read all` con:
+```
+patients SELECT = (user_id = auth.uid())
+              OR (owner_user_id = auth.uid())
+              OR EXISTS (caregiver_patients cp WHERE cp.patient_id = patients.id AND cp.caregiver_id = auth.uid())
+```
 
-## 2. Notifiche paziente — completezza
+`caregiver_patients` INSERT diventa più stretto: consentito solo tramite la RPC `redeem_family_invite` (che gira `SECURITY DEFINER`); rimuovo la policy INSERT diretta dal client.
 
-Oggi il paziente riceve `reminder_pre`, `due`, `reminder_post`, `final_due`, `missed` come modali. `AlarmRinger` le marca **subito come lette** → nel centro notifiche non compaiono più tra le "nuove".
+Aggiungo policy SELECT su `caregivers` per "caregiver linkati allo stesso paziente si vedono tra loro":
+```
+EXISTS (cp1, cp2 WHERE cp1.caregiver_id = auth.uid()
+                   AND cp2.caregiver_id = caregivers.id
+                   AND cp1.patient_id = cp2.patient_id)
+```
 
-Modifiche:
-- `AlarmRinger` non marca più `read=true` all'apertura della modale. Marca `read=true` solo quando l'utente clicca un'azione (conferma / rimanda / salta / ho capito) o quando la modale viene sostituita da una successiva della stessa dose.
-- Il centro notifiche del paziente mostra quindi tutte le tappe: `reminder_pre`, `due`, `reminder_post`, `final_due`, `missed`, oltre a `taken` / `snoozed` / `skipped` inserite dai trigger.
-- Notifica `missed` al paziente: quando lo scheduler segna una dose `missed`, il testo per il paziente diventa: *"Non hai confermato la dose delle HH:MM di {farmaco}. È stata segnata come dimenticata: probabilmente verrai contattato da un familiare."* (già inserita da `notifyBoth`, ma serve testo dedicato).
+Verifica che therapies / events / notifications restino coerenti — le loro policy attuali già scopano via `caregiver_patients`, quindi automaticamente diventano silo dopo la stretta su `patients`.
 
-## 3. Modali con timer visibili
+GRANT su `family_invites` a `authenticated` + `service_role` (nessun `anon`).
 
-Nelle modali `AlarmRinger` del paziente aggiungere un pannello "Tempi della dose" sempre visibile con countdown live:
+## Cambi al client
 
-- **Reminder pre** — mostra "Mancano MM:SS all'orario della dose (HH:MM)".
-- **Due / Reminder post** — mostra tre timer:
-  1. "Preavviso: N min" (informativo, statico)
-  2. "Tempo per confermare la dose: MM:SS" (countdown fino a `scheduled_at + post_reminder_minutes`, poi passa a `reminder_post`)
-  3. "Ritardo massimo prima di dimenticata: MM:SS" (countdown fino a `scheduled_at + timeout_minutes`)
-- **Final due** — mostra "Ritardo massimo: MM:SS" (countdown fino a `snoozed_until + timeout_minutes`), con avviso in rosso quando <2 min.
+**src/lib/supabase-service.ts**
+- Rimuovo `fetchAllPatients` e `followPatient` diretti (o li lascio come no-op che avvisano).
+- Aggiungo `createFamilyInvite(patientId, ttlMinutes, maxUses)` e `redeemFamilyInvite(code)` che invocano le RPC.
 
-I countdown si aggiornano ogni secondo con `setInterval`.
+**src/lib/store.tsx**
+- Rimuovo `allPatients`, `refreshAllPatients`, `followPatient` dal context (o li mantengo con firma nuova). Aggiungo `createInvite`, `redeemInvite`.
 
-## 4. Cosa devi fare tu sul DB Supabase esterno
+**src/routes/pazienti.index.tsx**
+- Rimuovo la sezione "Tutti i pazienti registrati" (fonte del leak).
+- Aggiungo, per il caregiver, una card "Aggiungi un paziente con codice" con input a 6 caratteri → chiama `redeemInvite`.
+- Il pulsante `Trash2` sui pazienti followed diventa "Scollega dalla famiglia" (unfollow rimane funzionale via `caregiver_patients DELETE`).
 
-Ti serve un **nuovo file SQL** `MIGRATION_notifications_v2.sql` da eseguire una volta, che:
+**src/routes/impostazioni.tsx** (o scheda paziente per il caregiver-owner)
+- Nuova sezione "Codici invito famiglia" per il paziente / owner: pulsante "Genera codice" → mostra codice + validità; lista dei codici attivi con pulsante revoca.
 
-- Aggiorna `handle_dose_taken()` per distinguere `taken` vs `taken_after_snooze` (in base a `OLD.status = 'snoozed'`) e rimuovere la generazione di `low_stock` come notifica per dose (spostata in evento separato o disattivata).
-- Aggiorna `handle_dose_status_change()` per generare per il **caregiver** anche testo che referenzia la modale ("in risposta al reminder delle HH:MM").
-- Aggiorna la funzione per generare la notifica `snoozed` per il caregiver includendo i minuti di rimando.
-- Aggiunge una migration idempotente che ricrea trigger `trg_dose_taken` e `trg_dose_status_change` senza duplicarli.
+**src/routes/pazienti.$id.tsx**
+- Sezione "Caregiver della famiglia" che elenca tutti i caregiver collegati allo stesso paziente (leggibili grazie alla nuova policy).
 
-Nessuna modifica a schema tabelle. Nessuna nuova edge function. Il cron esistente (`dose-scheduler-every-minute`) resta invariato.
+## Ordine di esecuzione
+1. Migration DB (tabella, RPC, policy patients, policy caregivers, revoca INSERT libero su caregiver_patients, GRANT).
+2. Refactor `supabase-service.ts` + `store.tsx`.
+3. UI: rimozione lista pubblica, form redeem invito, generatore codici nelle impostazioni paziente, elenco caregiver di famiglia nella scheda paziente.
+4. Verifica: due account caregiver di test devono vedere solo il proprio silo.
 
-## 5. Edge function `dose-scheduler`
-
-Piccole modifiche di testo:
-- Testo `missed` per paziente esplicita "probabilmente verrai contattato da un familiare".
-- Testi caregiver riformulati per essere allineati a quelli del paziente (specchio).
-
-Da ridistribuire con `supabase functions deploy dose-scheduler`.
-
-## Dettagli tecnici (per riferimento)
-
-File modificati:
-- `src/components/AlarmRinger.tsx` — rimosso auto-mark-as-read, aggiunto pannello timer con countdown.
-- `MIGRATION_notifications_v2.sql` — nuovo file con aggiornamento funzioni + trigger.
-- `supabase/functions/dose-scheduler/index.ts` — testi aggiornati.
-- (nessuna modifica a `caregiver.tsx` / `notifiche.tsx`: già mostrano tutte le kind).
-
-## Deliverables per te (utente, DB esterno)
-
-1. Eseguire `MIGRATION_notifications_v2.sql` nel SQL editor del tuo Supabase.
-2. Ridispiegare la edge function `dose-scheduler`.
-3. Nessuna modifica al cron.
+Non tocco: pagina Sospensione, logica di sospensione terapia, notifiche/trigger DB esistenti, componenti Alarm/Timeline.
