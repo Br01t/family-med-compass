@@ -60,7 +60,8 @@ type Ctx = {
   loadingAuth: boolean;
   allPatients: Patient[];
   refreshAllPatients: () => Promise<void>;
-  followPatient: (patientId: string) => Promise<void>;
+  redeemInvite: (code: string) => Promise<string>;
+  createInvite: (patientId: string, ttlMinutes?: number, maxUses?: number) => Promise<FamilyInvite>;
   unfollowPatient: (patientId: string) => Promise<void>;
   setRole: (role: Role) => void;
   setCurrentPatient: (id: string) => void;
