@@ -19,7 +19,7 @@ export const Route = createFileRoute("/impostazioni")({
 });
 
 function SettingsPage() {
-  const { user, userProfile, loadingAuth, logout } = useFamilyMed();
+  const { data, user, userProfile, loadingAuth, logout } = useFamilyMed();
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
 
   const [email, setEmail] = useState("");
