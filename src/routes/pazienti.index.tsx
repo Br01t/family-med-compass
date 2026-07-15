@@ -22,6 +22,8 @@ function PatientsListPage() {
     unfollowPatient,
     deletePatient,
     userProfile,
+    isPrimaryCaregiverOf,
+    isSecondaryCaregiverOf,
   } = useFamilyMed();
 
   const isCaregiver = userProfile?.role === "caregiver";
