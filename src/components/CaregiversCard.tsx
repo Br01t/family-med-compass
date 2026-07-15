@@ -6,10 +6,6 @@ import {
 } from "@/lib/supabase-service";
 import { cn } from "@/lib/utils";
 
-function formatLinkedSince(iso: string): string {
-  const d = new Date(iso);
-  return `dal ${d.toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" })}`;
-}
 
 export function CaregiversCard({
   patientId,
@@ -67,7 +63,7 @@ export function CaregiversCard({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{c.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {c.relation || c.relationship || "Familiare"} · {formatLinkedSince(c.linkedAt)}
+                    {c.relation || c.relationship || "Familiare"}
                   </p>
                 </div>
                 <span
