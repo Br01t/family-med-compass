@@ -65,7 +65,7 @@ export function subscribePatients(
           caregiverIds: [],
           userId: p.user_id,
           ownerUserId: (p as any).owner_user_id,
-          primaryCaregiverId: (p as any).primary_caregiver_id,
+          primaryCaregiverId: (p as any).primary_caregiver_id ?? null,
         }))
       );
     } catch (err) {
@@ -591,7 +591,7 @@ export async function fetchAllPatients(): Promise<Patient[]> {
     caregiverIds: [],
     userId: p.user_id,
     ownerUserId: (p as any).owner_user_id,
-    primaryCaregiverId: (p as any).primary_caregiver_id,
+    primaryCaregiverId: (p as any).primary_caregiver_id ?? null,
   }));
 }
 
@@ -709,6 +709,66 @@ export async function insertNotificationDoc(input: {
   if (error && error.code !== "23505") {
     console.warn("[insertNotificationDoc]", error.message);
   }
+}
+
+export type PatientCaregiver = {
+  id: string;
+  name: string;
+  relation: string | null;
+  photo: string | null;
+  relationship: string | null;
+  linkedAt: string;
+  isPrimary: boolean;
+};
+
+/**
+ * Elenco dei caregiver attivi collegati a un paziente, con distinzione
+ * primario (patients.primary_caregiver_id) vs secondario (tutti gli altri
+ * collegati via codice invito).
+ */
+export async function listCaregiversForPatient(
+  patientId: string,
+  primaryCaregiverId?: string | null,
+): Promise<PatientCaregiver[]> {
+  if (!supabase) return [];
+
+  const { data: links, error: linksError } = await supabase
+    .from("caregiver_patients")
+    .select("caregiver_id, relationship, created_at")
+    .eq("patient_id", patientId);
+  if (linksError) {
+    console.warn("[listCaregiversForPatient]", linksError.message);
+    return [];
+  }
+  if (!links || links.length === 0) return [];
+
+  const ids = links.map((l) => l.caregiver_id);
+  const { data: caregivers, error: cgError } = await supabase
+    .from("caregivers")
+    .select("id, name, relation, photo")
+    .in("id", ids);
+  if (cgError) {
+    console.warn("[listCaregiversForPatient]", cgError.message);
+  }
+  const byId = new Map((caregivers ?? []).map((c) => [c.id, c]));
+
+  return links
+    .map((l): PatientCaregiver => {
+      const c = byId.get(l.caregiver_id);
+      return {
+        id: l.caregiver_id,
+        name: c?.name?.trim() || "Caregiver",
+        relation: c?.relation ?? null,
+        photo: c?.photo ?? null,
+        relationship: l.relationship,
+        linkedAt: l.created_at,
+        isPrimary: !!primaryCaregiverId && l.caregiver_id === primaryCaregiverId,
+      };
+    })
+    .sort((a, b) => {
+      if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
+      return a.name.localeCompare(b.name, "it");
+    });
 }
 
 export async function fetchCaregiverIdsForPatient(patientId: string): Promise<string[]> {

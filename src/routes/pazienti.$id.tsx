@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { FamilyInviteCard } from "@/components/FamilyInviteCard";
+import { CaregiversCard } from "@/components/CaregiversCard";
 import { useFamilyMed } from "@/lib/store";
 import {
   formatTime,
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/pazienti/$id")({
 
 function PatientDetail() {
   const { id } = Route.useParams();
-  const { data, user, isPrimaryCaregiverOf, isSecondaryCaregiverOf } = useFamilyMed();
+  const { data, user } = useFamilyMed();
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setTick((v) => v + 1), 30_000);
@@ -66,34 +67,16 @@ function PatientDetail() {
     )
     .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 
-  const isPrimary = isPrimaryCaregiverOf(patient.id);
-  const isSecondary = isSecondaryCaregiverOf(patient.id);
-  const isSelfPatient = !!user && patient.userId === user.id;
-  const canManageInvites = isPrimary || isSelfPatient;
-
-  const roleBadge = isPrimary
-    ? { label: "Primario", cls: "bg-primary-soft text-primary" }
-    : isSecondary
-      ? { label: "Secondario", cls: "bg-muted text-muted-foreground" }
-      : null;
-
   return (
     <AppShell
       title={patient.name}
       subtitle={`${patient.birthYear ? now.getFullYear() - patient.birthYear : "?"} anni · Aderenza ${adherence}%`}
       actions={
-        <div className="flex items-center gap-2">
-          {roleBadge && (
-            <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest", roleBadge.cls)}>
-              {roleBadge.label}
-            </span>
-          )}
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/pazienti">
-              <ChevronLeft className="mr-1 size-4" /> Tutti
-            </Link>
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/pazienti">
+            <ChevronLeft className="mr-1 size-4" /> Tutti
+          </Link>
+        </Button>
       }
     >
       <div className="grid gap-6 lg:grid-cols-12">
@@ -229,26 +212,11 @@ function PatientDetail() {
             </Button>
           </div>
 
-          {canManageInvites && (
+          {user && patient.ownerUserId === user.id && (
             <FamilyInviteCard patientId={patient.id} />
           )}
 
-          {/* <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
-            <h3 className="text-lg font-black tracking-tight">Caregiver</h3>
-            <ul className="mt-3 space-y-3">
-              {caregivers.map((c) => (
-                <li key={c.id} className="flex items-center gap-3">
-                  <div className="grid size-10 place-items-center rounded-full bg-primary-soft font-bold text-primary">
-                    {c.name.slice(0, 1)}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{c.name}</p>
-                    <p className="text-xs text-muted-foreground">{c.relation}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div> */}
+          <CaregiversCard patientId={patient.id} primaryCaregiverId={patient.primaryCaregiverId} />
         </aside>
       </div>
     </AppShell>
