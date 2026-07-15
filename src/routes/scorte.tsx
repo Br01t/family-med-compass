@@ -214,9 +214,11 @@ function InventoryPage() {
                           </div>
                         </td>
                         <td className="px-4 py-4 text-right">
-                          <Button size="sm" variant="outline" onClick={() => addPack(t.id)}>
-                            <Plus className="mr-1 size-4" /> Confezione
-                          </Button>
+                          {canManage && (
+                            <Button size="sm" variant="outline" onClick={() => addPack(t.id)}>
+                              <Plus className="mr-1 size-4" /> Confezione
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     );
