@@ -188,14 +188,16 @@ function TherapiesPage() {
                     )}
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <AddTherapyDialog
-                        editTherapy={t}
-                        trigger={
-                          <Button variant="outline" size="sm" className="flex-1">
-                            Modifica
-                          </Button>
-                        }
-                      />
+                      {canManage && (
+                        <AddTherapyDialog
+                          editTherapy={t}
+                          trigger={
+                            <Button variant="outline" size="sm" className="flex-1">
+                              Modifica
+                            </Button>
+                          }
+                        />
+                      )}
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
