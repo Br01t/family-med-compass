@@ -33,7 +33,7 @@ export const Route = createFileRoute("/pazienti/$id")({
 
 function PatientDetail() {
   const { id } = Route.useParams();
-  const { data, user } = useFamilyMed();
+  const { data, user, isPrimaryCaregiverOf, isSecondaryCaregiverOf } = useFamilyMed();
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setTick((v) => v + 1), 30_000);
