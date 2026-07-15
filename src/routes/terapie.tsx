@@ -18,13 +18,14 @@ export const Route = createFileRoute("/terapie")({
 });
 
 function TherapiesPage() {
-  const { data, updateTherapy, deleteTherapy } = useFamilyMed();
+  const { data, updateTherapy, deleteTherapy, isPrimaryCaregiverOf, userProfile } = useFamilyMed();
+  const isPatientUser = userProfile?.role === "paziente";
 
   return (
     <AppShell
       title="Gestione terapie"
       subtitle="Modifica piani, orari e reminder per ogni paziente"
-      actions={<AddTherapyDialog />}
+      actions={!isPatientUser && data.patients.some((p) => isPrimaryCaregiverOf(p.id)) ? <AddTherapyDialog /> : undefined}
     >
       <div className="space-y-8">
         {data.patients.map((p) => {
