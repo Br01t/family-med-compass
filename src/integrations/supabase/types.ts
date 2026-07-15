@@ -252,6 +252,7 @@ export type Database = {
           name: string
           owner_user_id: string | null
           photo: string | null
+          primary_caregiver_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -261,6 +262,7 @@ export type Database = {
           name: string
           owner_user_id?: string | null
           photo?: string | null
+          primary_caregiver_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -270,6 +272,7 @@ export type Database = {
           name?: string
           owner_user_id?: string | null
           photo?: string | null
+          primary_caregiver_id?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -492,6 +495,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_primary_of: { Args: { _patient_id: string }; Returns: boolean }
       redeem_family_invite: { Args: { _code: string }; Returns: string }
     }
     Enums: {
