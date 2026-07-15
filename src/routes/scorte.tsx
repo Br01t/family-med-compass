@@ -118,9 +118,11 @@ function InventoryPage() {
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <Button size="sm" variant="outline" className="h-8 text-xs shrink-0" onClick={() => addPack(t.id)}>
-                        <Plus className="mr-1 size-3.5" /> Confezione
-                      </Button>
+                      {canManage && (
+                        <Button size="sm" variant="outline" className="h-8 text-xs shrink-0" onClick={() => addPack(t.id)}>
+                          <Plus className="mr-1 size-3.5" /> Confezione
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );
