@@ -30,6 +30,7 @@ function TherapiesPage() {
       <div className="space-y-8">
         {data.patients.map((p) => {
           const therapies = data.therapies.filter((t) => t.patientId === p.id);
+          const canManage = isPrimaryCaregiverOf(p.id);
           return (
             <section key={p.id}>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
