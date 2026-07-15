@@ -120,6 +120,8 @@ function PatientsListPage() {
             {data.patients.map((p) => {
               const adherence = getAdherenceForPatient(data, p.id);
               const next = getNextDose(data, p.id);
+              const isPrimary = isCaregiver && isPrimaryCaregiverOf(p.id);
+              const isSecondary = isCaregiver && isSecondaryCaregiverOf(p.id);
               return (
                 <div key={p.id} className="group relative">
                   <Link
@@ -132,7 +134,19 @@ function PatientsListPage() {
                         {p.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-lg font-black">{p.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-lg font-black">{p.name}</p>
+                          {isPrimary && (
+                            <span className="shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                              Primario
+                            </span>
+                          )}
+                          {isSecondary && (
+                            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                              Secondario
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">
                           {p.birthYear ? new Date().getFullYear() - p.birthYear : "?"} anni
                         </p>
