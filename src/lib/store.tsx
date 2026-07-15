@@ -82,6 +82,8 @@ type Ctx = {
   markAllRead: () => void;
   resetDemoData: () => void;
   logout: () => Promise<void>;
+  isPrimaryCaregiverOf: (patientId: string) => boolean;
+  isSecondaryCaregiverOf: (patientId: string) => boolean;
 };
 
 
