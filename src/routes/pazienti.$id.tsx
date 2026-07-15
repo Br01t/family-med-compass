@@ -66,16 +66,34 @@ function PatientDetail() {
     )
     .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 
+  const isPrimary = isPrimaryCaregiverOf(patient.id);
+  const isSecondary = isSecondaryCaregiverOf(patient.id);
+  const isSelfPatient = !!user && patient.userId === user.id;
+  const canManageInvites = isPrimary || isSelfPatient;
+
+  const roleBadge = isPrimary
+    ? { label: "Primario", cls: "bg-primary-soft text-primary" }
+    : isSecondary
+      ? { label: "Secondario", cls: "bg-muted text-muted-foreground" }
+      : null;
+
   return (
     <AppShell
       title={patient.name}
       subtitle={`${patient.birthYear ? now.getFullYear() - patient.birthYear : "?"} anni · Aderenza ${adherence}%`}
       actions={
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/pazienti">
-            <ChevronLeft className="mr-1 size-4" /> Tutti
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {roleBadge && (
+            <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest", roleBadge.cls)}>
+              {roleBadge.label}
+            </span>
+          )}
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/pazienti">
+              <ChevronLeft className="mr-1 size-4" /> Tutti
+            </Link>
+          </Button>
+        </div>
       }
     >
       <div className="grid gap-6 lg:grid-cols-12">
