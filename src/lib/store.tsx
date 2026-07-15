@@ -36,12 +36,14 @@ import {
   deleteTherapyDoc,
   saveEventDoc,
   updateNotificationReadState,
+  markAllNotificationsRead,
   fetchAllPatients,
   unfollowPatient as unfollowPatientDoc,
   createFamilyInvite,
   redeemFamilyInvite,
   insertNotificationDoc,
   fetchCaregiverIdsForPatient,
+  invalidateCaregiverCaches,
   type FamilyInvite,
 } from "./supabase-service";
 
@@ -626,29 +628,20 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
   const addPatient = useCallback(
     async (p: Patient) => {
-      console.log("[store.addPatient] Ricevuto paziente:", p);
-      console.log("[store.addPatient] user.id:", user?.id);
-      
       if (user) {
-        console.log("[store.addPatient] Utente autenticato, chiamo addPatientDoc");
         const patientWithUserId = { ...p, userId: user.id };
-        console.log("[store.addPatient] Paziente con userId:", patientWithUserId);
-        
         try {
           await addPatientDoc(patientWithUserId);
-          console.log("[store.addPatient] addPatientDoc completato con successo");
         } catch (error) {
           console.error("[store.addPatient] Errore in addPatientDoc:", error);
           throw error;
         }
-        
         setPatients((prev) => (prev.some((item) => item.id === p.id) ? prev : [...prev, p]));
         setLocalData((d) => ({
           ...d,
           patients: d.patients.some((item) => item.id === p.id) ? d.patients : [...d.patients, p],
         }));
       } else {
-        console.log("[store.addPatient] Utente non autenticato, salvataggio locale");
         setLocalData((d) => ({ ...d, patients: [...d.patients, p] }));
       }
     },
@@ -686,10 +679,12 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
   const markAllRead = useCallback(async () => {
     if (user) {
-      for (const n of notifications) {
-        if (!n.read && (!n.targetUserId || n.targetUserId === user.id)) {
-          await updateNotificationReadState(n.id, true);
-        }
+      // Singola query bulk invece di N round-trip seriali → meno egress
+      const unreadIds = notifications
+        .filter((n) => !n.read && (!n.targetUserId || n.targetUserId === user.id))
+        .map((n) => n.id);
+      if (unreadIds.length > 0) {
+        await markAllNotificationsRead(unreadIds);
       }
     } else {
       setLocalData((d) => ({
@@ -738,11 +733,17 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     } else {
       setAllPatients([]);
     }
-  }, [user, userProfile, refreshAllPatients, patients]);
+    // Non includere `patients` nelle dipendenze: ogni sync realtime dei
+    // pazienti triggererebbe un fetchAllPatients() extra → egress inutile.
+    // refreshAllPatients viene chiamata esplicitamente dopo redeemInvite.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, userProfile, refreshAllPatients]);
 
   const redeemInvite = useCallback(async (code: string) => {
     if (!user) throw new Error("Non autenticato");
     const patientId = await redeemFamilyInvite(code);
+    // Invalida la cache dei caregiver: il nuovo invito aggiunge una relazione
+    invalidateCaregiverCaches(patientId);
     await refreshAllPatients();
     return patientId;
   }, [user, refreshAllPatients]);
@@ -758,6 +759,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     async (patientId: string) => {
       if (!user) return;
       await unfollowPatientDoc(user.id, patientId);
+      // Invalida la cache: la relazione caregiver-paziente è cambiata
+      invalidateCaregiverCaches(patientId);
     },
     [user],
   );

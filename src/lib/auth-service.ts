@@ -40,7 +40,7 @@ export async function getUserProfile(
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
+      const { data, error } = await supabase.from("profiles").select("id, email, name, role, created_at").eq("id", uid).maybeSingle();
 
       if (error) {
         // Errore di rete/RLS momentaneo (tipico quando l'app torna in
