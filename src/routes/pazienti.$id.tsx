@@ -229,7 +229,7 @@ function PatientDetail() {
             </Button>
           </div>
 
-          {user && patient.ownerUserId === user.id && (
+          {canManageInvites && (
             <FamilyInviteCard patientId={patient.id} />
           )}
 
