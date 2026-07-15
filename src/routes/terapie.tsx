@@ -18,17 +18,19 @@ export const Route = createFileRoute("/terapie")({
 });
 
 function TherapiesPage() {
-  const { data, updateTherapy, deleteTherapy } = useFamilyMed();
+  const { data, updateTherapy, deleteTherapy, isPrimaryCaregiverOf, userProfile } = useFamilyMed();
+  const isPatientUser = userProfile?.role === "paziente";
 
   return (
     <AppShell
       title="Gestione terapie"
       subtitle="Modifica piani, orari e reminder per ogni paziente"
-      actions={<AddTherapyDialog />}
+      actions={!isPatientUser && data.patients.some((p) => isPrimaryCaregiverOf(p.id)) ? <AddTherapyDialog /> : undefined}
     >
       <div className="space-y-8">
         {data.patients.map((p) => {
           const therapies = data.therapies.filter((t) => t.patientId === p.id);
+          const canManage = isPrimaryCaregiverOf(p.id);
           return (
             <section key={p.id}>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -76,14 +78,16 @@ function TherapiesPage() {
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                  <AddTherapyDialog
-                    initialPatientId={p.id}
-                    trigger={
-                      <Button variant="outline" size="sm" id={`add-therapy-${p.id}`}>
-                        <Plus className="mr-1.5 size-3.5" /> Terapia
-                      </Button>
-                    }
-                  />
+                  {canManage && (
+                    <AddTherapyDialog
+                      initialPatientId={p.id}
+                      trigger={
+                        <Button variant="outline" size="sm" id={`add-therapy-${p.id}`}>
+                          <Plus className="mr-1.5 size-3.5" /> Terapia
+                        </Button>
+                      }
+                    />
+                  )}
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -113,27 +117,29 @@ function TherapiesPage() {
                           {t.dosage} · {t.quantity} compressa/e
                         </p>
                       </div>
-                      <button
-                        onClick={() => {
-                          updateTherapy(t.id, { suspended: !t.suspended });
-                          toast(t.suspended ? "Terapia riattivata" : "Terapia sospesa", {
-                            description: t.name,
-                          });
-                        }}
-                        className={cn(
-                          "grid size-9 shrink-0 place-items-center rounded-lg border border-border/60 transition",
-                          t.suspended
-                            ? "text-muted-foreground hover:text-primary"
-                            : "text-success hover:bg-secondary",
-                        )}
-                        aria-label="Sospendi terapia"
-                      >
-                        {t.suspended ? (
-                          <PowerOff className="size-4" />
-                        ) : (
-                          <Power className="size-4" />
-                        )}
-                      </button>
+                      {canManage && (
+                        <button
+                          onClick={() => {
+                            updateTherapy(t.id, { suspended: !t.suspended });
+                            toast(t.suspended ? "Terapia riattivata" : "Terapia sospesa", {
+                              description: t.name,
+                            });
+                          }}
+                          className={cn(
+                            "grid size-9 shrink-0 place-items-center rounded-lg border border-border/60 transition",
+                            t.suspended
+                              ? "text-muted-foreground hover:text-primary"
+                              : "text-success hover:bg-secondary",
+                          )}
+                          aria-label="Sospendi terapia"
+                        >
+                          {t.suspended ? (
+                            <PowerOff className="size-4" />
+                          ) : (
+                            <Power className="size-4" />
+                          )}
+                        </button>
+                      )}
                     </div>
 
                     <dl className="mt-4 space-y-2 text-sm">
@@ -182,14 +188,16 @@ function TherapiesPage() {
                     )}
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <AddTherapyDialog
-                        editTherapy={t}
-                        trigger={
-                          <Button variant="outline" size="sm" className="flex-1">
-                            Modifica
-                          </Button>
-                        }
-                      />
+                      {canManage && (
+                        <AddTherapyDialog
+                          editTherapy={t}
+                          trigger={
+                            <Button variant="outline" size="sm" className="flex-1">
+                              Modifica
+                            </Button>
+                          }
+                        />
+                      )}
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -226,19 +234,21 @@ function TherapiesPage() {
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => {
-                          if (confirm(`Eliminare "${t.name}"?`)) {
-                            deleteTherapy(t.id);
-                            toast.success("Terapia eliminata");
-                          }
-                        }}
-                      >
-                        Elimina
-                      </Button>
+                      {canManage && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => {
+                            if (confirm(`Eliminare "${t.name}"?`)) {
+                              deleteTherapy(t.id);
+                              toast.success("Terapia eliminata");
+                            }
+                          }}
+                        >
+                          Elimina
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}

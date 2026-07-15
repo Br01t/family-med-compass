@@ -12,11 +12,12 @@ export const Route = createFileRoute("/scorte")({
 });
 
 function InventoryPage() {
-  const { data, updateTherapy } = useFamilyMed();
+  const { data, updateTherapy, isPrimaryCaregiverOf } = useFamilyMed();
 
   const grouped = data.patients.map((p) => ({
     patient: p,
     items: data.therapies.filter((t) => t.patientId === p.id),
+    canManage: isPrimaryCaregiverOf(p.id),
   }));
 
   const addPack = (id: string) => {
@@ -32,7 +33,7 @@ function InventoryPage() {
   return (
     <AppShell title="Gestione scorte" subtitle="Confezioni e compresse residue">
       <div className="w-full max-w-full block space-y-8 text-left min-w-0 overflow-hidden">
-        {grouped.map(({ patient, items }) => (
+        {grouped.map(({ patient, items, canManage }) => (
           <section key={patient.id} className="block w-full min-w-0">
             <h2 className="mb-4 text-base sm:text-lg font-black tracking-tight">{patient.name}</h2>
             
@@ -117,9 +118,11 @@ function InventoryPage() {
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <Button size="sm" variant="outline" className="h-8 text-xs shrink-0" onClick={() => addPack(t.id)}>
-                        <Plus className="mr-1 size-3.5" /> Confezione
-                      </Button>
+                      {canManage && (
+                        <Button size="sm" variant="outline" className="h-8 text-xs shrink-0" onClick={() => addPack(t.id)}>
+                          <Plus className="mr-1 size-3.5" /> Confezione
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );
@@ -211,9 +214,11 @@ function InventoryPage() {
                           </div>
                         </td>
                         <td className="px-4 py-4 text-right">
-                          <Button size="sm" variant="outline" onClick={() => addPack(t.id)}>
-                            <Plus className="mr-1 size-4" /> Confezione
-                          </Button>
+                          {canManage && (
+                            <Button size="sm" variant="outline" onClick={() => addPack(t.id)}>
+                              <Plus className="mr-1 size-4" /> Confezione
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     );

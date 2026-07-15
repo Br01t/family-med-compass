@@ -82,6 +82,8 @@ type Ctx = {
   markAllRead: () => void;
   resetDemoData: () => void;
   logout: () => Promise<void>;
+  isPrimaryCaregiverOf: (patientId: string) => boolean;
+  isSecondaryCaregiverOf: (patientId: string) => boolean;
 };
 
 
@@ -951,6 +953,29 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(iv);
   }, [user, data.therapies, data.events, data.patients]);
 
+  const isPrimaryCaregiverOf = useCallback(
+    (patientId: string): boolean => {
+      if (!user) return false;
+      const p = data.patients.find((x) => x.id === patientId);
+      if (!p) return false;
+      if (p.ownerUserId) return p.ownerUserId === user.id;
+      return p.primaryCaregiverId === user.id;
+    },
+    [user, data.patients],
+  );
+
+  const isSecondaryCaregiverOf = useCallback(
+    (patientId: string): boolean => {
+      if (!user || userProfile?.role !== "caregiver") return false;
+      const p = data.patients.find((x) => x.id === patientId);
+      if (!p) return false;
+      if (isPrimaryCaregiverOf(patientId)) return false;
+      // caregiver linked (presente nella lista pazienti visibili) ma non primario
+      return true;
+    },
+    [user, userProfile, data.patients, isPrimaryCaregiverOf],
+  );
+
   const value = useMemo<Ctx>(
     () => ({
       data,
@@ -977,6 +1002,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       markAllRead,
       resetDemoData,
       logout,
+      isPrimaryCaregiverOf,
+      isSecondaryCaregiverOf,
     }),
     [
       data,
@@ -1003,6 +1030,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       markAllRead,
       resetDemoData,
       logout,
+      isPrimaryCaregiverOf,
+      isSecondaryCaregiverOf,
     ]
   );
 

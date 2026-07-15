@@ -65,6 +65,7 @@ export function subscribePatients(
           caregiverIds: [],
           userId: p.user_id,
           ownerUserId: (p as any).owner_user_id,
+          primaryCaregiverId: (p as any).primary_caregiver_id,
         }))
       );
     } catch (err) {
@@ -590,6 +591,7 @@ export async function fetchAllPatients(): Promise<Patient[]> {
     caregiverIds: [],
     userId: p.user_id,
     ownerUserId: (p as any).owner_user_id,
+    primaryCaregiverId: (p as any).primary_caregiver_id,
   }));
 }
 
