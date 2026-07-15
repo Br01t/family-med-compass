@@ -117,27 +117,29 @@ function TherapiesPage() {
                           {t.dosage} · {t.quantity} compressa/e
                         </p>
                       </div>
-                      <button
-                        onClick={() => {
-                          updateTherapy(t.id, { suspended: !t.suspended });
-                          toast(t.suspended ? "Terapia riattivata" : "Terapia sospesa", {
-                            description: t.name,
-                          });
-                        }}
-                        className={cn(
-                          "grid size-9 shrink-0 place-items-center rounded-lg border border-border/60 transition",
-                          t.suspended
-                            ? "text-muted-foreground hover:text-primary"
-                            : "text-success hover:bg-secondary",
-                        )}
-                        aria-label="Sospendi terapia"
-                      >
-                        {t.suspended ? (
-                          <PowerOff className="size-4" />
-                        ) : (
-                          <Power className="size-4" />
-                        )}
-                      </button>
+                      {canManage && (
+                        <button
+                          onClick={() => {
+                            updateTherapy(t.id, { suspended: !t.suspended });
+                            toast(t.suspended ? "Terapia riattivata" : "Terapia sospesa", {
+                              description: t.name,
+                            });
+                          }}
+                          className={cn(
+                            "grid size-9 shrink-0 place-items-center rounded-lg border border-border/60 transition",
+                            t.suspended
+                              ? "text-muted-foreground hover:text-primary"
+                              : "text-success hover:bg-secondary",
+                          )}
+                          aria-label="Sospendi terapia"
+                        >
+                          {t.suspended ? (
+                            <PowerOff className="size-4" />
+                          ) : (
+                            <Power className="size-4" />
+                          )}
+                        </button>
+                      )}
                     </div>
 
                     <dl className="mt-4 space-y-2 text-sm">
