@@ -234,19 +234,21 @@ function TherapiesPage() {
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => {
-                          if (confirm(`Eliminare "${t.name}"?`)) {
-                            deleteTherapy(t.id);
-                            toast.success("Terapia eliminata");
-                          }
-                        }}
-                      >
-                        Elimina
-                      </Button>
+                      {canManage && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => {
+                            if (confirm(`Eliminare "${t.name}"?`)) {
+                              deleteTherapy(t.id);
+                              toast.success("Terapia eliminata");
+                            }
+                          }}
+                        >
+                          Elimina
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
