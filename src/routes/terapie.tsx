@@ -78,14 +78,16 @@ function TherapiesPage() {
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                  <AddTherapyDialog
-                    initialPatientId={p.id}
-                    trigger={
-                      <Button variant="outline" size="sm" id={`add-therapy-${p.id}`}>
-                        <Plus className="mr-1.5 size-3.5" /> Terapia
-                      </Button>
-                    }
-                  />
+                  {canManage && (
+                    <AddTherapyDialog
+                      initialPatientId={p.id}
+                      trigger={
+                        <Button variant="outline" size="sm" id={`add-therapy-${p.id}`}>
+                          <Plus className="mr-1.5 size-3.5" /> Terapia
+                        </Button>
+                      }
+                    />
+                  )}
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
