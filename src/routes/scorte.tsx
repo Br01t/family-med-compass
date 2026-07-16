@@ -35,6 +35,7 @@ function InventoryPage() {
   return (
     <AppShell title="Gestione scorte" subtitle="Confezioni e compresse residue">
       <div className="w-full max-w-full block space-y-8 text-left min-w-0 overflow-hidden">
+        {hasSecondaryRole && <SecondaryCaregiverNotice context="scorte" />}
         {grouped.map(({ patient, items, canManage }) => (
           <section key={patient.id} className="block w-full min-w-0">
             <h2 className="mb-4 text-base sm:text-lg font-black tracking-tight">{patient.name}</h2>
