@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Package, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { SecondaryCaregiverNotice } from "@/components/SecondaryCaregiverNotice";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -12,13 +13,14 @@ export const Route = createFileRoute("/scorte")({
 });
 
 function InventoryPage() {
-  const { data, updateTherapy, isPrimaryCaregiverOf } = useFamilyMed();
+  const { data, updateTherapy, isPrimaryCaregiverOf, isSecondaryCaregiverOf } = useFamilyMed();
 
   const grouped = data.patients.map((p) => ({
     patient: p,
     items: data.therapies.filter((t) => t.patientId === p.id),
     canManage: isPrimaryCaregiverOf(p.id),
   }));
+  const hasSecondaryRole = data.patients.some((p) => isSecondaryCaregiverOf(p.id));
 
   const addPack = (id: string) => {
     const t = data.therapies.find((x) => x.id === id);
