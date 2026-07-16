@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarPlus, FileDown, Pill, Plus, Power, PowerOff, Info } from "lucide-react";
+import { CalendarPlus, FileDown, Pill, Plus, Power, PowerOff } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { AddTherapyDialog } from "@/components/AddTherapyDialog";
+import { SecondaryCaregiverNotice } from "@/components/SecondaryCaregiverNotice";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { recurrenceLabel } from "@/lib/therapy";
