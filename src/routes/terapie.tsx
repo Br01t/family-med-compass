@@ -3,6 +3,7 @@ import { CalendarPlus, FileDown, Pill, Plus, Power, PowerOff } from "lucide-reac
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { AddTherapyDialog } from "@/components/AddTherapyDialog";
+import { SecondaryCaregiverNotice } from "@/components/SecondaryCaregiverNotice";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { recurrenceLabel } from "@/lib/therapy";
@@ -18,8 +19,9 @@ export const Route = createFileRoute("/terapie")({
 });
 
 function TherapiesPage() {
-  const { data, updateTherapy, deleteTherapy, isPrimaryCaregiverOf, userProfile } = useFamilyMed();
+  const { data, updateTherapy, deleteTherapy, isPrimaryCaregiverOf, isSecondaryCaregiverOf, userProfile } = useFamilyMed();
   const isPatientUser = userProfile?.role === "paziente";
+  const hasSecondaryRole = data.patients.some((p) => isSecondaryCaregiverOf(p.id));
 
   return (
     <AppShell
@@ -28,6 +30,7 @@ function TherapiesPage() {
       actions={!isPatientUser && data.patients.some((p) => isPrimaryCaregiverOf(p.id)) ? <AddTherapyDialog /> : undefined}
     >
       <div className="space-y-8">
+        {hasSecondaryRole && <SecondaryCaregiverNotice context="terapie" />}
         {data.patients.map((p) => {
           const therapies = data.therapies.filter((t) => t.patientId === p.id);
           const canManage = isPrimaryCaregiverOf(p.id);
