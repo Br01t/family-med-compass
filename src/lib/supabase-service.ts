@@ -931,3 +931,94 @@ export async function fetchCaregiverIdsForPatient(patientId: string): Promise<st
   caregiverIdsCache.set(patientId, ids);
   return ids;
 }
+
+/* =========================================================
+   THERAPY PHOTOS — Supabase Storage
+   Le foto sono su bucket `therapy-photos` (private con RLS SELECT pubblica).
+   In DB salviamo solo l'URL pubblico (~100 byte) invece del base64 (~150 KB).
+========================================================= */
+
+const THERAPY_PHOTOS_BUCKET = "therapy-photos";
+
+function dataUrlToBlob(dataUrl: string): { blob: Blob; ext: string } {
+  const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(dataUrl);
+  if (!match) throw new Error("dataURL non valido");
+  const mime = match[1];
+  const bin = atob(match[2]);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const ext = mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "bin";
+  return { blob: new Blob([bytes], { type: mime }), ext };
+}
+
+/**
+ * Carica una foto (dataURL) su Storage e ritorna l'URL pubblico.
+ * `kind` = "drug" | "package".
+ */
+export async function uploadTherapyPhotoFromDataUrl(
+  therapyId: string,
+  kind: "drug" | "package",
+  dataUrl: string,
+): Promise<string> {
+  if (!supabase) throw new Error("Supabase non configurato");
+  const { blob, ext } = dataUrlToBlob(dataUrl);
+  const path = `therapies/${therapyId}/${kind}-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage
+    .from(THERAPY_PHOTOS_BUCKET)
+    .upload(path, blob, { upsert: true, contentType: blob.type });
+  if (error) throw error;
+  const { data } = supabase.storage.from(THERAPY_PHOTOS_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/**
+ * Se `current` è un dataURL, lo carica su Storage e ritorna l'URL pubblico.
+ * Se è già un URL http(s)://, lo ritorna così com'è. Se null/undefined, ritorna undefined.
+ */
+export async function ensureTherapyPhotoUrl(
+  therapyId: string,
+  kind: "drug" | "package",
+  current: string | undefined | null,
+): Promise<string | undefined> {
+  if (!current) return undefined;
+  if (current.startsWith("data:")) {
+    return uploadTherapyPhotoFromDataUrl(therapyId, kind, current);
+  }
+  return current;
+}
+
+/**
+ * Migrazione una-tantum: per ogni terapia visibile, se photo_drug/photo_package
+ * è un dataURL lo carica su Storage e sostituisce con l'URL pubblico.
+ * Ritorna il conteggio di righe aggiornate.
+ */
+export async function migrateAllTherapyPhotosToStorage(): Promise<{ migrated: number; skipped: number; errors: number }> {
+  if (!supabase) throw new Error("Supabase non configurato");
+  const { data, error } = await supabase
+    .from("therapies")
+    .select("id, photo_drug, photo_package");
+  if (error) throw error;
+
+  let migrated = 0, skipped = 0, errors = 0;
+  for (const row of data ?? []) {
+    const hasDrugData = row.photo_drug?.startsWith("data:");
+    const hasPkgData = row.photo_package?.startsWith("data:");
+    if (!hasDrugData && !hasPkgData) { skipped++; continue; }
+    try {
+      const patch: Record<string, string> = {};
+      if (hasDrugData) {
+        patch.photo_drug = await uploadTherapyPhotoFromDataUrl(row.id, "drug", row.photo_drug!);
+      }
+      if (hasPkgData) {
+        patch.photo_package = await uploadTherapyPhotoFromDataUrl(row.id, "package", row.photo_package!);
+      }
+      const { error: upErr } = await supabase.from("therapies").update(patch).eq("id", row.id);
+      if (upErr) throw upErr;
+      migrated++;
+    } catch (err) {
+      console.error("[migrateAllTherapyPhotosToStorage] errore su", row.id, err);
+      errors++;
+    }
+  }
+  return { migrated, skipped, errors };
+}
