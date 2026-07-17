@@ -157,6 +157,10 @@ function SettingsPage() {
 
         <InstallCard />
 
+        {user && <PhotoMigrationCard />}
+
+
+
         <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
           <h2 className="text-lg font-black tracking-tight">Sincronizzazione</h2>
           <p className="mt-3 text-sm text-muted-foreground">
