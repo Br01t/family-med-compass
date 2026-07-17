@@ -280,6 +280,60 @@ function InstallCard() {
   );
 }
 
+function PhotoMigrationCard() {
+  const { data } = useFamilyMed();
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ migrated: number; skipped: number; errors: number } | null>(null);
+
+  // Conta terapie con foto ancora in base64 (dataURL)
+  const pending = data.therapies.filter(
+    (t) => t.photoDrug?.startsWith("data:") || t.photoPackage?.startsWith("data:"),
+  ).length;
+
+  if (pending === 0 && !result) return null;
+
+  async function run() {
+    setBusy(true);
+    try {
+      const r = await migrateAllTherapyPhotosToStorage();
+      setResult(r);
+      if (r.migrated > 0) {
+        toast.success(`${r.migrated} terapie migrate su cloud`, {
+          description: "Le foto ora occupano molto meno spazio.",
+        });
+      } else {
+        toast.info("Nessuna foto da migrare");
+      }
+    } catch (e: any) {
+      toast.error("Errore durante la migrazione", { description: e?.message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+      <h2 className="text-lg font-black tracking-tight">Ottimizza foto terapie</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {pending > 0
+          ? `Hai ${pending} terapie con foto salvate direttamente nel database. Spostandole nel cloud storage riduci fortemente il consumo di banda.`
+          : "Tutte le foto sono già ottimizzate."}
+      </p>
+      {result && (
+        <div className="mt-3 rounded-xl border border-border/50 bg-muted/40 p-3 text-sm">
+          Migrate: <b>{result.migrated}</b> · Già ok: <b>{result.skipped}</b>
+          {result.errors > 0 && <> · Errori: <b className="text-destructive">{result.errors}</b></>}
+        </div>
+      )}
+      {pending > 0 && (
+        <Button onClick={run} disabled={busy} className="mt-4 w-full">
+          {busy ? "Migrazione in corso…" : `Migra ${pending} terapie nel cloud`}
+        </Button>
+      )}
+    </section>
+  );
+}
+
 function Field({ label, value, capitalize }: { label: string; value: string; capitalize?: boolean }) {
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-3 border-b border-border/50 pb-2 last:border-0">
