@@ -6,6 +6,7 @@ import { Camera, Plus, Trash2, PillIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { fileToCompressedDataUrl } from "@/lib/image-utils";
+import { ensureTherapyPhotoUrl } from "@/lib/supabase-service";
 import {
   Dialog,
   DialogContent,
@@ -184,6 +185,12 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
 
     try {
       if (isEdit && editTherapy) {
+        // Se le foto sono dataURL nuovi, caricali su Storage prima del save
+        // (le foto già-URL vengono lasciate invariate).
+        const [uploadedDrug, uploadedPackage] = await Promise.all([
+          ensureTherapyPhotoUrl(editTherapy.id, "drug", photoDrug),
+          ensureTherapyPhotoUrl(editTherapy.id, "package", photoPackage),
+        ]);
         await updateTherapy(editTherapy.id, {
           patientId: values.patientId,
           name: values.name,
@@ -203,13 +210,18 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
           lowStockThreshold: values.lowStockThreshold,
           notes: values.notes.trim(),
           reminderIntervals: [values.reminderBeforeMinutes],
-          photoDrug,
-          photoPackage,
+          photoDrug: uploadedDrug,
+          photoPackage: uploadedPackage,
         });
         toast.success("Terapia aggiornata", { description: values.name });
       } else {
+        const newId = `t_${Date.now()}`;
+        const [uploadedDrug, uploadedPackage] = await Promise.all([
+          ensureTherapyPhotoUrl(newId, "drug", photoDrug),
+          ensureTherapyPhotoUrl(newId, "package", photoPackage),
+        ]);
         await addTherapy({
-          id: `t_${Date.now()}`,
+          id: newId,
           patientId: values.patientId,
           name: values.name,
           dosage: values.dosage,
@@ -232,11 +244,12 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
           reminderIntervals: [values.reminderBeforeMinutes],
           active: true,
           suspended: false,
-          photoDrug,
-          photoPackage,
+          photoDrug: uploadedDrug,
+          photoPackage: uploadedPackage,
         });
         toast.success("Terapia aggiunta", { description: values.name });
       }
+
 
       form.reset();
       setOpen(false);
