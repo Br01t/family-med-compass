@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFamilyMed } from "@/lib/store";
+import { migrateAllTherapyPhotosToStorage } from "@/lib/supabase-service";
 import { type Role } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/impostazioni")({
