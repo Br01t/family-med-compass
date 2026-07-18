@@ -5,6 +5,10 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import {
+  fetchCaregiverDashboardStats,
+  type CaregiverDashboardStats,
+} from "@/lib/supabase-service";
+import {
   formatTime,
   getAdherenceForPatient,
   getDosesForPatientOnDate,
@@ -16,6 +20,7 @@ import {
 } from "@/lib/therapy";
 import type { ScheduledDose } from "@/lib/therapy";
 import { cn } from "@/lib/utils";
+
 
 
 export const Route = createFileRoute("/caregiver")({
@@ -31,40 +36,58 @@ export const Route = createFileRoute("/caregiver")({
 function CaregiverHome() {
   const { data } = useFamilyMed();
   const [tick, setTick] = useState(0);
+  const [stats, setStats] = useState<CaregiverDashboardStats | null>(null);
+
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30_000);
     return () => clearInterval(id);
+  }, []);
+
+  // Ricarica le stats aggregate dal DB (materialized view precalcolata,
+  // refresh ogni 5 min) ogni 60s + subito al mount. Evita di calcolare
+  // aderenza/alert/scorte a client ad ogni render con l'intero dataset.
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const s = await fetchCaregiverDashboardStats();
+      if (!cancelled) setStats(s);
+    };
+    load();
+    const id = setInterval(load, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, []);
   void tick;
   const patients = data.patients;
   const now = new Date();
 
-
-
-
-  const lowStock = data.therapies.filter(
-    (t) => t.pillsRemaining <= t.lowStockThreshold,
+  // Fallback locale se la MV non ha ancora la riga o l'RPC fallisce
+  const fallbackLowStock = useMemo(
+    () => data.therapies.filter((t) => t.pillsRemaining <= t.lowStockThreshold),
+    [data.therapies],
   );
-
-
-  const totalAdherence = Math.round(
+  const fallbackAlerts = useMemo(
+    () =>
+      data.events.filter(
+        (e) => (e.status === "missed" || e.status === "skipped") && !isDoseAcknowledged(e),
+      ).length,
+    [data.events],
+  );
+  const fallbackAdherence = Math.round(
     patients.reduce((sum, p) => sum + getAdherenceForPatient(data, p.id), 0) /
       Math.max(patients.length, 1),
   );
 
-  // Alert: solo dosi non assunte (dimenticate o saltate) da confermare a mano
-  // dopo aver contattato il paziente. Il conteggio torna a 0 quando il caregiver
-  // le processa dalla pagina dedicata (segna come confermate o conferma il salto)
-  // -- va escluso chi è già stato "gestito" (isDoseAcknowledged), altrimenti
-  // questo contatore non torna mai allineato con la lista in /dose-da-confermare.
-  const pendingMissedDoses = useMemo(
-    () =>
-      data.events.filter(
-        (e) => (e.status === "missed" || e.status === "skipped") && !isDoseAcknowledged(e),
-      ),
-    [data.events],
-  );
-  const activeAlerts = pendingMissedDoses.length;
+  const totalAdherence = stats?.adherence7d ?? fallbackAdherence;
+  const activeAlerts = stats?.activeAlerts ?? fallbackAlerts;
+  const lowStockCount = stats?.lowStockCount ?? fallbackLowStock.length;
+  const lowStockNames =
+    stats?.lowStockNames && stats.lowStockNames.length > 0
+      ? stats.lowStockNames
+      : fallbackLowStock.map((t) => t.name);
+
 
   return (
     <AppShell
@@ -92,8 +115,9 @@ function CaregiverHome() {
         <Link to="/scorte" className="block rounded-3xl transition hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning">
           <MetricCard
             label="Scorte in esaurimento"
-            value={String(lowStock.length)}
-            hint={lowStock.length > 0 ? lowStock.map((t) => t.name).join(", ") : "Tutto ok"}
+            value={String(lowStockCount)}
+            hint={lowStockCount > 0 ? lowStockNames.join(", ") : "Tutto ok"}
+
             icon={Package}
             tone="warning"
             clickable

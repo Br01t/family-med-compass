@@ -1,10 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertOctagon, AlertTriangle, Bell, Check, Clock, Info, Package, PillIcon, XCircle } from "lucide-react";
+import {
+  AlertOctagon,
+  AlertTriangle,
+  Bell,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Info,
+  Package,
+  PillIcon,
+  XCircle,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { PatientShell } from "@/components/PatientShell";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
+import { fetchNotificationsPage } from "@/lib/supabase-service";
 import type { Notification, NotificationKind } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +25,8 @@ export const Route = createFileRoute("/notifiche")({
   head: () => ({ meta: [{ title: "Notifiche — FamilyMed" }] }),
   component: NotificationsPage,
 });
+
+const PAGE_SIZE = 20;
 
 const KIND_META: Record<
   NotificationKind,
@@ -32,12 +47,7 @@ const KIND_META: Record<
 };
 
 function NotificationsPage() {
-  const {
-    data,
-    user,
-    userProfile,
-    markNotificationRead,
-  } = useFamilyMed();
+  const { data, user, userProfile, markNotificationRead } = useFamilyMed();
   const isPatient = userProfile?.role === "paziente";
 
   const patient = isPatient
@@ -46,85 +56,142 @@ function NotificationsPage() {
       data.patients[0]
     : undefined;
 
-  const items = useMemo(() => {
-    const base = isPatient
-      ? data.notifications.filter((n) => !n.patientId || (patient && n.patientId === patient.id))
-      : data.notifications;
-    return [...base].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-  }, [data.notifications, isPatient, patient]);
+  const [patientFilter, setPatientFilter] = useState<string>("");
+  const [page, setPage] = useState(0);
+  const [items, setItems] = useState<Notification[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  // Auto-mark come lette all'apertura: le notifiche viste non devono essere
-  // riproposte al prossimo mount o su altri dispositivi.
+  // Reset alla pagina 0 quando cambia il filtro
+  useEffect(() => {
+    setPage(0);
+  }, [patientFilter]);
+
+  const load = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    const res = await fetchNotificationsPage(user.id, page, PAGE_SIZE, {
+      patientId: isPatient
+        ? patient?.id ?? null
+        : patientFilter || null,
+    });
+    setItems(res.items);
+    setTotal(res.total);
+    setLoading(false);
+  }, [user, page, patientFilter, isPatient, patient?.id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Auto-mark come lette solo le notifiche della pagina visualizzata
   useEffect(() => {
     if (!user) return;
-    const unread = items.filter(
-      (n) => !n.read && (!n.targetUserId || n.targetUserId === user.id),
-    );
-    for (const n of unread) {
-      void markNotificationRead(n.id);
-    }
-  }, [user, items, markNotificationRead]);
+    const unread = items.filter((n) => !n.read);
+    for (const n of unread) void markNotificationRead(n.id);
+  }, [items, user, markNotificationRead]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   if (isPatient) {
     return (
       <PatientShell title="Storico notifiche" subtitle="Le azioni recenti sulle tue terapie">
-        <NotificationList items={items} data={data} />
+        <NotificationList
+          items={items}
+          loading={loading}
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPage={setPage}
+        />
       </PatientShell>
     );
   }
 
   return (
-    <AppShell
-      title="Centro notifiche"
-      subtitle="Le azioni recenti dei tuoi pazienti"
-    >
-      <CaregiverView items={items} data={data} />
+    <AppShell title="Centro notifiche" subtitle="Le azioni recenti dei tuoi pazienti">
+      <CaregiverView
+        items={items}
+        data={data}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        patientFilter={patientFilter}
+        onFilterChange={setPatientFilter}
+        onPage={setPage}
+      />
     </AppShell>
+  );
+}
+
+function Pagination({
+  page,
+  totalPages,
+  total,
+  onPage,
+  loading,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  onPage: (p: number) => void;
+  loading: boolean;
+}) {
+  if (total === 0) return null;
+  return (
+    <div className="flex items-center justify-between gap-2 pt-2">
+      <p className="text-xs text-muted-foreground">
+        {total} notifiche — pagina {page + 1} di {totalPages}
+      </p>
+      <div className="flex gap-1">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={loading || page === 0}
+          onClick={() => onPage(page - 1)}
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={loading || page >= totalPages - 1}
+          onClick={() => onPage(page + 1)}
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+    </div>
   );
 }
 
 function NotificationList({
   items,
-  data,
+  loading,
+  page,
+  totalPages,
+  total,
+  onPage,
 }: {
   items: Notification[];
-  data: ReturnType<typeof useFamilyMed>["data"];
+  loading: boolean;
+  page: number;
+  totalPages: number;
+  total: number;
+  onPage: (p: number) => void;
 }) {
-  const [showAll, setShowAll] = useState(false);
-  // Di default nasconde tutto ciò che era già read prima dell'apertura di questa
-  // sessione (in pratica: nulla è "nuovo" perché al mount marchiamo tutte lette).
-  // Il toggle mostra l'intero storico.
-  const [initialUnreadIds] = useState(() => new Set(items.filter((n) => !n.read).map((n) => n.id)));
-  const filtered = showAll ? items : items.filter((n) => initialUnreadIds.has(n.id));
-
-  if (filtered.length === 0) {
-    return (
-      <div className="space-y-4">
-        <EmptyState
-          title={showAll ? "Nessuna notifica" : "Tutto letto"}
-          message={
-            showAll
-              ? "Non è ancora arrivata nessuna notifica."
-              : "Non ci sono nuove notifiche da vedere."
-          }
-        />
-        {!showAll && items.length > 0 && (
-          <div className="flex justify-center">
-            <Button variant="outline" size="sm" onClick={() => setShowAll(true)}>
-              Mostra storico ({items.length})
-            </Button>
-          </div>
-        )}
-      </div>
-    );
+  if (loading && items.length === 0) {
+    return <EmptyState title="Caricamento…" message="Attendi qualche istante." />;
+  }
+  if (items.length === 0) {
+    return <EmptyState title="Nessuna notifica" message="Non è ancora arrivata nessuna notifica." />;
   }
 
   return (
     <div className="space-y-4">
       <ol className="space-y-3">
-        {filtered.map((n) => {
+        {items.map((n) => {
           const meta = KIND_META[n.kind] ?? KIND_META.info;
           const Icon = meta.icon;
           return (
@@ -156,20 +223,7 @@ function NotificationList({
           );
         })}
       </ol>
-      {!showAll && items.length > filtered.length && (
-        <div className="flex justify-center">
-          <Button variant="outline" size="sm" onClick={() => setShowAll(true)}>
-            Mostra storico ({items.length - filtered.length} più vecchie)
-          </Button>
-        </div>
-      )}
-      {showAll && (
-        <div className="flex justify-center">
-          <Button variant="ghost" size="sm" onClick={() => setShowAll(false)}>
-            Nascondi lo storico
-          </Button>
-        </div>
-      )}
+      <Pagination page={page} totalPages={totalPages} total={total} onPage={onPage} loading={loading} />
     </div>
   );
 }
@@ -177,57 +231,56 @@ function NotificationList({
 function CaregiverView({
   items,
   data,
+  loading,
+  page,
+  totalPages,
+  total,
+  patientFilter,
+  onFilterChange,
+  onPage,
 }: {
   items: Notification[];
   data: ReturnType<typeof useFamilyMed>["data"];
+  loading: boolean;
+  page: number;
+  totalPages: number;
+  total: number;
+  patientFilter: string;
+  onFilterChange: (v: string) => void;
+  onPage: (p: number) => void;
 }) {
-  const [patientFilter, setPatientFilter] = useState<string>("");
-  const [showAll, setShowAll] = useState(false);
-  const [initialUnreadIds] = useState(() => new Set(items.filter((n) => !n.read).map((n) => n.id)));
-
-  const filtered = items.filter((n) => {
-    if (patientFilter && n.patientId !== patientFilter) return false;
-    if (!showAll && !initialUnreadIds.has(n.id)) return false;
-    return true;
-  });
+  const patientsOptions = useMemo(() => data.patients, [data.patients]);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        {data.patients.length > 0 && (
+        {patientsOptions.length > 0 && (
           <select
             value={patientFilter}
-            onChange={(e) => setPatientFilter(e.target.value)}
+            onChange={(e) => onFilterChange(e.target.value)}
             className="rounded-full border border-border bg-card px-4 py-1.5 text-xs font-bold text-foreground"
           >
             <option value="">Tutti i pazienti</option>
-            {data.patients.map((p) => (
+            {patientsOptions.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
           </select>
         )}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setShowAll((v) => !v)}
-          className="ml-auto"
-        >
-          {showAll ? "Solo nuove" : `Mostra storico (${items.length})`}
-        </Button>
       </div>
 
       <div className="rounded-3xl border border-border/60 bg-card shadow-card">
         <ul className="divide-y divide-border/60">
-          {filtered.length === 0 && (
+          {loading && items.length === 0 && (
+            <li className="p-8 text-center text-sm text-muted-foreground">Caricamento…</li>
+          )}
+          {!loading && items.length === 0 && (
             <li className="p-8 text-center text-sm text-muted-foreground">
-              {showAll
-                ? "Nessuna notifica con questo filtro."
-                : "Nessuna nuova notifica. Tutte le azioni recenti sono già state viste."}
+              Nessuna notifica con questo filtro.
             </li>
           )}
-          {filtered.map((n) => {
+          {items.map((n) => {
             const patient = data.patients.find((p) => p.id === n.patientId);
             const meta = KIND_META[n.kind] ?? KIND_META.info;
             const Icon = meta.icon;
@@ -278,6 +331,8 @@ function CaregiverView({
           })}
         </ul>
       </div>
+
+      <Pagination page={page} totalPages={totalPages} total={total} onPage={onPage} loading={loading} />
     </div>
   );
 }
