@@ -115,8 +115,9 @@ function CaregiverHome() {
         <Link to="/scorte" className="block rounded-3xl transition hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning">
           <MetricCard
             label="Scorte in esaurimento"
-            value={String(lowStock.length)}
-            hint={lowStock.length > 0 ? lowStock.map((t) => t.name).join(", ") : "Tutto ok"}
+            value={String(lowStockCount)}
+            hint={lowStockCount > 0 ? lowStockNames.join(", ") : "Tutto ok"}
+
             icon={Package}
             tone="warning"
             clickable
