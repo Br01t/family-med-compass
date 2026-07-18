@@ -863,37 +863,11 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
           if (user) {
             try {
+              // Il trigger DB `handle_dose_status_change` inserisce
+              // automaticamente le notifiche (caregiver + paziente) con
+              // timestamp coerente (scheduled_at + timeout). Non duplichiamo
+              // dal client: risparmia egress e evita orari "batch" identici.
               await saveEventDoc(missedEvent);
-              // Fallback client: se il trigger DB non ha già generato la
-              // notifica (dose_key unico → nessun duplicato), inseriscila.
-              const caregiverIds = await fetchCaregiverIdsForPatient(th.patientId);
-              for (const cgId of caregiverIds) {
-                await insertNotificationDoc({
-                  targetUserId: cgId,
-                  kind: "missed",
-                  severity: "alert",
-                  title: `👨‍👩‍👧 ${patient?.name ?? "Paziente"} non ha preso ${th.name} (dimenticata)`,
-                  message: `Dose delle ${hhmm} — segnata come dimenticata dopo il tempo massimo. Contatta il paziente e conferma la dose dalla pagina "Dose da confermare".`,
-                  patientId: th.patientId,
-                  therapyId: th.id,
-                  eventId: missedEvent.id,
-                  doseKey: `${th.id}@${scheduledIso}@missed@cg@${cgId}`,
-                });
-              }
-              // Notifica al paziente
-              if (patient?.userId) {
-                await insertNotificationDoc({
-                  targetUserId: patient.userId,
-                  kind: "missed",
-                  severity: "alert",
-                  title: `Cura dimenticata: ${th.name}`,
-                  message: `La dose delle ${hhmm} è stata segnata come dimenticata. Probabilmente verrai contattato da un familiare.`,
-                  patientId: th.patientId,
-                  therapyId: th.id,
-                  eventId: missedEvent.id,
-                  doseKey: `${th.id}@${scheduledIso}@missed@patient`,
-                });
-              }
             } catch (err) {
               console.warn("[auto-missed] save failed", err);
             }
