@@ -5,6 +5,10 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import {
+  fetchCaregiverDashboardStats,
+  type CaregiverDashboardStats,
+} from "@/lib/supabase-service";
+import {
   formatTime,
   getAdherenceForPatient,
   getDosesForPatientOnDate,
@@ -16,6 +20,7 @@ import {
 } from "@/lib/therapy";
 import type { ScheduledDose } from "@/lib/therapy";
 import { cn } from "@/lib/utils";
+
 
 
 export const Route = createFileRoute("/caregiver")({
