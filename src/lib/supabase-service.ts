@@ -511,6 +511,81 @@ export function subscribeNotifications(
 }
 
 /* =========================================================
+   CAREGIVER DASHBOARD STATS (materialized view)
+========================================================= */
+
+export type CaregiverDashboardStats = {
+  patientsCount: number;
+  activeAlerts: number;
+  lowStockCount: number;
+  lowStockNames: string[];
+  adherence7d: number;
+  refreshedAt: string | null;
+};
+
+export async function fetchCaregiverDashboardStats(): Promise<CaregiverDashboardStats> {
+  const empty: CaregiverDashboardStats = {
+    patientsCount: 0,
+    activeAlerts: 0,
+    lowStockCount: 0,
+    lowStockNames: [],
+    adherence7d: 100,
+    refreshedAt: null,
+  };
+  if (!supabase) return empty;
+  const { data, error } = await supabase.rpc("get_my_caregiver_stats");
+  if (error) {
+    console.error("get_my_caregiver_stats:", error);
+    return empty;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return empty;
+  return {
+    patientsCount: row.patients_count ?? 0,
+    activeAlerts: row.active_alerts ?? 0,
+    lowStockCount: row.low_stock_count ?? 0,
+    lowStockNames: row.low_stock_names ?? [],
+    adherence7d: row.adherence_7d ?? 100,
+    refreshedAt: row.refreshed_at ?? null,
+  };
+}
+
+/* =========================================================
+   NOTIFICATIONS — paginated fetch (server-side)
+========================================================= */
+
+export async function fetchNotificationsPage(
+  userId: string,
+  page: number,
+  pageSize: number,
+  opts?: { patientId?: string | null },
+): Promise<{ items: Notification[]; total: number }> {
+  if (!supabase || !userId) return { items: [], total: 0 };
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+  let q = supabase
+    .from("notifications")
+    .select(
+      "id, target_user_id, created_at, kind, patient_id, therapy_id, event_id, dose_key, severity, title, message, read",
+      { count: "exact" },
+    )
+    .eq("target_user_id", userId);
+  if (opts?.patientId) q = q.eq("patient_id", opts.patientId);
+  const { data, error, count } = await q
+    .order("created_at", { ascending: false })
+    .range(from, to);
+  if (error) {
+    console.error("fetchNotificationsPage:", error);
+    return { items: [], total: 0 };
+  }
+  return {
+    items: (data || []).map(mapNotificationRow),
+    total: count ?? 0,
+  };
+}
+
+
+/* =========================================================
    WRITE OPS (UNCHANGED BUT SAFE)
 ========================================================= */
 
