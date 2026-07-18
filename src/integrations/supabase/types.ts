@@ -464,7 +464,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      caregiver_dashboard_stats: {
+        Row: {
+          active_alerts: number | null
+          adherence_7d: number | null
+          caregiver_id: string | null
+          low_stock_count: number | null
+          low_stock_names: string[] | null
+          patients_count: number | null
+          refreshed_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       create_family_invite: {
@@ -488,6 +499,17 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_my_caregiver_stats: {
+        Args: never
+        Returns: {
+          active_alerts: number
+          adherence_7d: number
+          low_stock_count: number
+          low_stock_names: string[]
+          patients_count: number
+          refreshed_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -497,6 +519,7 @@ export type Database = {
       }
       is_primary_of: { Args: { _patient_id: string }; Returns: boolean }
       redeem_family_invite: { Args: { _code: string }; Returns: string }
+      refresh_caregiver_dashboard_stats: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "caregiver" | "paziente"
