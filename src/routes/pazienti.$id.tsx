@@ -16,6 +16,7 @@ import {
   statusTone,
 } from "@/lib/therapy";
 import { downloadIcs, therapyToIcs } from "@/lib/ics";
+import { logPatientView } from "@/lib/supabase-service";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -41,6 +42,11 @@ function PatientDetail() {
     return () => clearInterval(t);
   }, []);
   void tick;
+
+  // GDPR audit log: registra l'apertura della scheda paziente da parte di questo caregiver.
+  useEffect(() => {
+    if (id) void logPatientView(id);
+  }, [id]);
   const patient = data.patients.find((p) => p.id === id);
 
   if (!patient) {

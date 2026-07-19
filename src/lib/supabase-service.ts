@@ -866,6 +866,78 @@ export async function revokeFamilyInvite(id: string): Promise<void> {
   if (error) throw error;
 }
 
+/* =========================================================
+   AUDIT LOG (GDPR — art. 5.2 accountability / art. 15 diritto di accesso)
+   Vedi migration 20260719120000_gdpr_audit_log.sql
+========================================================= */
+
+export interface AuditLogEntry {
+  id: string;
+  patientId: string | null;
+  tableName: string;
+  recordId: string;
+  action: "INSERT" | "UPDATE" | "DELETE" | "VIEW";
+  actorId: string | null;
+  changedFields: string[] | null;
+  detail: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+function mapAuditEntry(row: any): AuditLogEntry {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    tableName: row.table_name,
+    recordId: row.record_id,
+    action: row.action,
+    actorId: row.actor_id,
+    changedFields: row.changed_fields,
+    detail: row.detail,
+    createdAt: row.created_at,
+  };
+}
+
+// Dedup client-side: se abbiamo già segnalato la visualizzazione di questo
+// paziente negli ultimi 30 minuti, non ripetiamo nemmeno la chiamata di rete.
+// Lo stesso guard esiste anche lato DB (log_patient_view) come rete di
+// sicurezza, ma evitare la round-trip quando non serve costa zero egress.
+const patientViewLoggedCache = makeTTLCache<string, true>(30 * 60 * 1000);
+
+/**
+ * Registra che l'utente corrente ha aperto la scheda/lo storico di un paziente.
+ * Da chiamare UNA volta al mount della pagina di dettaglio paziente (non ad ogni refetch).
+ * Fallisce silenziosamente (best-effort): non deve mai bloccare la UI.
+ */
+export async function logPatientView(patientId: string): Promise<void> {
+  if (!supabase || !patientId) return;
+  if (patientViewLoggedCache.get(patientId)) return;
+  patientViewLoggedCache.set(patientId, true);
+  try {
+    await supabase.rpc("log_patient_view", { _patient_id: patientId });
+  } catch (err) {
+    console.warn("logPatientView:", err);
+  }
+}
+
+/** Storico di accessi/modifiche su un paziente, visibile solo a chi è collegato al paziente (RLS). */
+export async function fetchPatientAuditLog(
+  patientId: string,
+  limit = 50,
+): Promise<AuditLogEntry[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("audit_log")
+    .select("id, patient_id, table_name, record_id, action, actor_id, changed_fields, detail, created_at")
+    .eq("patient_id", patientId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.warn("fetchPatientAuditLog:", error.message);
+    return [];
+  }
+  return (data || []).map(mapAuditEntry);
+}
+
 export async function unfollowPatient(caregiverId: string, patientId: string): Promise<void> {
   if (!supabase) throw new Error("Supabase non configurato");
   const { error } = await supabase

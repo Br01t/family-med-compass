@@ -215,7 +215,8 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
         });
         toast.success("Terapia aggiornata", { description: values.name });
       } else {
-        const newId = `t_${Date.now()}`;
+        // UUID invece di timestamp: evita ID prevedibili/enumerabili (GDPR - minimizzazione rischio IDOR)
+        const newId = `t_${crypto.randomUUID()}`;
         const [uploadedDrug, uploadedPackage] = await Promise.all([
           ensureTherapyPhotoUrl(newId, "drug", photoDrug),
           ensureTherapyPhotoUrl(newId, "package", photoPackage),

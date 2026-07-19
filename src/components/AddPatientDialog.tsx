@@ -59,7 +59,8 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
 
   async function onSubmit(values: FormValues) {
     try {
-      const id = `p_${Date.now()}`;
+      // UUID invece di timestamp: evita ID prevedibili/enumerabili (GDPR - minimizzazione rischio IDOR)
+      const id = `p_${crypto.randomUUID()}`;
       const caregiverIds: string[] = data.currentCaregiverId
         ? [data.currentCaregiverId]
         : [];
