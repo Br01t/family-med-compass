@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowRight, Package, Pill, TrendingUp } from "lucide-react";
+import { AlertTriangle, ArrowRight, Package, Pill, RefreshCw, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import {
   fetchCaregiverDashboardStats,
+  refreshMyCaregiverStats,
   type CaregiverDashboardStats,
 } from "@/lib/supabase-service";
 import {
@@ -43,22 +44,28 @@ function CaregiverHome() {
     return () => clearInterval(id);
   }, []);
 
-  // Ricarica le stats aggregate dal DB (materialized view precalcolata,
-  // refresh ogni 5 min) ogni 60s + subito al mount. Evita di calcolare
-  // aderenza/alert/scorte a client ad ogni render con l'intero dataset.
+  // Le stats aggregate sono precalcolate lato DB (materialized view refreshata
+  // una volta al giorno dal cron). Le carichiamo una sola volta al mount;
+  // l'utente può forzare l'aggiornamento col bottone "Aggiorna".
+  const [refreshing, setRefreshing] = useState(false);
+  const loadStats = async () => {
+    const s = await fetchCaregiverDashboardStats();
+    setStats(s);
+  };
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      const s = await fetchCaregiverDashboardStats();
-      if (!cancelled) setStats(s);
-    };
-    load();
-    const id = setInterval(load, 60_000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
+    loadStats();
+     
   }, []);
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await refreshMyCaregiverStats();
+      await loadStats();
+    } finally {
+      setRefreshing(false);
+    }
+  };
   void tick;
   const patients = data.patients;
   const now = new Date();
@@ -89,11 +96,38 @@ function CaregiverHome() {
       : fallbackLowStock.map((t) => t.name);
 
 
+  const refreshedLabel = stats?.refreshedAt
+    ? new Date(stats.refreshedAt).toLocaleString("it-IT", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+
   return (
     <AppShell
       title="Panoramica famiglia"
       subtitle={`${patients.length} pazienti seguiti · aggiornamento live`}
     >
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          {refreshedLabel
+            ? `Statistiche aggiornate: ${refreshedLabel}`
+            : "Statistiche non ancora calcolate"}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="gap-2"
+        >
+          <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
+          {refreshing ? "Aggiornamento…" : "Aggiorna"}
+        </Button>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <MetricCard
           label="Aderenza media 7gg"

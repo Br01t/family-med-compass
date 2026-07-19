@@ -550,6 +550,16 @@ export async function fetchCaregiverDashboardStats(): Promise<CaregiverDashboard
   };
 }
 
+export async function refreshMyCaregiverStats(): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.rpc("refresh_my_caregiver_stats");
+  if (error) {
+    console.error("refresh_my_caregiver_stats:", error);
+    return false;
+  }
+  return true;
+}
+
 /* =========================================================
    NOTIFICATIONS — paginated fetch (server-side)
 ========================================================= */
