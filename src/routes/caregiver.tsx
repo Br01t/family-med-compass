@@ -96,11 +96,38 @@ function CaregiverHome() {
       : fallbackLowStock.map((t) => t.name);
 
 
+  const refreshedLabel = stats?.refreshedAt
+    ? new Date(stats.refreshedAt).toLocaleString("it-IT", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+
   return (
     <AppShell
       title="Panoramica famiglia"
       subtitle={`${patients.length} pazienti seguiti · aggiornamento live`}
     >
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          {refreshedLabel
+            ? `Statistiche aggiornate: ${refreshedLabel}`
+            : "Statistiche non ancora calcolate"}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="gap-2"
+        >
+          <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
+          {refreshing ? "Aggiornamento…" : "Aggiorna"}
+        </Button>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <MetricCard
           label="Aderenza media 7gg"
