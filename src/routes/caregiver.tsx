@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowRight, Package, Pill, TrendingUp } from "lucide-react";
+import { AlertTriangle, ArrowRight, Package, Pill, RefreshCw, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
+import {
+  fetchCaregiverDashboardStats,
+  refreshMyCaregiverStats,
+  type CaregiverDashboardStats,
+} from "@/lib/supabase-service";
 import {
   fetchCaregiverDashboardStats,
   type CaregiverDashboardStats,
