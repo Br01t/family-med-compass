@@ -44,22 +44,28 @@ function CaregiverHome() {
     return () => clearInterval(id);
   }, []);
 
-  // Ricarica le stats aggregate dal DB (materialized view precalcolata,
-  // refresh ogni 5 min) ogni 60s + subito al mount. Evita di calcolare
-  // aderenza/alert/scorte a client ad ogni render con l'intero dataset.
+  // Le stats aggregate sono precalcolate lato DB (materialized view refreshata
+  // una volta al giorno dal cron). Le carichiamo una sola volta al mount;
+  // l'utente può forzare l'aggiornamento col bottone "Aggiorna".
+  const [refreshing, setRefreshing] = useState(false);
+  const loadStats = async () => {
+    const s = await fetchCaregiverDashboardStats();
+    setStats(s);
+  };
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      const s = await fetchCaregiverDashboardStats();
-      if (!cancelled) setStats(s);
-    };
-    load();
-    const id = setInterval(load, 60_000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
+    loadStats();
+     
   }, []);
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await refreshMyCaregiverStats();
+      await loadStats();
+    } finally {
+      setRefreshing(false);
+    }
+  };
   void tick;
   const patients = data.patients;
   const now = new Date();
