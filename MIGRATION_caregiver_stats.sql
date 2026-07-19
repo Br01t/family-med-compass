@@ -22,7 +22,7 @@ alerts AS (
   FROM pats p
   JOIN public.events e ON e.patient_id = p.patient_id
   WHERE e.status IN ('missed','skipped')
-    AND COALESCE(e.notes,'') NOT LIKE '%CG_ACK%'
+    AND COALESCE(e.note,'') NOT LIKE '%CG_ACK%'
   GROUP BY p.caregiver_id
 ),
 low_stock AS (
