@@ -10,10 +10,6 @@ import {
   type CaregiverDashboardStats,
 } from "@/lib/supabase-service";
 import {
-  fetchCaregiverDashboardStats,
-  type CaregiverDashboardStats,
-} from "@/lib/supabase-service";
-import {
   formatTime,
   getAdherenceForPatient,
   getDosesForPatientOnDate,
