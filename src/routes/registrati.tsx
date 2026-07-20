@@ -51,6 +51,21 @@ function RegisterPage() {
     setSubmitting(true);
     try {
       await signUpUser({ email, password, name, role });
+      // Registra la prova dei consensi (GDPR art. 7.1) — best effort.
+      try {
+        const { supabase } = await import("@/lib/supabase");
+        const { data } = await supabase.auth.getUser();
+        const uid = data.user?.id;
+        if (uid) {
+          const ua = typeof navigator !== "undefined" ? navigator.userAgent : null;
+          await supabase.from("user_consents").insert([
+            { user_id: uid, kind: "terms_privacy", granted: true, user_agent: ua },
+            { user_id: uid, kind: "health_data",   granted: true, user_agent: ua },
+          ]);
+        }
+      } catch (consentErr) {
+        console.warn("Consensi non registrati (esegui MIGRATION_consensi_gdpr.sql):", consentErr);
+      }
       setDialogVariant("success");
       setDialogTitle("Registrazione completata");
       setDialogDescription(
