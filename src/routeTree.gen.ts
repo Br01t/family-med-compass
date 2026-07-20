@@ -15,6 +15,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ScorteRouteImport } from './routes/scorte'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegistratiRouteImport } from './routes/registrati'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PazienteRouteImport } from './routes/paziente'
 import { Route as NotificheRouteImport } from './routes/notifiche'
 import { Route as LoginRouteImport } from './routes/login'
@@ -56,6 +57,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const RegistratiRoute = RegistratiRouteImport.update({
   id: '/registrati',
   path: '/registrati',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PazienteRoute = PazienteRouteImport.update({
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
+  '/privacy': typeof PrivacyRoute
   '/registrati': typeof RegistratiRoute
   '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
+  '/privacy': typeof PrivacyRoute
   '/registrati': typeof RegistratiRoute
   '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
+  '/privacy': typeof PrivacyRoute
   '/registrati': typeof RegistratiRoute
   '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifiche'
     | '/paziente'
+    | '/privacy'
     | '/registrati'
     | '/reset-password'
     | '/scorte'
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifiche'
     | '/paziente'
+    | '/privacy'
     | '/registrati'
     | '/reset-password'
     | '/scorte'
@@ -233,6 +244,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifiche'
     | '/paziente'
+    | '/privacy'
     | '/registrati'
     | '/reset-password'
     | '/scorte'
@@ -254,6 +266,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   NotificheRoute: typeof NotificheRoute
   PazienteRoute: typeof PazienteRoute
+  PrivacyRoute: typeof PrivacyRoute
   RegistratiRoute: typeof RegistratiRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ScorteRoute: typeof ScorteRoute
@@ -306,6 +319,13 @@ declare module '@tanstack/react-router' {
       path: '/registrati'
       fullPath: '/registrati'
       preLoaderRoute: typeof RegistratiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/paziente': {
@@ -406,6 +426,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   NotificheRoute: NotificheRoute,
   PazienteRoute: PazienteRoute,
+  PrivacyRoute: PrivacyRoute,
   RegistratiRoute: RegistratiRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ScorteRoute: ScorteRoute,
@@ -418,13 +439,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
