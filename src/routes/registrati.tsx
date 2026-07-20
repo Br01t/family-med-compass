@@ -23,6 +23,8 @@ function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("caregiver");
+  const [consentTerms, setConsentTerms] = useState(false);
+  const [consentHealth, setConsentHealth] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
