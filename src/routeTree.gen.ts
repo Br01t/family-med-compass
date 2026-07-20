@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TerminiRouteImport } from './routes/termini'
 import { Route as TerapieRouteImport } from './routes/terapie'
 import { Route as StoricoReportRouteImport } from './routes/storico-report'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -29,6 +30,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PazientiIndexRouteImport } from './routes/pazienti.index'
 import { Route as PazientiIdRouteImport } from './routes/pazienti.$id'
 
+const TerminiRoute = TerminiRouteImport.update({
+  id: '/termini',
+  path: '/termini',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TerapieRoute = TerapieRouteImport.update({
   id: '/terapie',
   path: '/terapie',
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/storico-report': typeof StoricoReportRoute
   '/terapie': typeof TerapieRoute
+  '/termini': typeof TerminiRoute
   '/pazienti/$id': typeof PazientiIdRoute
   '/pazienti/': typeof PazientiIndexRoute
 }
@@ -164,6 +171,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/storico-report': typeof StoricoReportRoute
   '/terapie': typeof TerapieRoute
+  '/termini': typeof TerminiRoute
   '/pazienti/$id': typeof PazientiIdRoute
   '/pazienti': typeof PazientiIndexRoute
 }
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/storico-report': typeof StoricoReportRoute
   '/terapie': typeof TerapieRoute
+  '/termini': typeof TerminiRoute
   '/pazienti/$id': typeof PazientiIdRoute
   '/pazienti/': typeof PazientiIndexRoute
 }
@@ -209,6 +218,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/storico-report'
     | '/terapie'
+    | '/termini'
     | '/pazienti/$id'
     | '/pazienti/'
   fileRoutesByTo: FileRoutesByTo
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/storico-report'
     | '/terapie'
+    | '/termini'
     | '/pazienti/$id'
     | '/pazienti'
   id:
@@ -251,6 +262,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/storico-report'
     | '/terapie'
+    | '/termini'
     | '/pazienti/$id'
     | '/pazienti/'
   fileRoutesById: FileRoutesById
@@ -273,12 +285,20 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StoricoReportRoute: typeof StoricoReportRoute
   TerapieRoute: typeof TerapieRoute
+  TerminiRoute: typeof TerminiRoute
   PazientiIdRoute: typeof PazientiIdRoute
   PazientiIndexRoute: typeof PazientiIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/termini': {
+      id: '/termini'
+      path: '/termini'
+      fullPath: '/termini'
+      preLoaderRoute: typeof TerminiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terapie': {
       id: '/terapie'
       path: '/terapie'
@@ -433,6 +453,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StoricoReportRoute: StoricoReportRoute,
   TerapieRoute: TerapieRoute,
+  TerminiRoute: TerminiRoute,
   PazientiIdRoute: PazientiIdRoute,
   PazientiIndexRoute: PazientiIndexRoute,
 }
