@@ -69,7 +69,7 @@ function CookiePage() {
 
           <h2>5. Contatti</h2>
           <p>
-            Per domande sulla presente Cookie Policy scrivere a <strong>[email di contatto]</strong>.
+            Per domande sulla presente Cookie Policy scrivere a <strong>giacomo.piccinini1@gmail.com</strong>.
           </p>
         </article>
 

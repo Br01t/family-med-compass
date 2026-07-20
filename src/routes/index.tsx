@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, HeartPulse, Pill, ShieldCheck, Users } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { SiteFooter } from "@/components/SiteFooter";
 import { useFamilyMed } from "@/lib/store";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -188,12 +189,8 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="border-t border-border/60 py-6 px-4 w-full">
-        <p className="text-center text-[10px] sm:text-xs text-muted-foreground leading-tight">
-          © FamilyMed · Uso interno esclusivo. Non distribuire.
-        </p>
-      </footer>
+      {/* FOOTER: footer completo, visibile solo prima del login */}
+      {!loadingAuth && !user && <SiteFooter />}
     </div>
   );
 }

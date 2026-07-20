@@ -2,6 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Bell, Home, LogOut, Pill, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AppFooter } from "@/components/AppFooter";
 import { useFamilyMed } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -67,6 +68,8 @@ export function PatientShell({
           {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
         </div>
         {children}
+
+        <AppFooter />
       </main>
 
       {/* Bottom nav: solo sezioni per il paziente */}

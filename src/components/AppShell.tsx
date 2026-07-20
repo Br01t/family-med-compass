@@ -29,6 +29,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { AppFooter } from "@/components/AppFooter";
 
 const nav = [
   { title: "Dashboard", url: "/caregiver", icon: LayoutDashboard },
@@ -196,6 +197,7 @@ export function AppShell({
           <main className="flex-1 w-full max-w-full min-w-0 px-4 py-6 md:px-8 md:py-8 overflow-x-hidden block">
             {children}
           </main>
+          <AppFooter />
         </div>
       </div>
     </SidebarProvider>

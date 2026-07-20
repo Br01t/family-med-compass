@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { BookOpen, ShieldCheck, FileText, Cookie, Mail, ChevronRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { signUpUser } from "@/lib/auth-service";
 import { AppShell } from "@/components/AppShell";
@@ -86,6 +87,7 @@ function SettingsPage() {
           </section>
           {myPatient && <FamilyInviteCard patientId={myPatient.id} />}
           <InstallCard />
+          <InfoAssistenzaCard />
         </div>
       </PatientShell>
     );
@@ -156,6 +158,8 @@ function SettingsPage() {
 
         <InstallCard />
 
+        <InfoAssistenzaCard />
+
         <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
           <h2 className="text-lg font-black tracking-tight">Sincronizzazione</h2>
           <p className="mt-3 text-sm text-muted-foreground">
@@ -206,6 +210,50 @@ function SettingsPage() {
         </section>
       </div>
     </AppShell>
+  );
+}
+
+/* ---------------- Informazioni & assistenza ---------------- */
+
+const INFO_LINKS = [
+  { to: "/guida", label: "Guida all'app", icon: BookOpen },
+  { to: "/privacy", label: "Privacy", icon: ShieldCheck },
+  { to: "/termini", label: "Termini di Servizio", icon: FileText },
+  { to: "/cookie", label: "Cookie Policy", icon: Cookie },
+] as const;
+
+function InfoAssistenzaCard() {
+  return (
+    <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+      <h2 className="text-lg font-black tracking-tight">Informazioni & assistenza</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Guida all'app e documenti legali di FamilyMed.
+      </p>
+      <ul className="mt-4 divide-y divide-border/50 overflow-hidden rounded-2xl border border-border/50">
+        {INFO_LINKS.map(({ to, label, icon: Icon }) => (
+          <li key={to}>
+            <Link
+              to={to}
+              className="flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-muted/50 transition-colors"
+            >
+              <Icon className="size-4 shrink-0 text-muted-foreground" />
+              <span className="flex-1">{label}</span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            </Link>
+          </li>
+        ))}
+        <li>
+          <a
+            href="mailto:giacomo.piccinini1@gmail.com"
+            className="flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-muted/50 transition-colors"
+          >
+            <Mail className="size-4 shrink-0 text-muted-foreground" />
+            <span className="flex-1">Contattaci</span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+          </a>
+        </li>
+      </ul>
+    </section>
   );
 }
 
