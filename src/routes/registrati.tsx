@@ -164,7 +164,48 @@ function RegisterPage() {
               className="mt-1"
             />
           </div>
-          <Button type="submit" className="w-full" disabled={submitting}>
+          <div className="space-y-3 rounded-2xl border border-border/60 bg-surface p-3">
+            <label className="flex cursor-pointer items-start gap-2 text-xs leading-snug text-foreground">
+              <input
+                type="checkbox"
+                checked={consentTerms}
+                onChange={(e) => setConsentTerms(e.target.checked)}
+                required
+                className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
+              />
+              <span>
+                Ho letto e accetto i{" "}
+                <Link to="/termini" target="_blank" className="font-semibold text-primary hover:underline">
+                  Termini di Servizio
+                </Link>{" "}
+                e l'{" "}
+                <Link to="/privacy" target="_blank" className="font-semibold text-primary hover:underline">
+                  Informativa Privacy
+                </Link>
+                .
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-2 text-xs leading-snug text-foreground">
+              <input
+                type="checkbox"
+                checked={consentHealth}
+                onChange={(e) => setConsentHealth(e.target.checked)}
+                required
+                className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
+              />
+              <span>
+                Presto il <strong>consenso esplicito</strong> al trattamento dei miei dati relativi alla
+                salute (farmaci, orari, aderenza) per l'erogazione del servizio, ai sensi
+                dell'art. 9.2.a GDPR. Posso revocarlo in qualsiasi momento dalle impostazioni.
+              </span>
+            </label>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={submitting || !consentTerms || !consentHealth}
+          >
             {submitting ? "Creazione in corso..." : "Registrati"}
           </Button>
         </form>
