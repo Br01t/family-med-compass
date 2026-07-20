@@ -23,6 +23,8 @@ function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("caregiver");
+  const [consentTerms, setConsentTerms] = useState(false);
+  const [consentHealth, setConsentHealth] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
@@ -37,9 +39,33 @@ function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!consentTerms || !consentHealth) {
+      setDialogVariant("error");
+      setDialogTitle("Consensi obbligatori");
+      setDialogDescription(
+        "Per procedere devi accettare i Termini di Servizio e la Privacy, e prestare il consenso esplicito al trattamento dei dati sanitari.",
+      );
+      setDialogOpen(true);
+      return;
+    }
     setSubmitting(true);
     try {
       await signUpUser({ email, password, name, role });
+      // Registra la prova dei consensi (GDPR art. 7.1) — best effort.
+      try {
+        const { supabase } = await import("@/lib/supabase");
+        const { data } = await supabase.auth.getUser();
+        const uid = data.user?.id;
+        if (uid) {
+          const ua = typeof navigator !== "undefined" ? navigator.userAgent : null;
+          await supabase.from("user_consents").insert([
+            { user_id: uid, kind: "terms_privacy", granted: true, user_agent: ua },
+            { user_id: uid, kind: "health_data",   granted: true, user_agent: ua },
+          ]);
+        }
+      } catch (consentErr) {
+        console.warn("Consensi non registrati (esegui MIGRATION_consensi_gdpr.sql):", consentErr);
+      }
       setDialogVariant("success");
       setDialogTitle("Registrazione completata");
       setDialogDescription(
@@ -153,7 +179,48 @@ function RegisterPage() {
               className="mt-1"
             />
           </div>
-          <Button type="submit" className="w-full" disabled={submitting}>
+          <div className="space-y-3 rounded-2xl border border-border/60 bg-surface p-3">
+            <label className="flex cursor-pointer items-start gap-2 text-xs leading-snug text-foreground">
+              <input
+                type="checkbox"
+                checked={consentTerms}
+                onChange={(e) => setConsentTerms(e.target.checked)}
+                required
+                className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
+              />
+              <span>
+                Ho letto e accetto i{" "}
+                <Link to="/termini" target="_blank" className="font-semibold text-primary hover:underline">
+                  Termini di Servizio
+                </Link>{" "}
+                e l'{" "}
+                <Link to="/privacy" target="_blank" className="font-semibold text-primary hover:underline">
+                  Informativa Privacy
+                </Link>
+                .
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-2 text-xs leading-snug text-foreground">
+              <input
+                type="checkbox"
+                checked={consentHealth}
+                onChange={(e) => setConsentHealth(e.target.checked)}
+                required
+                className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
+              />
+              <span>
+                Presto il <strong>consenso esplicito</strong> al trattamento dei miei dati relativi alla
+                salute (farmaci, orari, aderenza) per l'erogazione del servizio, ai sensi
+                dell'art. 9.2.a GDPR. Posso revocarlo in qualsiasi momento dalle impostazioni.
+              </span>
+            </label>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={submitting || !consentTerms || !consentHealth}
+          >
             {submitting ? "Creazione in corso..." : "Registrati"}
           </Button>
         </form>

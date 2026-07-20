@@ -9,12 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TerminiRouteImport } from './routes/termini'
 import { Route as TerapieRouteImport } from './routes/terapie'
 import { Route as StoricoReportRouteImport } from './routes/storico-report'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ScorteRouteImport } from './routes/scorte'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegistratiRouteImport } from './routes/registrati'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PazienteRouteImport } from './routes/paziente'
 import { Route as NotificheRouteImport } from './routes/notifiche'
 import { Route as LoginRouteImport } from './routes/login'
@@ -23,11 +25,17 @@ import { Route as ImpostazioniRouteImport } from './routes/impostazioni'
 import { Route as GuidaPubblicaRouteImport } from './routes/guida-pubblica'
 import { Route as GuidaRouteImport } from './routes/guida'
 import { Route as DoseDaConfermareRouteImport } from './routes/dose-da-confermare'
+import { Route as CookieRouteImport } from './routes/cookie'
 import { Route as CaregiverRouteImport } from './routes/caregiver'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PazientiIndexRouteImport } from './routes/pazienti.index'
 import { Route as PazientiIdRouteImport } from './routes/pazienti.$id'
 
+const TerminiRoute = TerminiRouteImport.update({
+  id: '/termini',
+  path: '/termini',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TerapieRoute = TerapieRouteImport.update({
   id: '/terapie',
   path: '/terapie',
@@ -56,6 +64,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const RegistratiRoute = RegistratiRouteImport.update({
   id: '/registrati',
   path: '/registrati',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PazienteRoute = PazienteRouteImport.update({
@@ -98,6 +111,11 @@ const DoseDaConfermareRoute = DoseDaConfermareRouteImport.update({
   path: '/dose-da-confermare',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CookieRoute = CookieRouteImport.update({
+  id: '/cookie',
+  path: '/cookie',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CaregiverRoute = CaregiverRouteImport.update({
   id: '/caregiver',
   path: '/caregiver',
@@ -122,6 +140,7 @@ const PazientiIdRoute = PazientiIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/caregiver': typeof CaregiverRoute
+  '/cookie': typeof CookieRoute
   '/dose-da-confermare': typeof DoseDaConfermareRoute
   '/guida': typeof GuidaRoute
   '/guida-pubblica': typeof GuidaPubblicaRoute
@@ -130,18 +149,21 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
+  '/privacy': typeof PrivacyRoute
   '/registrati': typeof RegistratiRoute
   '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/storico-report': typeof StoricoReportRoute
   '/terapie': typeof TerapieRoute
+  '/termini': typeof TerminiRoute
   '/pazienti/$id': typeof PazientiIdRoute
   '/pazienti/': typeof PazientiIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/caregiver': typeof CaregiverRoute
+  '/cookie': typeof CookieRoute
   '/dose-da-confermare': typeof DoseDaConfermareRoute
   '/guida': typeof GuidaRoute
   '/guida-pubblica': typeof GuidaPubblicaRoute
@@ -150,12 +172,14 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
+  '/privacy': typeof PrivacyRoute
   '/registrati': typeof RegistratiRoute
   '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/storico-report': typeof StoricoReportRoute
   '/terapie': typeof TerapieRoute
+  '/termini': typeof TerminiRoute
   '/pazienti/$id': typeof PazientiIdRoute
   '/pazienti': typeof PazientiIndexRoute
 }
@@ -163,6 +187,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/caregiver': typeof CaregiverRoute
+  '/cookie': typeof CookieRoute
   '/dose-da-confermare': typeof DoseDaConfermareRoute
   '/guida': typeof GuidaRoute
   '/guida-pubblica': typeof GuidaPubblicaRoute
@@ -171,12 +196,14 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
   '/paziente': typeof PazienteRoute
+  '/privacy': typeof PrivacyRoute
   '/registrati': typeof RegistratiRoute
   '/reset-password': typeof ResetPasswordRoute
   '/scorte': typeof ScorteRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/storico-report': typeof StoricoReportRoute
   '/terapie': typeof TerapieRoute
+  '/termini': typeof TerminiRoute
   '/pazienti/$id': typeof PazientiIdRoute
   '/pazienti/': typeof PazientiIndexRoute
 }
@@ -185,6 +212,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/caregiver'
+    | '/cookie'
     | '/dose-da-confermare'
     | '/guida'
     | '/guida-pubblica'
@@ -193,18 +221,21 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifiche'
     | '/paziente'
+    | '/privacy'
     | '/registrati'
     | '/reset-password'
     | '/scorte'
     | '/sitemap.xml'
     | '/storico-report'
     | '/terapie'
+    | '/termini'
     | '/pazienti/$id'
     | '/pazienti/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/caregiver'
+    | '/cookie'
     | '/dose-da-confermare'
     | '/guida'
     | '/guida-pubblica'
@@ -213,18 +244,21 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifiche'
     | '/paziente'
+    | '/privacy'
     | '/registrati'
     | '/reset-password'
     | '/scorte'
     | '/sitemap.xml'
     | '/storico-report'
     | '/terapie'
+    | '/termini'
     | '/pazienti/$id'
     | '/pazienti'
   id:
     | '__root__'
     | '/'
     | '/caregiver'
+    | '/cookie'
     | '/dose-da-confermare'
     | '/guida'
     | '/guida-pubblica'
@@ -233,12 +267,14 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifiche'
     | '/paziente'
+    | '/privacy'
     | '/registrati'
     | '/reset-password'
     | '/scorte'
     | '/sitemap.xml'
     | '/storico-report'
     | '/terapie'
+    | '/termini'
     | '/pazienti/$id'
     | '/pazienti/'
   fileRoutesById: FileRoutesById
@@ -246,6 +282,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CaregiverRoute: typeof CaregiverRoute
+  CookieRoute: typeof CookieRoute
   DoseDaConfermareRoute: typeof DoseDaConfermareRoute
   GuidaRoute: typeof GuidaRoute
   GuidaPubblicaRoute: typeof GuidaPubblicaRoute
@@ -254,18 +291,27 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   NotificheRoute: typeof NotificheRoute
   PazienteRoute: typeof PazienteRoute
+  PrivacyRoute: typeof PrivacyRoute
   RegistratiRoute: typeof RegistratiRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ScorteRoute: typeof ScorteRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StoricoReportRoute: typeof StoricoReportRoute
   TerapieRoute: typeof TerapieRoute
+  TerminiRoute: typeof TerminiRoute
   PazientiIdRoute: typeof PazientiIdRoute
   PazientiIndexRoute: typeof PazientiIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/termini': {
+      id: '/termini'
+      path: '/termini'
+      fullPath: '/termini'
+      preLoaderRoute: typeof TerminiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terapie': {
       id: '/terapie'
       path: '/terapie'
@@ -306,6 +352,13 @@ declare module '@tanstack/react-router' {
       path: '/registrati'
       fullPath: '/registrati'
       preLoaderRoute: typeof RegistratiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/paziente': {
@@ -364,6 +417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DoseDaConfermareRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cookie': {
+      id: '/cookie'
+      path: '/cookie'
+      fullPath: '/cookie'
+      preLoaderRoute: typeof CookieRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/caregiver': {
       id: '/caregiver'
       path: '/caregiver'
@@ -398,6 +458,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CaregiverRoute: CaregiverRoute,
+  CookieRoute: CookieRoute,
   DoseDaConfermareRoute: DoseDaConfermareRoute,
   GuidaRoute: GuidaRoute,
   GuidaPubblicaRoute: GuidaPubblicaRoute,
@@ -406,12 +467,14 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   NotificheRoute: NotificheRoute,
   PazienteRoute: PazienteRoute,
+  PrivacyRoute: PrivacyRoute,
   RegistratiRoute: RegistratiRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ScorteRoute: ScorteRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StoricoReportRoute: StoricoReportRoute,
   TerapieRoute: TerapieRoute,
+  TerminiRoute: TerminiRoute,
   PazientiIdRoute: PazientiIdRoute,
   PazientiIndexRoute: PazientiIndexRoute,
 }
