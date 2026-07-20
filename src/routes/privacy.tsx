@@ -35,8 +35,8 @@ function PrivacyPage() {
 
           <h2>1. Titolare del trattamento</h2>
           <p>
-            Il Titolare del trattamento è <strong>[Ragione sociale / Nome dell'esercente]</strong>,
-            contattabile all'indirizzo email <strong>[email di contatto]</strong>. Per esercitare i
+            Il Titolare del trattamento è <strong>Family Med</strong>,
+            contattabile all'indirizzo email <strong>giacomo.piccinini1@gmail.com</strong>. Per esercitare i
             diritti previsti dal GDPR è possibile scrivere allo stesso indirizzo.
           </p>
 

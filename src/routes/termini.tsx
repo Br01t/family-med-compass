@@ -119,7 +119,7 @@ function TermsPage() {
           <p>
             I presenti Termini sono regolati dalla legge italiana. Per il consumatore è competente
             il foro del luogo di residenza o domicilio; negli altri casi il foro competente in via
-            esclusiva è quello di <strong>[Città del Titolare]</strong>.
+            esclusiva è quello di <strong>Milano</strong>.
           </p>
         </article>
 
