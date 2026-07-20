@@ -9,7 +9,8 @@ export const Route = createFileRoute("/guida-pubblica")({
       { title: "Guida — FamilyMed" },
       {
         name: "description",
-        content: "Scopri come funziona FamilyMed, ancora prima di creare un profilo.",
+        content:
+          "Scopri come funziona FamilyMed, come collegare la tua famiglia in sicurezza e come proteggiamo i tuoi dati sanitari — ancora prima di creare un profilo.",
       },
     ],
   }),

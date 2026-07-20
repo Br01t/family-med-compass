@@ -8,7 +8,8 @@ export const Route = createFileRoute("/guida")({
       { title: "Guida — FamilyMed" },
       {
         name: "description",
-        content: "Come funziona FamilyMed: guida completa per caregiver e pazienti.",
+        content:
+          "Come funziona FamilyMed: guida completa per caregiver e pazienti, incluso il collegamento sicuro della famiglia e la protezione dei dati.",
       },
     ],
   }),
