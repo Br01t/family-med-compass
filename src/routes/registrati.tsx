@@ -39,6 +39,15 @@ function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!consentTerms || !consentHealth) {
+      setDialogVariant("error");
+      setDialogTitle("Consensi obbligatori");
+      setDialogDescription(
+        "Per procedere devi accettare i Termini di Servizio e la Privacy, e prestare il consenso esplicito al trattamento dei dati sanitari.",
+      );
+      setDialogOpen(true);
+      return;
+    }
     setSubmitting(true);
     try {
       await signUpUser({ email, password, name, role });
