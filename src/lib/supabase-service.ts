@@ -608,8 +608,10 @@ export async function addPatientDoc(patient: Patient): Promise<void> {
     photo: patient.photo || null,
     birth_year: patient.birthYear,
     user_id: patient.userId || null,
+    owner_user_id: patient.ownerUserId || null,
     created_at: new Date().toISOString(),
   };
+
 
   const { error: patientError } = await supabase
     .from("patients")
