@@ -629,17 +629,24 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
   const addPatient = useCallback(
     async (p: Patient) => {
       if (user) {
-        const patientWithUserId = { ...p, userId: user.id };
+        // Il caregiver che crea direttamente il paziente ne è il "primario proprietario":
+        // valorizziamo owner_user_id così is_primary_of() (RLS su therapies/scorte/eventi)
+        // lo riconosce subito, senza dover passare da un codice invito.
+        // NON tocchiamo userId: quello è l'eventuale account auth del paziente.
+        const patientWithOwner: Patient = {
+          ...p,
+          ownerUserId: p.ownerUserId ?? user.id,
+        };
         try {
-          await addPatientDoc(patientWithUserId);
+          await addPatientDoc(patientWithOwner);
         } catch (error) {
           console.error("[store.addPatient] Errore in addPatientDoc:", error);
           throw error;
         }
-        setPatients((prev) => (prev.some((item) => item.id === p.id) ? prev : [...prev, p]));
+        setPatients((prev) => (prev.some((item) => item.id === p.id) ? prev : [...prev, patientWithOwner]));
         setLocalData((d) => ({
           ...d,
-          patients: d.patients.some((item) => item.id === p.id) ? d.patients : [...d.patients, p],
+          patients: d.patients.some((item) => item.id === p.id) ? d.patients : [...d.patients, patientWithOwner],
         }));
       } else {
         setLocalData((d) => ({ ...d, patients: [...d.patients, p] }));
@@ -647,6 +654,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     },
     [user]
   );
+
 
   const deletePatient = useCallback(
     async (id: string) => {
