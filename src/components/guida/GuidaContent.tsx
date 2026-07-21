@@ -96,12 +96,13 @@ export function GuidaContent() {
 
         <SectionTitle>Gestione Terapie</SectionTitle>
         <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card space-y-4">
-          {/* <GuideRow
+          <GuideRow
             icon={Plus}
-            title="Aggiungere un paziente"
-            description='Vai su "Pazienti" nella sidebar → clicca "+ Aggiungi paziente" in alto a destra → compila nome e anno di nascita → Salva.'
+            title="Aggiungere un paziente gestito (senza account)"
+            description='Vai su "Pazienti" → "+ Aggiungi paziente" → inserisci nome e anno di nascita. Viene creato un profilo paziente collegato al tuo account: tu diventi Caregiver Primario e puoi gestire terapie, scorte e conferme al posto suo. Il paziente così creato non ha email né password — non fa login, esiste solo dentro la tua famiglia. Se in futuro vorrà accedere in prima persona, dovrà registrarsi autonomamente scegliendo il ruolo Paziente e potrai collegarlo alla famiglia tramite un codice invito.'
           />
-          <Divider /> */}
+          <Divider />
+
           <GuideRow
             icon={Pill}
             title="Aggiungere una terapia"
