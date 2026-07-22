@@ -115,6 +115,34 @@ function HistoryReportPage() {
     return { ...data, events: Array.from(byId.values()) };
   }, [data, extraEvents, period]);
 
+  // Elenco terapie disponibili per il paziente selezionato (chip filtro).
+  const patientTherapies = useMemo(() => {
+    if (!patientId) return [];
+    return effectiveData.therapies
+      .filter((t) => t.patientId === patientId)
+      .map((t) => ({ id: t.id, name: t.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [effectiveData.therapies, patientId]);
+
+  // Dati filtrati: se l'utente ha selezionato specifiche terapie, restringiamo
+  // effectiveData.therapies al sottoinsieme. Passato a getDosesForPatientOnDate
+  // e al PDF per tenere allineati schermata e download.
+  const filteredData = useMemo(() => {
+    if (therapyFilter.size === 0) return effectiveData;
+    return {
+      ...effectiveData,
+      therapies: effectiveData.therapies.filter(
+        (t) => t.patientId !== patientId || therapyFilter.has(t.id),
+      ),
+    };
+  }, [effectiveData, therapyFilter, patientId]);
+
+  // Reset del filtro terapie quando cambia paziente (le vecchie id non esistono più).
+  useEffect(() => {
+    setTherapyFilter(new Set());
+  }, [patientId]);
+
+
   // Calendario del mese
   const days = useMemo(() => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
