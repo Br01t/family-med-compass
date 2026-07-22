@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { FileDown } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { fetchEventsForPatientRange } from "@/lib/supabase-service";
 import type { MedicationEvent } from "@/lib/mock-data";
@@ -12,7 +15,9 @@ import {
   statusTone,
   wasTakenLate,
 } from "@/lib/therapy";
+import { downloadHistoryReportPdf } from "@/lib/therapy-report";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/storico-report")({
   head: () => ({
@@ -268,7 +273,24 @@ function HistoryReportPage() {
           )}
         </div>
 
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full sm:w-auto"
+          disabled={!patientId || loadingExtra || stats.scheduled === 0}
+          onClick={() => {
+            const p = patients.find((x) => x.id === patientId);
+            if (!p) return;
+            downloadHistoryReportPdf(effectiveData, p, period, new Date());
+            toast.success(`Storico PDF ${period} giorni scaricato`, { description: p.name });
+          }}
+        >
+          <FileDown className="mr-1.5 size-4" />
+          Scarica PDF {period}gg
+        </Button>
+
       </div>
+
 
       {/* KPI - Risolto il collasso forzando grid-cols-2 nativo e gestendo i box spaiati */}
       <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
