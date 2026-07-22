@@ -185,7 +185,10 @@ function HistoryReportPage() {
     for (let i = period - 1; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
-      const doses = getDosesForPatientOnDate(effectiveData, patientId, d, now);
+      const doses = getDosesForPatientOnDate(filteredData, patientId, d, now).filter(
+        (dose) => doseMatchesStatus(dose, statusFilter),
+      );
+
       let dayScheduled = 0;
       let dayTaken = 0;
       for (const dose of doses) {
