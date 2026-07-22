@@ -1,7 +1,16 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { FamilyMedData, Patient } from "./mock-data";
-import { formatTime, recurrenceLabel } from "./therapy";
+import {
+  doseDelayMinutes,
+  formatTime,
+  getDosesForPatientOnDate,
+  recurrenceLabel,
+  statusLabel,
+  wasTakenLate,
+  type ScheduledDose,
+} from "./therapy";
+
 
 const BRAND_RGB: [number, number, number] = [40, 116, 90];
 const MARGIN_X = 40;
