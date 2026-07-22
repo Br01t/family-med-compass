@@ -257,18 +257,17 @@ function HistoryReportPage() {
       bars,
       perTherapy: perTherapyList,
     };
-  }, [effectiveData, patientId, period]);
+  }, [filteredData, patientId, period, statusFilter]);
 
   const summary = (d: Date) => {
     if (!patientId) return null;
     if (d > now) return null;
-    const doses = getDosesForPatientOnDate(effectiveData, patientId, d, now);
+    const doses = getDosesForPatientOnDate(filteredData, patientId, d, now).filter(
+      (dose) => doseMatchesStatus(dose, statusFilter),
+    );
     const past = doses.filter((x) => x.scheduledAt <= now);
     if (past.length === 0) return null;
-    // "Dimenticate": almeno una dose saltata o mai confermata (missed/skipped).
     const missed = past.some((x) => x.status === "skipped" || x.status === "missed");
-    // "Qualche ritardo": nessuna dimenticata, ma almeno una presa/segnata in
-    // ritardo rispetto all'orario previsto (anche se poi confermata).
     const someLate = past.some((x) => x.status === "late" || wasTakenLate(x));
     const allTaken = past.every((x) => x.status === "taken") && !someLate;
     return { total: past.length, allTaken, someLate, missed };
@@ -276,8 +275,11 @@ function HistoryReportPage() {
 
   const dayDoses =
     selected && patientId
-      ? getDosesForPatientOnDate(effectiveData, patientId, selected, now)
+      ? getDosesForPatientOnDate(filteredData, patientId, selected, now).filter(
+          (dose) => doseMatchesStatus(dose, statusFilter),
+        )
       : [];
+
 
   return (
     <AppShell
