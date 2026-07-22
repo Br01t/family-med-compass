@@ -11,6 +11,7 @@ import {
   Pill,
   Settings,
   Users,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFamilyMed } from "@/lib/store";
@@ -39,6 +40,7 @@ const nav = [
   { title: "Storico & Report", url: "/storico-report", icon: PieChart },
   { title: "Scorte", url: "/scorte", icon: Package },
   { title: "Notifiche", url: "/notifiche", icon: Bell },
+  { title: "Eccezioni & Imprevisti", url: "/eccezioni", icon: Wrench },
   { title: "Guida", url: "/guida", icon: BookOpen },
   { title: "Impostazioni", url: "/impostazioni", icon: Settings },
 ];

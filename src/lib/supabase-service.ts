@@ -948,6 +948,68 @@ export async function updateCaregiverRelationship(
 
 
 /* =========================================================
+   MANUAL STOCK ADJUSTMENT (eccezioni e imprevisti)
+   Protetto da RLS "therapies: update primary" e "stock: insert primary":
+   solo il caregiver primario può modificare scorte manualmente.
+========================================================= */
+
+export type StockAdjustmentReason =
+  | "breakage"         // fiala/compressa rotta
+  | "expired"          // farmaco scaduto o deteriorato
+  | "double_dose"      // dose doppia accidentale
+  | "hospital"         // sospensione per ricovero/intervento
+  | "manual_loss";     // perdita generica / altro
+
+/**
+ * Scala manualmente le scorte di una terapia senza registrare un evento
+ * "presa" (non altera lo stato della dose nel calendario).
+ *
+ * @param therapyId - ID della terapia
+ * @param delta     - quantità da scalare (SEMPRE positiva: viene negata internamente)
+ * @param reason    - motivo strutturato, usato nel log movimenti
+ * @returns Il nuovo valore di pills_remaining dopo l'aggiornamento
+ */
+export async function adjustStockManually(
+  therapyId: string,
+  delta: number,
+  reason: StockAdjustmentReason,
+): Promise<{ newPillsRemaining: number }> {
+  if (!supabase) throw new Error("Supabase non configurato");
+  if (delta <= 0) throw new Error("delta deve essere positivo");
+
+  // 1. Leggi il valore attuale
+  const { data: row, error: fetchErr } = await supabase
+    .from("therapies")
+    .select("pills_remaining")
+    .eq("id", therapyId)
+    .single();
+  if (fetchErr) throw fetchErr;
+
+  const current = (row as any)?.pills_remaining ?? 0;
+  const newValue = Math.max(0, current - delta);
+
+  // 2. Aggiorna pills_remaining (RLS: solo primary caregiver)
+  const { error: updateErr } = await supabase
+    .from("therapies")
+    .update({ pills_remaining: newValue })
+    .eq("id", therapyId);
+  if (updateErr) throw updateErr;
+
+  // 3. Registra il movimento in stock_movements (best-effort, RLS: primary)
+  //    Se fallisce non blocca: l'aggiornamento della scorta è già avvenuto.
+  const { error: stockErr } = await supabase.from("stock_movements").insert({
+    therapy_id: therapyId,
+    delta: -delta,
+    reason: `manual:${reason}`,
+  });
+  if (stockErr) {
+    console.warn("[adjustStockManually] stock_movements insert failed:", stockErr.message);
+  }
+
+  return { newPillsRemaining: newValue };
+}
+
+/* =========================================================
    INSERT NOTIFICATION (client-side, per notificare caregiver)
 ========================================================= */
 

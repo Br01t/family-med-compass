@@ -24,6 +24,7 @@ import { Route as LeMieTerapieRouteImport } from './routes/le-mie-terapie'
 import { Route as ImpostazioniRouteImport } from './routes/impostazioni'
 import { Route as GuidaPubblicaRouteImport } from './routes/guida-pubblica'
 import { Route as GuidaRouteImport } from './routes/guida'
+import { Route as EccezioniRouteImport } from './routes/eccezioni'
 import { Route as DoseDaConfermareRouteImport } from './routes/dose-da-confermare'
 import { Route as CookieRouteImport } from './routes/cookie'
 import { Route as CaregiverRouteImport } from './routes/caregiver'
@@ -106,6 +107,11 @@ const GuidaRoute = GuidaRouteImport.update({
   path: '/guida',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EccezioniRoute = EccezioniRouteImport.update({
+  id: '/eccezioni',
+  path: '/eccezioni',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DoseDaConfermareRoute = DoseDaConfermareRouteImport.update({
   id: '/dose-da-confermare',
   path: '/dose-da-confermare',
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/caregiver': typeof CaregiverRoute
   '/cookie': typeof CookieRoute
   '/dose-da-confermare': typeof DoseDaConfermareRoute
+  '/eccezioni': typeof EccezioniRoute
   '/guida': typeof GuidaRoute
   '/guida-pubblica': typeof GuidaPubblicaRoute
   '/impostazioni': typeof ImpostazioniRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/caregiver': typeof CaregiverRoute
   '/cookie': typeof CookieRoute
   '/dose-da-confermare': typeof DoseDaConfermareRoute
+  '/eccezioni': typeof EccezioniRoute
   '/guida': typeof GuidaRoute
   '/guida-pubblica': typeof GuidaPubblicaRoute
   '/impostazioni': typeof ImpostazioniRoute
@@ -189,6 +197,7 @@ export interface FileRoutesById {
   '/caregiver': typeof CaregiverRoute
   '/cookie': typeof CookieRoute
   '/dose-da-confermare': typeof DoseDaConfermareRoute
+  '/eccezioni': typeof EccezioniRoute
   '/guida': typeof GuidaRoute
   '/guida-pubblica': typeof GuidaPubblicaRoute
   '/impostazioni': typeof ImpostazioniRoute
@@ -214,6 +223,7 @@ export interface FileRouteTypes {
     | '/caregiver'
     | '/cookie'
     | '/dose-da-confermare'
+    | '/eccezioni'
     | '/guida'
     | '/guida-pubblica'
     | '/impostazioni'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/caregiver'
     | '/cookie'
     | '/dose-da-confermare'
+    | '/eccezioni'
     | '/guida'
     | '/guida-pubblica'
     | '/impostazioni'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/caregiver'
     | '/cookie'
     | '/dose-da-confermare'
+    | '/eccezioni'
     | '/guida'
     | '/guida-pubblica'
     | '/impostazioni'
@@ -284,6 +296,7 @@ export interface RootRouteChildren {
   CaregiverRoute: typeof CaregiverRoute
   CookieRoute: typeof CookieRoute
   DoseDaConfermareRoute: typeof DoseDaConfermareRoute
+  EccezioniRoute: typeof EccezioniRoute
   GuidaRoute: typeof GuidaRoute
   GuidaPubblicaRoute: typeof GuidaPubblicaRoute
   ImpostazioniRoute: typeof ImpostazioniRoute
@@ -410,6 +423,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GuidaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/eccezioni': {
+      id: '/eccezioni'
+      path: '/eccezioni'
+      fullPath: '/eccezioni'
+      preLoaderRoute: typeof EccezioniRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dose-da-confermare': {
       id: '/dose-da-confermare'
       path: '/dose-da-confermare'
@@ -460,6 +480,7 @@ const rootRouteChildren: RootRouteChildren = {
   CaregiverRoute: CaregiverRoute,
   CookieRoute: CookieRoute,
   DoseDaConfermareRoute: DoseDaConfermareRoute,
+  EccezioniRoute: EccezioniRoute,
   GuidaRoute: GuidaRoute,
   GuidaPubblicaRoute: GuidaPubblicaRoute,
   ImpostazioniRoute: ImpostazioniRoute,
