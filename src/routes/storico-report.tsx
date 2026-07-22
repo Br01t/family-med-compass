@@ -338,7 +338,7 @@ function HistoryReportPage() {
           onClick={() => {
             const p = patients.find((x) => x.id === patientId);
             if (!p) return;
-            downloadHistoryReportPdf(effectiveData, p, period, new Date());
+            downloadHistoryReportPdf(filteredData, p, period, new Date(), statusFilter);
             toast.success(`Storico PDF ${period} giorni scaricato`, { description: p.name });
           }}
         >
