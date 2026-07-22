@@ -14,7 +14,9 @@ import {
   statusLabel,
   statusTone,
   wasTakenLate,
+  type ScheduledDose,
 } from "@/lib/therapy";
+
 import { downloadHistoryReportPdf } from "@/lib/therapy-report";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +45,25 @@ type PerTherapyEntry = {
   skipped: number;
 };
 
+type StatusFilterKey = "taken" | "late" | "missed" | "skipped";
+
+const STATUS_FILTERS: { key: StatusFilterKey; label: string; tone: string }[] = [
+  { key: "taken", label: "Confermate", tone: "border-success/40 bg-success/10 text-success" },
+  { key: "late", label: "In ritardo", tone: "border-warning/40 bg-warning/10 text-warning-foreground" },
+  { key: "missed", label: "Dimenticate", tone: "border-destructive/40 bg-destructive/10 text-destructive" },
+  { key: "skipped", label: "Saltate", tone: "border-accent/40 bg-accent-soft text-accent" },
+];
+
+function doseMatchesStatus(dose: ScheduledDose, statuses: Set<StatusFilterKey>): boolean {
+  if (statuses.size === 0) return true;
+  const takenLate = wasTakenLate(dose);
+  if (statuses.has("taken") && dose.status === "taken" && !takenLate) return true;
+  if (statuses.has("late") && (dose.status === "late" || takenLate)) return true;
+  if (statuses.has("missed") && dose.status === "missed") return true;
+  if (statuses.has("skipped") && dose.status === "skipped") return true;
+  return false;
+}
+
 function HistoryReportPage() {
   const { data } = useFamilyMed();
   const patients = data.patients;
@@ -50,8 +71,11 @@ function HistoryReportPage() {
   const [period, setPeriod] = useState<PeriodDays>(30);
   const [selected, setSelected] = useState<Date | null>(null);
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
+  const [therapyFilter, setTherapyFilter] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<Set<StatusFilterKey>>(new Set());
 
   const now = new Date();
+
 
   // La finestra globale dello store copre solo ~9 giorni (basta per
   // l'aderenza a 7gg mostrata nel resto dell'app). Questa è l'unica pagina
@@ -90,6 +114,34 @@ function HistoryReportPage() {
     for (const e of extraEvents) byId.set(e.id, e);
     return { ...data, events: Array.from(byId.values()) };
   }, [data, extraEvents, period]);
+
+  // Elenco terapie disponibili per il paziente selezionato (chip filtro).
+  const patientTherapies = useMemo(() => {
+    if (!patientId) return [];
+    return effectiveData.therapies
+      .filter((t) => t.patientId === patientId)
+      .map((t) => ({ id: t.id, name: t.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [effectiveData.therapies, patientId]);
+
+  // Dati filtrati: se l'utente ha selezionato specifiche terapie, restringiamo
+  // effectiveData.therapies al sottoinsieme. Passato a getDosesForPatientOnDate
+  // e al PDF per tenere allineati schermata e download.
+  const filteredData = useMemo(() => {
+    if (therapyFilter.size === 0) return effectiveData;
+    return {
+      ...effectiveData,
+      therapies: effectiveData.therapies.filter(
+        (t) => t.patientId !== patientId || therapyFilter.has(t.id),
+      ),
+    };
+  }, [effectiveData, therapyFilter, patientId]);
+
+  // Reset del filtro terapie quando cambia paziente (le vecchie id non esistono più).
+  useEffect(() => {
+    setTherapyFilter(new Set());
+  }, [patientId]);
+
 
   // Calendario del mese
   const days = useMemo(() => {
@@ -133,7 +185,10 @@ function HistoryReportPage() {
     for (let i = period - 1; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
-      const doses = getDosesForPatientOnDate(effectiveData, patientId, d, now);
+      const doses = getDosesForPatientOnDate(filteredData, patientId, d, now).filter(
+        (dose) => doseMatchesStatus(dose, statusFilter),
+      );
+
       let dayScheduled = 0;
       let dayTaken = 0;
       for (const dose of doses) {
@@ -202,18 +257,17 @@ function HistoryReportPage() {
       bars,
       perTherapy: perTherapyList,
     };
-  }, [effectiveData, patientId, period]);
+  }, [filteredData, patientId, period, statusFilter]);
 
   const summary = (d: Date) => {
     if (!patientId) return null;
     if (d > now) return null;
-    const doses = getDosesForPatientOnDate(effectiveData, patientId, d, now);
+    const doses = getDosesForPatientOnDate(filteredData, patientId, d, now).filter(
+      (dose) => doseMatchesStatus(dose, statusFilter),
+    );
     const past = doses.filter((x) => x.scheduledAt <= now);
     if (past.length === 0) return null;
-    // "Dimenticate": almeno una dose saltata o mai confermata (missed/skipped).
     const missed = past.some((x) => x.status === "skipped" || x.status === "missed");
-    // "Qualche ritardo": nessuna dimenticata, ma almeno una presa/segnata in
-    // ritardo rispetto all'orario previsto (anche se poi confermata).
     const someLate = past.some((x) => x.status === "late" || wasTakenLate(x));
     const allTaken = past.every((x) => x.status === "taken") && !someLate;
     return { total: past.length, allTaken, someLate, missed };
@@ -221,8 +275,11 @@ function HistoryReportPage() {
 
   const dayDoses =
     selected && patientId
-      ? getDosesForPatientOnDate(effectiveData, patientId, selected, now)
+      ? getDosesForPatientOnDate(filteredData, patientId, selected, now).filter(
+          (dose) => doseMatchesStatus(dose, statusFilter),
+        )
       : [];
+
 
   return (
     <AppShell
@@ -281,7 +338,7 @@ function HistoryReportPage() {
           onClick={() => {
             const p = patients.find((x) => x.id === patientId);
             if (!p) return;
-            downloadHistoryReportPdf(effectiveData, p, period, new Date());
+            downloadHistoryReportPdf(filteredData, p, period, new Date(), statusFilter);
             toast.success(`Storico PDF ${period} giorni scaricato`, { description: p.name });
           }}
         >
@@ -290,6 +347,99 @@ function HistoryReportPage() {
         </Button>
 
       </div>
+
+      {/* Filtri terapie e stati (applicati a schermata + PDF) */}
+      {patientId && (
+        <div className="mt-4 space-y-3">
+          {patientTherapies.length > 0 && (
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Filtra per terapia
+                </p>
+                {therapyFilter.size > 0 && (
+                  <button
+                    onClick={() => setTherapyFilter(new Set())}
+                    className="text-[10px] font-semibold text-primary hover:underline"
+                  >
+                    Mostra tutte
+                  </button>
+                )}
+              </div>
+              <div className="-mx-4 flex flex-wrap gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+                {patientTherapies.map((t) => {
+                  const active = therapyFilter.has(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() =>
+                        setTherapyFilter((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(t.id)) next.delete(t.id);
+                          else next.add(t.id);
+                          return next;
+                        })
+                      }
+                      className={cn(
+                        "shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-semibold transition",
+                        active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-muted-foreground hover:bg-secondary",
+                      )}
+                    >
+                      {t.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Filtra per stato
+              </p>
+              {statusFilter.size > 0 && (
+                <button
+                  onClick={() => setStatusFilter(new Set())}
+                  className="text-[10px] font-semibold text-primary hover:underline"
+                >
+                  Tutti gli stati
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {STATUS_FILTERS.map((s) => {
+                const active = statusFilter.has(s.key);
+                return (
+                  <button
+                    key={s.key}
+                    onClick={() =>
+                      setStatusFilter((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(s.key)) next.delete(s.key);
+                        else next.add(s.key);
+                        return next;
+                      })
+                    }
+                    className={cn(
+                      "shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-semibold transition",
+                      active
+                        ? s.tone
+                        : "border-border bg-card text-muted-foreground hover:bg-secondary",
+                    )}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+
 
 
       {/* KPI - Risolto il collasso forzando grid-cols-2 nativo e gestendo i box spaiati */}
