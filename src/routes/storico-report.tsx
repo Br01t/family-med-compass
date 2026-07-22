@@ -348,6 +348,99 @@ function HistoryReportPage() {
 
       </div>
 
+      {/* Filtri terapie e stati (applicati a schermata + PDF) */}
+      {patientId && (
+        <div className="mt-4 space-y-3">
+          {patientTherapies.length > 0 && (
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Filtra per terapia
+                </p>
+                {therapyFilter.size > 0 && (
+                  <button
+                    onClick={() => setTherapyFilter(new Set())}
+                    className="text-[10px] font-semibold text-primary hover:underline"
+                  >
+                    Mostra tutte
+                  </button>
+                )}
+              </div>
+              <div className="-mx-4 flex flex-wrap gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+                {patientTherapies.map((t) => {
+                  const active = therapyFilter.has(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() =>
+                        setTherapyFilter((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(t.id)) next.delete(t.id);
+                          else next.add(t.id);
+                          return next;
+                        })
+                      }
+                      className={cn(
+                        "shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-semibold transition",
+                        active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-muted-foreground hover:bg-secondary",
+                      )}
+                    >
+                      {t.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Filtra per stato
+              </p>
+              {statusFilter.size > 0 && (
+                <button
+                  onClick={() => setStatusFilter(new Set())}
+                  className="text-[10px] font-semibold text-primary hover:underline"
+                >
+                  Tutti gli stati
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {STATUS_FILTERS.map((s) => {
+                const active = statusFilter.has(s.key);
+                return (
+                  <button
+                    key={s.key}
+                    onClick={() =>
+                      setStatusFilter((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(s.key)) next.delete(s.key);
+                        else next.add(s.key);
+                        return next;
+                      })
+                    }
+                    className={cn(
+                      "shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-semibold transition",
+                      active
+                        ? s.tone
+                        : "border-border bg-card text-muted-foreground hover:bg-secondary",
+                    )}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+
+
 
       {/* KPI - Risolto il collasso forzando grid-cols-2 nativo e gestendo i box spaiati */}
       <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
