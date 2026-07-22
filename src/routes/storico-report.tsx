@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { FileDown } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { fetchEventsForPatientRange } from "@/lib/supabase-service";
 import type { MedicationEvent } from "@/lib/mock-data";
@@ -12,7 +15,9 @@ import {
   statusTone,
   wasTakenLate,
 } from "@/lib/therapy";
+import { downloadHistoryReportPdf } from "@/lib/therapy-report";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/storico-report")({
   head: () => ({
