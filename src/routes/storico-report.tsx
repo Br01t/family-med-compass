@@ -14,7 +14,9 @@ import {
   statusLabel,
   statusTone,
   wasTakenLate,
+  type ScheduledDose,
 } from "@/lib/therapy";
+
 import { downloadHistoryReportPdf } from "@/lib/therapy-report";
 import { cn } from "@/lib/utils";
 
