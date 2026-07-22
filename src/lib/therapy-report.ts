@@ -159,9 +159,20 @@ export function downloadHistoryReportPdf(
   patient: Patient,
   days: 7 | 30 | 90,
   now: Date = new Date(),
+  statusFilter?: Set<"taken" | "late" | "missed" | "skipped">,
 ) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   let cursorY = 50;
+
+  const matchesStatus = (dose: ScheduledDose): boolean => {
+    if (!statusFilter || statusFilter.size === 0) return true;
+    const takenLate = wasTakenLate(dose);
+    if (statusFilter.has("taken") && dose.status === "taken" && !takenLate) return true;
+    if (statusFilter.has("late") && (dose.status === "late" || takenLate)) return true;
+    if (statusFilter.has("missed") && dose.status === "missed") return true;
+    if (statusFilter.has("skipped") && dose.status === "skipped") return true;
+    return false;
+  };
 
   // --- Raccolta dati per il periodo ---------------------------------
   const daysList: { date: Date; doses: ScheduledDose[] }[] = [];
@@ -179,10 +190,11 @@ export function downloadHistoryReportPdf(
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    const doses = getDosesForPatientOnDate(data, patient.id, d, now).filter(
-      (dose) => dose.scheduledAt <= now,
-    );
+    const doses = getDosesForPatientOnDate(data, patient.id, d, now)
+      .filter((dose) => dose.scheduledAt <= now)
+      .filter(matchesStatus);
     daysList.push({ date: d, doses });
+
     for (const dose of doses) {
       scheduled++;
       const entry =
