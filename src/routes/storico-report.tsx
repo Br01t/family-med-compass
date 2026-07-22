@@ -43,6 +43,25 @@ type PerTherapyEntry = {
   skipped: number;
 };
 
+type StatusFilterKey = "taken" | "late" | "missed" | "skipped";
+
+const STATUS_FILTERS: { key: StatusFilterKey; label: string; tone: string }[] = [
+  { key: "taken", label: "Confermate", tone: "border-success/40 bg-success/10 text-success" },
+  { key: "late", label: "In ritardo", tone: "border-warning/40 bg-warning/10 text-warning-foreground" },
+  { key: "missed", label: "Dimenticate", tone: "border-destructive/40 bg-destructive/10 text-destructive" },
+  { key: "skipped", label: "Saltate", tone: "border-accent/40 bg-accent-soft text-accent" },
+];
+
+function doseMatchesStatus(dose: ScheduledDose, statuses: Set<StatusFilterKey>): boolean {
+  if (statuses.size === 0) return true;
+  const takenLate = wasTakenLate(dose);
+  if (statuses.has("taken") && dose.status === "taken" && !takenLate) return true;
+  if (statuses.has("late") && (dose.status === "late" || takenLate)) return true;
+  if (statuses.has("missed") && dose.status === "missed") return true;
+  if (statuses.has("skipped") && dose.status === "skipped") return true;
+  return false;
+}
+
 function HistoryReportPage() {
   const { data } = useFamilyMed();
   const patients = data.patients;
@@ -50,8 +69,11 @@ function HistoryReportPage() {
   const [period, setPeriod] = useState<PeriodDays>(30);
   const [selected, setSelected] = useState<Date | null>(null);
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
+  const [therapyFilter, setTherapyFilter] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<Set<StatusFilterKey>>(new Set());
 
   const now = new Date();
+
 
   // La finestra globale dello store copre solo ~9 giorni (basta per
   // l'aderenza a 7gg mostrata nel resto dell'app). Questa è l'unica pagina
