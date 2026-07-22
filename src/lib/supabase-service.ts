@@ -123,152 +123,133 @@ function mapTherapyRow(t: any): Therapy {
    PATIENTS
 ========================================================= */
 
+/**
+ * Fetch one-shot dei pazienti visibili all'utente (in base al ruolo).
+ * `patients` non è più nella publication `supabase_realtime` (cambia
+ * raramente), quindi niente canale websocket: solo fetch on-demand.
+ */
+export async function fetchPatientsOnce(userId: string, role: string): Promise<Patient[]> {
+  if (!supabase || !userId) return [];
+  try {
+    let query = supabase.from("patients").select("id, name, birth_year, photo, user_id, owner_user_id, primary_caregiver_id");
+
+    if (role === "caregiver") {
+      const { data: relations, error } = await supabase
+        .from("caregiver_patients")
+        .select("patient_id")
+        .eq("caregiver_id", userId);
+
+      if (error) {
+        console.error("caregiver relation error:", error);
+        return [];
+      }
+
+      const patientIds = relations?.map((r) => r.patient_id) || [];
+      if (patientIds.length === 0) return [];
+
+      query = query.in("id", patientIds);
+    } else if (role === "paziente") {
+      query = query.eq("user_id", userId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return (data || []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      birthYear: p.birth_year,
+      photo: p.photo,
+      caregiverIds: [],
+      userId: p.user_id,
+      ownerUserId: (p as any).owner_user_id,
+      primaryCaregiverId: (p as any).primary_caregiver_id ?? null,
+    }));
+  } catch (err) {
+    console.error("Errore fetch pazienti:", err);
+    return [];
+  }
+}
+
+/**
+ * Wrapper "subscribe"-like mantenuto per compatibilità con il chiamante:
+ * esegue un solo fetch al mount e ritorna un unsubscribe no-op. Prima
+ * apriva anche un canale realtime su `patients`, ma la tabella non è più
+ * nella publication `supabase_realtime` quindi quel canale non riceveva
+ * mai eventi — era solo una connessione websocket morta.
+ */
 export function subscribePatients(
   userId: string,
   role: string,
   onUpdate: (patients: Patient[]) => void
 ): () => void {
-  if (!supabase) return () => {};
-  if (!userId) return () => {};
-
-  const fetchAndEmit = async () => {
-    try {
-      let query = supabase.from("patients").select("id, name, birth_year, photo, user_id, owner_user_id, primary_caregiver_id");
-
-      if (role === "caregiver") {
-        const { data: relations, error } = await supabase
-          .from("caregiver_patients")
-          .select("patient_id")
-          .eq("caregiver_id", userId);
-
-        if (error) {
-          console.error("caregiver relation error:", error);
-          onUpdate([]);
-          return;
-        }
-
-        const patientIds = relations?.map((r) => r.patient_id) || [];
-
-        if (patientIds.length === 0) {
-          onUpdate([]);
-          return;
-        }
-
-        query = query.in("id", patientIds);
-      } else if (role === "paziente") {
-        query = query.eq("user_id", userId);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      onUpdate(
-        (data || []).map((p) => ({
-          id: p.id,
-          name: p.name,
-          birthYear: p.birth_year,
-          photo: p.photo,
-          caregiverIds: [],
-          userId: p.user_id,
-          ownerUserId: (p as any).owner_user_id,
-          primaryCaregiverId: (p as any).primary_caregiver_id ?? null,
-        }))
-      );
-    } catch (err) {
-      console.error("Errore fetch pazienti:", err);
-      onUpdate([]);
-    }
-  };
-
-  fetchAndEmit();
-
-  const channel = supabase
-    .channel("patients-realtime")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "patients" },
-      () => fetchAndEmit()
-    )
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
+  if (!supabase || !userId) return () => {};
+  fetchPatientsOnce(userId, role).then(onUpdate);
+  return () => {};
 }
 
 /* =========================================================
    CAREGIVERS
 ========================================================= */
 
+/**
+ * Fetch one-shot dei caregiver visibili all'utente. `caregivers` non è mai
+ * stata aggiunta alla publication `supabase_realtime`, quindi il vecchio
+ * canale realtime non riceveva mai eventi: solo fetch on-demand.
+ */
+export async function fetchCaregiversOnce(userId: string, role: string): Promise<Caregiver[]> {
+  if (!supabase || !userId) return [];
+  try {
+    let query = supabase.from("caregivers").select("id, name, relation, photo, notify");
+
+    if (role === "paziente") {
+      const { data: relations, error } = await supabase
+        .from("caregiver_patients")
+        .select("caregiver_id")
+        .eq("patient_id", userId);
+
+      if (error) {
+        console.error(error);
+        return [];
+      }
+
+      const caregiverIds = relations?.map((r) => r.caregiver_id) || [];
+      if (caregiverIds.length === 0) return [];
+
+      query = query.in("id", caregiverIds);
+    } else if (role === "caregiver") {
+      query = query.eq("id", userId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return (data || []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      relation: c.relation,
+      photo: c.photo,
+      patientIds: [],
+      notify: c.notify,
+    }));
+  } catch (err) {
+    console.error("Errore fetch caregiver:", err);
+    return [];
+  }
+}
+
+/**
+ * Wrapper "subscribe"-like mantenuto per compatibilità: un solo fetch al
+ * mount, unsubscribe no-op (vedi nota su subscribePatients).
+ */
 export function subscribeCaregivers(
   userId: string,
   role: string,
   onUpdate: (caregivers: Caregiver[]) => void
 ): () => void {
-  if (!supabase) return () => {};
-  if (!userId) return () => {};
-
-  const fetchAndEmit = async () => {
-    try {
-      let query = supabase.from("caregivers").select("id, name, relation, photo, notify");
-
-      if (role === "paziente") {
-        const { data: relations, error } = await supabase
-          .from("caregiver_patients")
-          .select("caregiver_id")
-          .eq("patient_id", userId);
-
-        if (error) {
-          console.error(error);
-          onUpdate([]);
-          return;
-        }
-
-        const caregiverIds = relations?.map((r) => r.caregiver_id) || [];
-
-        if (caregiverIds.length === 0) {
-          onUpdate([]);
-          return;
-        }
-
-        query = query.in("id", caregiverIds);
-      } else if (role === "caregiver") {
-        query = query.eq("id", userId);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      onUpdate(
-        (data || []).map((c) => ({
-          id: c.id,
-          name: c.name,
-          relation: c.relation,
-          photo: c.photo,
-          patientIds: [],
-          notify: c.notify,
-        }))
-      );
-    } catch (err) {
-      console.error("Errore fetch caregiver:", err);
-      onUpdate([]);
-    }
-  };
-
-  fetchAndEmit();
-
-  const channel = supabase
-    .channel("caregivers-realtime")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "caregivers" },
-      () => fetchAndEmit()
-    )
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
+  if (!supabase || !userId) return () => {};
+  fetchCaregiversOnce(userId, role).then(onUpdate);
+  return () => {};
 }
 
 /* =========================================================
@@ -361,7 +342,12 @@ export function subscribeEventsForPatients(
     return () => {};
   }
   const ids = [...patientIds].sort();
-  const sinceMs = 90 * 24 * 60 * 60 * 1000;
+  // Finestra ridotta a 9 giorni: basta per l'aderenza a 7gg mostrata
+  // ovunque nell'app. I periodi più lunghi (30/90gg) non servono al 95%
+  // delle sessioni — vengono caricati a parte, solo quando l'utente apre
+  // "Storico & Report" e solo per il paziente selezionato, tramite
+  // fetchEventsForPatientRange (vedi sotto).
+  const sinceMs = 9 * 24 * 60 * 60 * 1000;
 
   // Cache locale degli eventi: popolata dal fetch iniziale e poi
   // aggiornata riga-per-riga dai payload realtime — ZERO round-trip
@@ -427,6 +413,34 @@ export function subscribeEvents(
   onUpdate: (events: MedicationEvent[]) => void,
 ): () => void {
   return subscribeEventsForPatients(patientId ? [patientId] : [], onUpdate);
+}
+
+/**
+ * Fetch one-shot degli eventi di UN SOLO paziente su una finestra
+ * arbitraria (es. 30 o 90 giorni). Usata solo da "Storico & Report",
+ * solo quando la pagina è montata e solo per il paziente selezionato —
+ * a differenza della finestra globale (9gg, tutti i pazienti seguiti)
+ * usata dal resto dell'app. Nessuna subscription realtime: è uno storico,
+ * non ha bisogno di aggiornamenti live.
+ */
+export async function fetchEventsForPatientRange(
+  patientId: string,
+  days: number,
+): Promise<MedicationEvent[]> {
+  if (!supabase || !patientId) return [];
+  try {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supabase
+      .from("events")
+      .select("id, therapy_id, patient_id, scheduled_at, status, confirmed_at, confirmed_by, snoozed_until, note, timeline")
+      .eq("patient_id", patientId)
+      .gte("scheduled_at", since);
+    if (error) throw error;
+    return (data || []).map(mapEventRow);
+  } catch (err) {
+    console.error("Errore fetch eventi storico:", err);
+    return [];
+  }
 }
 
 
@@ -770,31 +784,6 @@ export async function deleteTherapyDoc(id: string): Promise<void> {
 /* =========================================================
    FAMILY LINKING (invito-based)
 ========================================================= */
-
-/**
- * Con l'isolamento per famiglia, la lista pubblica di pazienti non è più
- * accessibile: RLS blocca ogni riga a cui l'utente non è collegato.
- * Manteniamo la firma per compatibilità: ora ritorna solo i pazienti già
- * visibili al chiamante (equivalente a `data.patients`).
- */
-export async function fetchAllPatients(): Promise<Patient[]> {
-  if (!supabase) return [];
-  const { data, error } = await supabase.from("patients").select("id, name, birth_year, photo, user_id, owner_user_id, primary_caregiver_id");
-  if (error) {
-    console.warn("fetchAllPatients:", error.message);
-    return [];
-  }
-  return (data || []).map((p) => ({
-    id: p.id,
-    name: p.name,
-    birthYear: p.birth_year,
-    photo: p.photo,
-    caregiverIds: [],
-    userId: p.user_id,
-    ownerUserId: (p as any).owner_user_id,
-    primaryCaregiverId: (p as any).primary_caregiver_id ?? null,
-  }));
-}
 
 export type FamilyInvite = {
   id: string;

@@ -37,7 +37,7 @@ import {
   saveEventDoc,
   updateNotificationReadState,
   markAllNotificationsRead,
-  fetchAllPatients,
+  fetchPatientsOnce,
   unfollowPatient as unfollowPatientDoc,
   createFamilyInvite,
   redeemFamilyInvite,
@@ -60,8 +60,6 @@ type Ctx = {
   user: User | null;
   userProfile: UserProfile | null;
   loadingAuth: boolean;
-  allPatients: Patient[];
-  refreshAllPatients: () => Promise<void>;
   redeemInvite: (code: string) => Promise<string>;
   createInvite: (patientId: string, ttlMinutes?: number, maxUses?: number) => Promise<FamilyInvite>;
   unfollowPatient: (patientId: string) => Promise<void>;
@@ -727,34 +725,25 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     setLoadingAuth(false);
   }, []);
 
-  // ---- Open patient list + follow / unfollow --------------------
-  const [allPatients, setAllPatients] = useState<Patient[]>([]);
-
-  const refreshAllPatients = useCallback(async () => {
-    const list = await fetchAllPatients();
-    setAllPatients(list);
-  }, []);
-
-  useEffect(() => {
-    if (user && userProfile?.role === "caregiver") {
-      refreshAllPatients();
-    } else {
-      setAllPatients([]);
-    }
-    // Non includere `patients` nelle dipendenze: ogni sync realtime dei
-    // pazienti triggererebbe un fetchAllPatients() extra → egress inutile.
-    // refreshAllPatients viene chiamata esplicitamente dopo redeemInvite.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, userProfile, refreshAllPatients]);
+  // ---- Follow / unfollow ------------------------------------------
+  // `patients` (lista pazienti seguiti) non ha più un canale realtime
+  // (vedi effetto di subscribe più sopra: solo fetch one-shot al login),
+  // quindi dopo un'azione che cambia la relazione caregiver↔paziente la
+  // rileggiamo esplicitamente con un fetch mirato.
+  const refreshFollowedPatients = useCallback(async () => {
+    if (!user || !userProfile) return;
+    const list = await fetchPatientsOnce(user.id, userProfile.role);
+    setPatients(list);
+  }, [user, userProfile]);
 
   const redeemInvite = useCallback(async (code: string) => {
     if (!user) throw new Error("Non autenticato");
     const patientId = await redeemFamilyInvite(code);
     // Invalida la cache dei caregiver: il nuovo invito aggiunge una relazione
     invalidateCaregiverCaches(patientId);
-    await refreshAllPatients();
+    await refreshFollowedPatients();
     return patientId;
-  }, [user, refreshAllPatients]);
+  }, [user, refreshFollowedPatients]);
 
   const createInvite = useCallback(
     async (patientId: string, ttlMinutes = 1440, maxUses = 1) => {
@@ -769,22 +758,32 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       await unfollowPatientDoc(user.id, patientId);
       // Invalida la cache: la relazione caregiver-paziente è cambiata
       invalidateCaregiverCaches(patientId);
+      await refreshFollowedPatients();
     },
-    [user],
+    [user, refreshFollowedPatients],
   );
 
   // -----------------------------------------------------------------
-  // Auto-transizione a "dimenticata" (missed)
+  // Auto-transizione a "dimenticata" (missed) — SOLO modalità locale/demo
   // -----------------------------------------------------------------
   // Ogni 30 secondi controlla le dosi passate: se sono trascorse
   // `timeoutMinutes` dall'orario programmato e la dose non è stata
   // confermata / saltata / già segnata come missed, crea l'evento
   // "missed" e la notifica di alert per i caregiver del paziente.
-  // Fondamentale per la modalità locale/demo (DB vuoto) e come
-  // fallback quando lo scheduler DB non arriva a tempo.
+  //
+  // Con un utente loggato questo lavoro è già fatto server-side da
+  // `dose-scheduler` (edge function via pg_cron, ogni minuto): tenere
+  // anche il watchdog client-side significava che OGNI tab/dispositivo
+  // di ogni caregiver e paziente online rifaceva la stessa verifica in
+  // parallelo, con scritture ridondanti verso `events` (mitigate solo da
+  // ON CONFLICT DO NOTHING lato DB, ma la query di scrittura partiva
+  // comunque). Per gli utenti loggati il tick esce subito. Resta attivo
+  // solo per la modalità locale/demo (senza login, DB assente), dove non
+  // c'è alcun cron server-side a fare da fallback.
   const missedProcessedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const tick = async () => {
+      if (user) return; // affidato interamente a dose-scheduler lato server
       const now = Date.now();
       const activeTherapies = data.therapies.filter(
         (t) => t.active && !t.suspended,
@@ -869,18 +868,9 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
             hour: "2-digit", minute: "2-digit",
           });
 
-          if (user) {
-            try {
-              // Il trigger DB `handle_dose_status_change` inserisce
-              // automaticamente le notifiche (caregiver + paziente) con
-              // timestamp coerente (scheduled_at + timeout). Non duplichiamo
-              // dal client: risparmia egress e evita orari "batch" identici.
-              await saveEventDoc(missedEvent);
-            } catch (err) {
-              console.warn("[auto-missed] save failed", err);
-            }
-          } else {
-            // Modalità locale/demo
+          {
+            // Solo modalità locale/demo (per utenti loggati il tick esce
+            // subito in cima: vedi commento sopra la definizione dell'effect).
             setLocalData((d) => {
               const alreadyEvent = d.events.some(
                 (e) =>
@@ -967,8 +957,6 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       user,
       userProfile,
       loadingAuth,
-      allPatients,
-      refreshAllPatients,
       redeemInvite,
       createInvite,
       unfollowPatient,
@@ -995,8 +983,6 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       user,
       userProfile,
       loadingAuth,
-      allPatients,
-      refreshAllPatients,
       redeemInvite,
       createInvite,
       unfollowPatient,

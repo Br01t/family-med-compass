@@ -44,10 +44,14 @@ function CaregiverHome() {
     return () => clearInterval(id);
   }, []);
 
-  // Le stats aggregate sono precalcolate lato DB (materialized view refreshata
-  // una volta al giorno dal cron). Le carichiamo una sola volta al mount;
-  // l'utente può forzare l'aggiornamento col bottone "Aggiorna".
+  // Rate limit lato client: il pulsante manuale forza un
+  // REFRESH MATERIALIZED VIEW CONCURRENTLY sul DB (già ridotto a cron
+  // giornaliero, ma senza cooldown un utente che clicca ripetutamente lo
+  // rifà ogni volta). 5 minuti di cooldown dopo l'ultimo uso.
+  const REFRESH_COOLDOWN_MS = 5 * 60_000;
   const [refreshing, setRefreshing] = useState(false);
+  const [lastManualRefreshAt, setLastManualRefreshAt] = useState<number | null>(null);
+  const [nowTick, setNowTick] = useState(Date.now());
   const loadStats = async () => {
     const s = await fetchCaregiverDashboardStats();
     setStats(s);
@@ -56,12 +60,24 @@ function CaregiverHome() {
     loadStats();
      
   }, []);
+  // Aggiorna il countdown del cooldown ogni secondo, solo mentre è attivo.
+  useEffect(() => {
+    if (!lastManualRefreshAt) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [lastManualRefreshAt]);
+  const cooldownRemainingMs = lastManualRefreshAt
+    ? Math.max(0, REFRESH_COOLDOWN_MS - (nowTick - lastManualRefreshAt))
+    : 0;
+  const onCooldown = cooldownRemainingMs > 0;
   const handleRefresh = async () => {
-    if (refreshing) return;
+    if (refreshing || onCooldown) return;
     setRefreshing(true);
     try {
       await refreshMyCaregiverStats();
       await loadStats();
+      setLastManualRefreshAt(Date.now());
+      setNowTick(Date.now());
     } finally {
       setRefreshing(false);
     }
@@ -120,11 +136,15 @@ function CaregiverHome() {
           variant="outline"
           size="sm"
           onClick={handleRefresh}
-          disabled={refreshing}
+          disabled={refreshing || onCooldown}
           className="gap-2"
         >
           <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
-          {refreshing ? "Aggiornamento…" : "Aggiorna"}
+          {refreshing
+            ? "Aggiornamento…"
+            : onCooldown
+              ? `Già aggiornato (${Math.ceil(cooldownRemainingMs / 1000)}s)`
+              : "Aggiorna"}
         </Button>
       </div>
 

@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useFamilyMed } from "@/lib/store";
+import { fetchEventsForPatientRange } from "@/lib/supabase-service";
+import type { MedicationEvent } from "@/lib/mock-data";
 import {
   doseDelayMinutes,
   formatTime,
@@ -46,6 +48,44 @@ function HistoryReportPage() {
 
   const now = new Date();
 
+  // La finestra globale dello store copre solo ~9 giorni (basta per
+  // l'aderenza a 7gg mostrata nel resto dell'app). Questa è l'unica pagina
+  // che usa periodi più lunghi: quando l'utente sceglie 30 o 90 giorni,
+  // facciamo una fetch dedicata SOLO per il paziente selezionato, non per
+  // tutti i pazienti seguiti — ed evitiamo di richiederla se non serve
+  // (periodo 7gg copre quanto già disponibile globalmente).
+  const [extraEvents, setExtraEvents] = useState<MedicationEvent[]>([]);
+  const [loadingExtra, setLoadingExtra] = useState(false);
+
+  useEffect(() => {
+    if (!patientId || period <= 7) {
+      setExtraEvents([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingExtra(true);
+    fetchEventsForPatientRange(patientId, period)
+      .then((rows) => {
+        if (!cancelled) setExtraEvents(rows);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingExtra(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [patientId, period]);
+
+  // Dati "effettivi" per i calcoli di questa pagina: fondiamo gli eventi
+  // extra (se il periodo >7gg li richiede) con quelli già in store,
+  // deduplicando per id. Non tocca lo store globale.
+  const effectiveData = useMemo(() => {
+    if (period <= 7 || extraEvents.length === 0) return data;
+    const byId = new Map(data.events.map((e) => [e.id, e]));
+    for (const e of extraEvents) byId.set(e.id, e);
+    return { ...data, events: Array.from(byId.values()) };
+  }, [data, extraEvents, period]);
+
   // Calendario del mese
   const days = useMemo(() => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -88,7 +128,7 @@ function HistoryReportPage() {
     for (let i = period - 1; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
-      const doses = getDosesForPatientOnDate(data, patientId, d, now);
+      const doses = getDosesForPatientOnDate(effectiveData, patientId, d, now);
       let dayScheduled = 0;
       let dayTaken = 0;
       for (const dose of doses) {
@@ -157,12 +197,12 @@ function HistoryReportPage() {
       bars,
       perTherapy: perTherapyList,
     };
-  }, [data, patientId, period]);
+  }, [effectiveData, patientId, period]);
 
   const summary = (d: Date) => {
     if (!patientId) return null;
     if (d > now) return null;
-    const doses = getDosesForPatientOnDate(data, patientId, d, now);
+    const doses = getDosesForPatientOnDate(effectiveData, patientId, d, now);
     const past = doses.filter((x) => x.scheduledAt <= now);
     if (past.length === 0) return null;
     // "Dimenticate": almeno una dose saltata o mai confermata (missed/skipped).
@@ -176,7 +216,7 @@ function HistoryReportPage() {
 
   const dayDoses =
     selected && patientId
-      ? getDosesForPatientOnDate(data, patientId, selected, now)
+      ? getDosesForPatientOnDate(effectiveData, patientId, selected, now)
       : [];
 
   return (
@@ -204,22 +244,30 @@ function HistoryReportPage() {
         </div>
         
         {/* Griglia fissa a 3 colonne su mobile per evitare overflow di testo o pillole */}
-        <div className="grid grid-cols-3 gap-1 w-full rounded-full border border-border bg-card p-1 sm:ml-auto sm:w-auto sm:flex">
-          {[7, 30, 90].map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p as PeriodDays)}
-              className={cn(
-                "rounded-full py-1.5 px-2 text-[11px] font-bold uppercase tracking-wider transition text-center whitespace-nowrap sm:px-3",
-                period === p
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {p} giorni
-            </button>
-          ))}
+        <div className="flex items-center gap-2 sm:ml-auto">
+          <div className="grid grid-cols-3 gap-1 w-full rounded-full border border-border bg-card p-1 sm:w-auto sm:flex">
+            {[7, 30, 90].map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p as PeriodDays)}
+                className={cn(
+                  "rounded-full py-1.5 px-2 text-[11px] font-bold uppercase tracking-wider transition text-center whitespace-nowrap sm:px-3",
+                  period === p
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {p} giorni
+              </button>
+            ))}
+          </div>
+          {loadingExtra && (
+            <span className="hidden sm:inline text-[10px] text-muted-foreground whitespace-nowrap">
+              Carico storico…
+            </span>
+          )}
         </div>
+
       </div>
 
       {/* KPI - Risolto il collasso forzando grid-cols-2 nativo e gestendo i box spaiati */}

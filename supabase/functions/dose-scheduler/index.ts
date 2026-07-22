@@ -186,7 +186,10 @@ Deno.serve(async (req) => {
     await sb.from("events").upsert(rows, { onConflict: "therapy_id,scheduled_at", ignoreDuplicates: true });
   }
 
-  const selectCols = "id, therapy_id, patient_id, scheduled_at, status, stage, snoozed_until, final_due_at, therapies(name, quantity, dosage, timeout_minutes, snooze_minutes, post_reminder_minutes, reminder_intervals, photo_drug, photo_package), patients(name, user_id)";
+  // Nota: niente photo_drug/photo_package qui. Nessuna delle notifiche
+  // costruite sotto usa la foto (solo nome/dosaggio/orario), quindi
+  // richiederle avrebbe solo aggiunto byte inutili a 5 query ogni minuto.
+  const selectCols = "id, therapy_id, patient_id, scheduled_at, status, stage, snoozed_until, final_due_at, therapies(name, quantity, dosage, timeout_minutes, snooze_minutes, post_reminder_minutes, reminder_intervals), patients(name, user_id)";
 
   // REMINDER_PRE
   const { data: preEvents } = await sb.from("events").select(selectCols)
