@@ -261,6 +261,27 @@ export function subscribeCaregivers(
    THERAPIES (multi-patient)
 ========================================================= */
 
+export async function fetchTherapiesOnce(patientIds: string[]): Promise<Therapy[]> {
+  if (!supabase || !patientIds || patientIds.length === 0) return [];
+  try {
+    const { data, error } = await supabase
+      .from("therapies")
+      .select("id, patient_id, name, dosage, quantity, category, color, icon, notes, start_date, end_date, times, recurrence, timeout_minutes, snooze_minutes, post_reminder_minutes, reminder_intervals, packs, pills_per_pack, pills_remaining, low_stock_threshold, active, suspended, photo_drug, photo_package")
+      .in("patient_id", patientIds);
+    if (error) throw error;
+    return (data || []).map(mapTherapyRow);
+  } catch (err) {
+    console.error("Errore fetch terapie:", err);
+    return [];
+  }
+}
+
+/**
+ * Wrapper "subscribe"-like mantenuto per compatibilità: un solo fetch al
+ * mount, unsubscribe no-op. `therapies` non è più nella publication
+ * `supabase_realtime` per ridurre l'egress; le mutazioni locali aggiornano
+ * direttamente lo stato React via store.
+ */
 export function subscribeTherapiesForPatients(
   patientIds: string[],
   onUpdate: (therapies: Therapy[]) => void,
@@ -271,54 +292,8 @@ export function subscribeTherapiesForPatients(
     return () => {};
   }
   const ids = [...patientIds].sort();
-
-  let cache: Therapy[] = [];
-  let ready = false;
-
-  const fetchAndEmit = async () => {
-    try {
-      const { data, error } = await supabase!
-        .from("therapies")
-        .select("id, patient_id, name, dosage, quantity, category, color, icon, notes, start_date, end_date, times, recurrence, timeout_minutes, snooze_minutes, post_reminder_minutes, reminder_intervals, packs, pills_per_pack, pills_remaining, low_stock_threshold, active, suspended, photo_drug, photo_package")
-        .in("patient_id", ids);
-      if (error) throw error;
-      cache = (data || []).map(mapTherapyRow);
-      ready = true;
-      onUpdate(cache);
-    } catch (err) {
-      console.error("Errore fetch terapie:", err);
-      onUpdate([]);
-    }
-  };
-
-  fetchAndEmit();
-
-  const channel = supabase
-    .channel(`therapies-multi-${ids.join(",")}`)
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "therapies" }, (payload) => {
-      if (!ready) return;
-      const t = payload.new as any;
-      if (!ids.includes(t.patient_id)) return;
-      cache = [...cache, mapTherapyRow(t)];
-      onUpdate(cache);
-    })
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "therapies" }, (payload) => {
-      if (!ready) return;
-      const t = payload.new as any;
-      if (!ids.includes(t.patient_id)) return;
-      cache = cache.map((therapy) => (therapy.id === t.id ? mapTherapyRow(t) : therapy));
-      onUpdate(cache);
-    })
-    .on("postgres_changes", { event: "DELETE", schema: "public", table: "therapies" }, (payload) => {
-      if (!ready) return;
-      const id = (payload.old as any)?.id;
-      if (!id) return;
-      cache = cache.filter((therapy) => therapy.id !== id);
-      onUpdate(cache);
-    })
-    .subscribe();
-
-  return () => { supabase!.removeChannel(channel); };
+  fetchTherapiesOnce(ids).then(onUpdate);
+  return () => {};
 }
 
 export function subscribeTherapies(
@@ -375,10 +350,12 @@ export function subscribeEventsForPatients(
 
   fetchAndEmit();
 
+  const filter = ids.length === 1 ? `patient_id=eq.${ids[0]}` : `patient_id=in.(${ids.join(",")})`;
+
   const channel = supabase
     .channel(`events-multi-${ids.join(",")}`)
     // INSERT: aggiungi alla cache locale senza ri-scaricare tutto
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "events" }, (payload) => {
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "events", filter }, (payload) => {
       if (!ready) return;
       const e = payload.new as any;
       if (!ids.includes(e.patient_id)) return;
@@ -388,7 +365,7 @@ export function subscribeEventsForPatients(
       onUpdate(cache);
     })
     // UPDATE: aggiorna solo la riga cambiata (dose confermata, saltata, snoozata…)
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "events" }, (payload) => {
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "events", filter }, (payload) => {
       if (!ready) return;
       const e = payload.new as any;
       if (!ids.includes(e.patient_id)) return;
@@ -488,11 +465,13 @@ export function subscribeNotifications(
 
   fetchAndEmit();
 
+  const filter = `target_user_id=eq.${userId}`;
+
   const channel = supabase
     .channel(`notifications-${role}-${userId}`)
     // INSERT: nuova notifica (dose confermata, saltata, dimenticata…)
     // → prependi alla cache senza ri-scaricare tutto
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter }, (payload) => {
       if (!ready) return;
       const n = payload.new as any;
       if (n.target_user_id !== userId) return;
@@ -502,7 +481,7 @@ export function subscribeNotifications(
       onUpdate(cache);
     })
     // UPDATE: cambio di stato "letta" → aggiorna solo quella riga
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications" }, (payload) => {
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications", filter }, (payload) => {
       if (!ready) return;
       const n = payload.new as any;
       if (n.target_user_id !== userId) return;
@@ -537,6 +516,10 @@ export type CaregiverDashboardStats = {
   refreshedAt: string | null;
 };
 
+// Cache 24 ore: le statistiche della vista materializzata cambiano solo col cron giornaliero
+// o quando il caregiver clicca esplicitamente "Aggiorna" (che invalida questa cache).
+const caregiverStatsCache = makeTTLCache<string, CaregiverDashboardStats>(24 * 60 * 60 * 1000);
+
 export async function fetchCaregiverDashboardStats(): Promise<CaregiverDashboardStats> {
   const empty: CaregiverDashboardStats = {
     patientsCount: 0,
@@ -547,6 +530,10 @@ export async function fetchCaregiverDashboardStats(): Promise<CaregiverDashboard
     refreshedAt: null,
   };
   if (!supabase) return empty;
+
+  const cached = caregiverStatsCache.get("my_stats");
+  if (cached) return cached;
+
   const { data, error } = await supabase.rpc("get_my_caregiver_stats");
   if (error) {
     console.error("get_my_caregiver_stats:", error);
@@ -554,7 +541,7 @@ export async function fetchCaregiverDashboardStats(): Promise<CaregiverDashboard
   }
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) return empty;
-  return {
+  const result: CaregiverDashboardStats = {
     patientsCount: row.patients_count ?? 0,
     activeAlerts: row.active_alerts ?? 0,
     lowStockCount: row.low_stock_count ?? 0,
@@ -562,10 +549,13 @@ export async function fetchCaregiverDashboardStats(): Promise<CaregiverDashboard
     adherence7d: row.adherence_7d ?? 100,
     refreshedAt: row.refreshed_at ?? null,
   };
+  caregiverStatsCache.set("my_stats", result);
+  return result;
 }
 
 export async function refreshMyCaregiverStats(): Promise<boolean> {
   if (!supabase) return false;
+  caregiverStatsCache.delete("my_stats");
   const { error } = await supabase.rpc("refresh_my_caregiver_stats");
   if (error) {
     console.error("refresh_my_caregiver_stats:", error);

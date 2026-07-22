@@ -11,7 +11,7 @@ import {
 
 import { type User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
-import { getUserProfile, type UserProfile } from "./auth-service";
+import { getUserProfile, invalidateUserProfileCache, type UserProfile } from "./auth-service";
 import {
   initialData,
   type FamilyMedData,
@@ -79,6 +79,7 @@ type Ctx = {
   addPatient: (p: Patient) => Promise<void>;
   deletePatient: (id: string) => void;
   markNotificationRead: (id: string) => void;
+  markNotificationsRead: (ids: string[]) => void;
   markAllRead: () => void;
   resetDemoData: () => void;
   logout: () => Promise<void>;
@@ -589,6 +590,11 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     async (t: Therapy) => {
       if (user) {
         await createTherapyDoc(t);
+        setTherapies((prev) => (prev.some((item) => item.id === t.id) ? prev : [...prev, t]));
+        setLocalData((d) => ({
+          ...d,
+          therapies: d.therapies.some((item) => item.id === t.id) ? d.therapies : [...d.therapies, t],
+        }));
       } else {
         setLocalData((d) => ({ ...d, therapies: [...d.therapies, t] }));
       }
@@ -603,6 +609,11 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
       if (user) {
         await saveTherapyDoc({ ...current, ...patch });
+        setTherapies((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+        setLocalData((d) => ({
+          ...d,
+          therapies: d.therapies.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+        }));
       } else {
         setLocalData((d) => ({
           ...d,
@@ -617,6 +628,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     async (id: string) => {
       if (user) {
         await deleteTherapyDoc(id);
+        setTherapies((prev) => prev.filter((t) => t.id !== id));
+        setLocalData((d) => ({ ...d, therapies: d.therapies.filter((t) => t.id !== id) }));
       } else {
         setLocalData((d) => ({ ...d, therapies: d.therapies.filter((t) => t.id !== id) }));
       }
@@ -658,6 +671,14 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     async (id: string) => {
       if (user) {
         await deletePatientDoc(id);
+        setPatients((prev) => prev.filter((p) => p.id !== id));
+        setTherapies((prev) => prev.filter((t) => t.patientId !== id));
+        setEvents((prev) => prev.filter((e) => e.patientId !== id));
+        setLocalData((d) => ({
+          ...d,
+          patients: d.patients.filter((p) => p.id !== id),
+          therapies: d.therapies.filter((t) => t.patientId !== id),
+        }));
       } else {
         setLocalData((d) => ({
           ...d,
@@ -673,10 +694,35 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     async (id: string) => {
       if (user) {
         await updateNotificationReadState(id, true);
+        setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+        setLocalData((d) => ({
+          ...d,
+          notifications: d.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
+        }));
       } else {
         setLocalData((d) => ({
           ...d,
           notifications: d.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
+        }));
+      }
+    },
+    [user]
+  );
+
+  const markNotificationsRead = useCallback(
+    async (ids: string[]) => {
+      if (!ids || ids.length === 0) return;
+      if (user) {
+        await markAllNotificationsRead(ids);
+        setNotifications((prev) => prev.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n)));
+        setLocalData((d) => ({
+          ...d,
+          notifications: d.notifications.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n)),
+        }));
+      } else {
+        setLocalData((d) => ({
+          ...d,
+          notifications: d.notifications.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n)),
         }));
       }
     },
@@ -691,6 +737,11 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         .map((n) => n.id);
       if (unreadIds.length > 0) {
         await markAllNotificationsRead(unreadIds);
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+        setLocalData((d) => ({
+          ...d,
+          notifications: d.notifications.map((n) => ({ ...n, read: true })),
+        }));
       }
     } else {
       setLocalData((d) => ({
@@ -707,6 +758,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const logout = useCallback(async () => {
+    invalidateUserProfileCache(user?.id);
     setUser(null);
     setUserProfile(null);
     setLoadingAuth(true);
@@ -723,7 +775,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     }
 
     setLoadingAuth(false);
-  }, []);
+  }, [user?.id]);
 
   // ---- Follow / unfollow ------------------------------------------
   // `patients` (lista pazienti seguiti) non ha più un canale realtime
@@ -972,6 +1024,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       addPatient,
       deletePatient,
       markNotificationRead,
+      markNotificationsRead,
       markAllRead,
       resetDemoData,
       logout,
@@ -998,6 +1051,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       addPatient,
       deletePatient,
       markNotificationRead,
+      markNotificationsRead,
       markAllRead,
       resetDemoData,
       logout,

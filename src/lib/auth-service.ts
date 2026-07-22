@@ -31,12 +31,26 @@ function getFallbackProfile(user: Partial<User> | null | undefined): UserProfile
   };
 }
 
+// Cache in-memory 24 ore per eliminare query ripetute a public.profiles
+const profileCache = new Map<string, { profile: UserProfile; expiresAt: number }>();
+const PROFILE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export function invalidateUserProfileCache(uid?: string) {
+  if (uid) profileCache.delete(uid);
+  else profileCache.clear();
+}
+
 export async function getUserProfile(
   uid: string,
   fallbackUser?: Partial<User> | null,
   retries = 2,
 ): Promise<UserProfile | null> {
-  if (!supabase) return null;
+  if (!supabase || !uid) return null;
+
+  const cached = profileCache.get(uid);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.profile;
+  }
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -62,13 +76,16 @@ export async function getUserProfile(
 
       const fallback = getFallbackProfile(fallbackUser);
 
-      return {
+      const result: UserProfile = {
         uid: data.id,
         email: data.email ?? fallback?.email ?? "",
         name: data.name ?? fallback?.name ?? "",
         role: (data.role as Role) ?? fallback?.role ?? "caregiver",
         createdAt: data.created_at ?? fallback?.createdAt ?? new Date().toISOString(),
       };
+
+      profileCache.set(uid, { profile: result, expiresAt: Date.now() + PROFILE_TTL_MS });
+      return result;
     } catch (error) {
       console.error(`Errore nel recupero del profilo utente (tentativo ${attempt + 1}/${retries + 1}):`, error);
       if (attempt < retries) {

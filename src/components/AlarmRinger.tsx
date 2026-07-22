@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertOctagon, Bell, Check, Clock, Timer } from "lucide-react";
 import { useFamilyMed } from "@/lib/store";
-import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { getPrimedAlarmAudioContext } from "@/lib/alarm-audio";
 
@@ -98,37 +97,6 @@ export function AlarmRinger() {
   };
 
 
-  // Realtime: nuove notifiche in ingresso
-  useEffect(() => {
-    if (!supabase || !user || !isPatient) return;
-    const channel = supabase
-      .channel(`alarm-${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-          filter: `target_user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const n = payload.new as any;
-          if (n.kind !== "reminder_pre" && n.kind !== "due" && n.kind !== "reminder_post" && n.kind !== "final_due") return;
-          openModal({
-            id: n.id,
-            kind: n.kind,
-            title: n.title,
-            message: n.message,
-            therapy_id: n.therapy_id,
-            patient_id: n.patient_id,
-            event_id: n.event_id,
-            created_at: n.created_at,
-          });
-        },
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user, isPatient]);
 
   // All'apertura dell'app: recupera l'eventuale ultima notifica NON gestita.
   useEffect(() => {

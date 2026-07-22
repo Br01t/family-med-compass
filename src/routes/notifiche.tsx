@@ -47,7 +47,7 @@ const KIND_META: Record<
 };
 
 function NotificationsPage() {
-  const { data, user, userProfile, markNotificationRead } = useFamilyMed();
+  const { data, user, userProfile, markNotificationsRead } = useFamilyMed();
   const isPatient = userProfile?.role === "paziente";
 
   const patient = isPatient
@@ -84,12 +84,14 @@ function NotificationsPage() {
     load();
   }, [load]);
 
-  // Auto-mark come lette solo le notifiche della pagina visualizzata
+  // Auto-mark come lette le notifiche della pagina in un'unica query bulk
   useEffect(() => {
     if (!user) return;
-    const unread = items.filter((n) => !n.read);
-    for (const n of unread) void markNotificationRead(n.id);
-  }, [items, user, markNotificationRead]);
+    const unreadIds = items.filter((n) => !n.read).map((n) => n.id);
+    if (unreadIds.length > 0) {
+      void markNotificationsRead(unreadIds);
+    }
+  }, [items, user, markNotificationsRead]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
