@@ -70,7 +70,7 @@ export const caregiverSteps: TourStep[] = [
           <div>
             <p className="text-sm font-bold">Nuovo paziente</p>
             <p className="text-xs text-muted-foreground">
-              Nome, età, foto — pronti in 30 secondi.
+              Nome, età — pronti in 30 secondi.
             </p>
           </div>
         </div>
