@@ -1,11 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, HeartPulse, Pill, ShieldCheck, Users } from "lucide-react";
+import { ArrowRight, HeartPulse, Pill, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { SiteFooter } from "@/components/SiteFooter";
 import { useFamilyMed } from "@/lib/store";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 
 export const Route = createFileRoute("/")({
   head: () => ({
