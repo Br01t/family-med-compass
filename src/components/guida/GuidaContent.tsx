@@ -1,5 +1,9 @@
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { OnboardingTour, resetOnboarding } from "@/components/onboarding/OnboardingTour";
+import { Sparkles } from "lucide-react";
 import {
   Bell,
   CheckCircle2,
@@ -25,7 +29,40 @@ import {
 } from "lucide-react";
 
 export function GuidaContent() {
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourRole, setTourRole] = useState<"caregiver" | "paziente">("caregiver");
+  const launchTour = (role: "caregiver" | "paziente") => {
+    resetOnboarding(role);
+    setTourRole(role);
+    setTourOpen(true);
+  };
+
   return (
+    <>
+      <OnboardingTour open={tourOpen} onOpenChange={setTourOpen} role={tourRole} />
+
+      <div className="mb-6 rounded-2xl border border-primary/20 bg-primary-soft/40 p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <Sparkles className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-black tracking-tight">Vuoi rivedere il tour guidato?</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Un tour rapido con tutte le azioni principali dell&apos;app.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => launchTour("caregiver")} className="font-bold">
+                Tour Caregiver
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => launchTour("paziente")} className="font-bold">
+                Tour Paziente
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
     <Tabs defaultValue="caregiver" className="space-y-6">
       <TabsList className="flex-wrap h-auto gap-1 rounded-2xl bg-secondary p-1">
         <TabsTrigger value="caregiver" className="rounded-xl gap-2 data-[state=active]:shadow-card">
@@ -410,6 +447,7 @@ export function GuidaContent() {
         </div>
       </TabsContent>
     </Tabs>
+    </>
   );
 }
 

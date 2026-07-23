@@ -1,11 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, HeartPulse, Pill, ShieldCheck, Users } from "lucide-react";
+import { ArrowRight, HeartPulse, Pill, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { SiteFooter } from "@/components/SiteFooter";
 import { useFamilyMed } from "@/lib/store";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -24,6 +25,12 @@ export const Route = createFileRoute("/")({
 function LandingPage() {
   const navigate = useNavigate();
   const { data, user, userProfile, loadingAuth, setRole, setCurrentPatient } = useFamilyMed();
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourRole, setTourRole] = useState<"caregiver" | "paziente">("caregiver");
+  const openTour = (role: "caregiver" | "paziente") => {
+    setTourRole(role);
+    setTourOpen(true);
+  };
 
   const patient = data.patients.find((p) => p.id === data.currentPatientId) ?? data.patients[0];
 
@@ -124,6 +131,28 @@ function LandingPage() {
                 </Link>
               </Button>
             </div>
+
+            {/* Tour guidato: accessibile anche prima del login */}
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+              <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                <Sparkles className="size-4 text-primary" /> Tour guidato:
+              </span>
+              <button
+                type="button"
+                onClick={() => openTour("caregiver")}
+                className="font-bold text-primary underline underline-offset-4 hover:opacity-80"
+              >
+                per il Caregiver
+              </button>
+              <span className="text-muted-foreground">·</span>
+              <button
+                type="button"
+                onClick={() => openTour("paziente")}
+                className="font-bold text-primary underline underline-offset-4 hover:opacity-80"
+              >
+                per il Paziente
+              </button>
+            </div>
           </div>
 
           {/* MOCK UI - Blindata per schermi microscopici */}
@@ -191,6 +220,13 @@ function LandingPage() {
 
       {/* FOOTER: footer completo, visibile solo prima del login */}
       {!loadingAuth && !user && <SiteFooter />}
+
+      <OnboardingTour
+        open={tourOpen}
+        onOpenChange={setTourOpen}
+        role={tourRole}
+        allowNavigation={!!user}
+      />
     </div>
   );
 }
