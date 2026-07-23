@@ -18,7 +18,6 @@ import { InstallBanner } from "../components/InstallBanner";
 import { AlarmRinger } from "../components/AlarmRinger";
 import { primeAlarmAudio } from "../lib/alarm-audio";
 import { MaintenancePage } from "../components/MaintenancePage";
-import { OnboardingAutoStart } from "../components/onboarding/OnboardingAutoStart";
 
 // 🔒 MODALITÀ MANUTENZIONE — metti a false per riattivare il sito
 const MAINTENANCE_MODE = true;
@@ -196,7 +195,6 @@ function RootComponent() {
         <Toaster position="top-center" richColors />
         <InstallBanner />
         <AlarmRinger />
-        <OnboardingAutoStart />
       </FamilyMedProvider>
     </QueryClientProvider>
   );

@@ -47,7 +47,7 @@ export function GuidaContent() {
             <Sparkles className="size-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-base font-black tracking-tight">Vuoi rivedere il tour guidato?</p>
+            <p className="text-base font-black tracking-tight">Vuoi vedere il tour guidato?</p>
             <p className="mt-0.5 text-sm text-muted-foreground">
               Un tour rapido con tutte le azioni principali dell&apos;app.
             </p>
