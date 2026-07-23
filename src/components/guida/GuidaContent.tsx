@@ -447,6 +447,7 @@ export function GuidaContent() {
         </div>
       </TabsContent>
     </Tabs>
+    </>
   );
 }
 
