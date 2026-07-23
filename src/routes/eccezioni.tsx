@@ -7,14 +7,13 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  CircleAlert,
   Clock,
-  FlaskConical,
   Hospital,
+  Info,
+  ListChecks,
   Package,
   Pill,
   ShieldAlert,
-  Syringe,
   TriangleAlert,
   Wrench,
   ZapOff,
@@ -24,7 +23,7 @@ import { AppShell } from "@/components/AppShell";
 import { SecondaryCaregiverNotice } from "@/components/SecondaryCaregiverNotice";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
-import { adjustStockManually, type StockAdjustmentReason } from "@/lib/supabase-service";
+import { adjustStockManually } from "@/lib/supabase-service";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/eccezioni")({
@@ -40,66 +39,6 @@ export const Route = createFileRoute("/eccezioni")({
   }),
   component: ExceptionsPage,
 });
-
-/* ─── Tipi interni ─────────────────────────────────────────────────────── */
-
-type ReasonOption = {
-  value: StockAdjustmentReason;
-  label: string;
-  description: string;
-  icon: React.ElementType;
-  color: string;
-  bgColor: string;
-  borderColor: string;
-};
-
-const REASON_OPTIONS: ReasonOption[] = [
-  {
-    value: "breakage",
-    label: "Fiala / compressa rotta",
-    description: "Una dose è andata persa accidentalmente (es. fiala rotta, compressa caduta).",
-    icon: FlaskConical,
-    color: "text-orange-600",
-    bgColor: "bg-orange-50 dark:bg-orange-950/30",
-    borderColor: "border-orange-200 dark:border-orange-800",
-  },
-  {
-    value: "double_dose",
-    label: "Dose doppia accidentale",
-    description: "Il paziente ha preso due volte la stessa dose per errore. Scala per mantenere la scorta corretta.",
-    icon: Syringe,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50 dark:bg-amber-950/30",
-    borderColor: "border-amber-200 dark:border-amber-800",
-  },
-  {
-    value: "expired",
-    label: "Farmaco scaduto / deteriorato",
-    description: "Il farmaco è scaduto o si è deteriorato e deve essere eliminato senza registrare una presa.",
-    icon: CircleAlert,
-    color: "text-red-600",
-    bgColor: "bg-red-50 dark:bg-red-950/30",
-    borderColor: "border-red-200 dark:border-red-800",
-  },
-  {
-    value: "hospital",
-    label: "Ricovero / sospensione ospedaliera",
-    description: "Il paziente è ricoverato e le scorte vengono gestite in ospedale per un periodo.",
-    icon: Hospital,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50 dark:bg-blue-950/30",
-    borderColor: "border-blue-200 dark:border-blue-800",
-  },
-  {
-    value: "manual_loss",
-    label: "Altro / perdita generica",
-    description: "Qualsiasi altra causa di riduzione non pianificata della scorta.",
-    icon: ShieldAlert,
-    color: "text-purple-600",
-    bgColor: "bg-purple-50 dark:bg-purple-950/30",
-    borderColor: "border-purple-200 dark:border-purple-800",
-  },
-];
 
 /* ─── Guide ────────────────────────────────────────────────────────────── */
 
@@ -284,7 +223,6 @@ function ExceptionsPage() {
   const [selectedPatientId, setSelectedPatientId] = useState(patients[0]?.id ?? "");
   const [selectedTherapyId, setSelectedTherapyId] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [selectedReason, setSelectedReason] = useState<StockAdjustmentReason>("breakage");
   const [loading, setLoading] = useState(false);
   const [lastSuccess, setLastSuccess] = useState<{
     therapyName: string;
@@ -302,8 +240,6 @@ function ExceptionsPage() {
   );
 
   const selectedTherapy = activeTherapies.find((t) => t.id === selectedTherapyId);
-  const reasonOption = REASON_OPTIONS.find((r) => r.value === selectedReason)!;
-  const ReasonIcon = reasonOption.icon;
 
   const handlePatientChange = (patientId: string) => {
     setSelectedPatientId(patientId);
@@ -322,7 +258,7 @@ function ExceptionsPage() {
       const { newPillsRemaining } = await adjustStockManually(
         selectedTherapyId,
         quantity,
-        selectedReason,
+        "manual_loss",
       );
       // Sincronizza lo stato locale nel store
       await updateTherapy(selectedTherapyId, { pillsRemaining: newPillsRemaining });
@@ -359,8 +295,10 @@ function ExceptionsPage() {
           <div>
             <p className="font-semibold text-sm text-foreground">Gestione situazioni impreviste</p>
             <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-              Qui puoi scalare le scorte manualmente per cause eccezionali (farmaci rotti, scaduti, dose doppia
-              accidentale, ricovero). Per sospendere o modificare una terapia, usa le guide nella sezione "Come fare".
+              Questa pagina serve per due cose diverse: <strong className="text-foreground">scalare le scorte a mano</strong>{" "}
+              quando delle dosi vanno perse fuori dalla routine normale (sezione qui sotto), oppure{" "}
+              <strong className="text-foreground">seguire una guida passo-passo</strong> per sospensioni, cambi
+              dosaggio, ricoveri e sostituzioni di farmaco (sezione più in basso).
             </p>
           </div>
         </div>
@@ -382,6 +320,34 @@ function ExceptionsPage() {
               </h2>
               <p className="text-xs text-muted-foreground">Riduci le scorte per cause non legate a una presa regolare</p>
             </div>
+          </div>
+
+          {/* Spiegazione: come e perché usare questa funzione */}
+          <div className="rounded-2xl border border-border/60 bg-muted/30 p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <Info className="size-4 text-primary flex-shrink-0" />
+              <p className="text-sm font-semibold text-foreground">Perché usarla</p>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Usa questa funzione ogni volta che la quantità reale di farmaco disponibile è diversa da quella
+              registrata nell'app, per una causa <strong className="text-foreground">non legata a una presa regolare</strong>:
+              una compressa o fiala rotta o caduta, una dose doppia presa per errore, un farmaco scaduto o
+              deteriorato da eliminare, una degenza in ospedale dove le dosi vengono gestite dal personale sanitario,
+              o qualsiasi altra perdita imprevista.
+            </p>
+            <div className="flex items-center gap-2 pt-1">
+              <ListChecks className="size-4 text-primary flex-shrink-0" />
+              <p className="text-sm font-semibold text-foreground">Come funziona</p>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Seleziona il paziente, la terapia interessata e la quantità di dosi/compresse da togliere dalla
+              scorta, poi premi <strong className="text-foreground">"Scala scorte"</strong>. Le dosi indicate vengono{" "}
+              <strong className="text-foreground">sottratte subito dalla scorta residua</strong> della terapia, esattamente
+              come se fossero state consumate — ma{" "}
+              <strong className="text-foreground">senza registrare una presa</strong>: il calendario, i promemoria e
+              il punteggio di aderenza del paziente non vengono toccati. Se le scorte scendono sotto la soglia
+              minima, riceverai comunque l'allerta automatica come di consueto.
+            </p>
           </div>
 
           <div className="rounded-2xl border border-border/60 bg-surface/60 p-5 space-y-5">
@@ -446,48 +412,6 @@ function ExceptionsPage() {
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
               )}
-            </div>
-
-            {/* Selettore motivo */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Motivo della riduzione
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {REASON_OPTIONS.map((opt) => {
-                  const Icon = opt.icon;
-                  const active = selectedReason === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      onClick={() => setSelectedReason(opt.value)}
-                      className={cn(
-                        "flex items-start gap-3 rounded-xl border p-3 text-left transition-all duration-150",
-                        active
-                          ? `${opt.bgColor} ${opt.borderColor} shadow-sm ring-1 ring-inset ring-current/10`
-                          : "border-border bg-background hover:border-border/80 hover:bg-muted/30",
-                      )}
-                    >
-                      <Icon
-                        className={cn("mt-0.5 size-4 flex-shrink-0", active ? opt.color : "text-muted-foreground")}
-                      />
-                      <span
-                        className={cn(
-                          "text-xs font-semibold leading-tight",
-                          active ? opt.color : "text-foreground",
-                        )}
-                      >
-                        {opt.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {/* Descrizione motivo */}
-              <p className={cn("text-xs px-3 py-2 rounded-xl border", reasonOption.bgColor, reasonOption.borderColor, reasonOption.color)}>
-                <ReasonIcon className="inline size-3.5 mr-1.5 -mt-0.5" />
-                {reasonOption.description}
-              </p>
             </div>
 
             {/* Quantità */}

@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Download,
   HeartPulse,
+  Hospital,
   KeyRound,
   LayoutDashboard,
   Lock,
@@ -14,10 +15,12 @@ import {
   Plus,
   Shield,
   ShieldCheck,
+  ShieldAlert,
   Smartphone,
   UserCheck,
   Users,
   Wifi,
+  Wrench,
   CalendarPlus,
 } from "lucide-react";
 
@@ -160,6 +163,33 @@ export function GuidaContent() {
               description='Solo tu e gli altri caregiver collegati allo stesso paziente tramite codice invito. Vedi la scheda "Privacy & famiglia" per i dettagli su come funziona il collegamento e come restano protetti i dati.'
             />
           </div>
+
+        <SectionTitle>Eccezioni & Imprevisti</SectionTitle>
+        <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-warning/15 text-warning">
+              <Wrench className="size-4" />
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              La pagina <strong className="text-foreground">Eccezioni & Imprevisti</strong> è il punto di
+              riferimento per tutto ciò che esce dalla routine normale di una terapia: dosi perse, dosaggi
+              cambiati dal medico, ricoveri, farmaci sostitutivi. È accessibile solo al caregiver primario del
+              paziente.
+            </p>
+          </div>
+          <Divider />
+          <GuideRow
+            icon={ShieldAlert}
+            title="Scalare le scorte manualmente"
+            description="Quando la quantità reale di farmaco non corrisponde più a quella registrata per una causa eccezionale (compressa rotta o caduta, dose doppia presa per errore, farmaco scaduto, degenza ospedaliera, o altra perdita imprevista), seleziona paziente, terapia e quantità e premi 'Scala scorte'. Le dosi vengono sottratte subito dalla scorta residua, ma senza registrare una presa: calendario, promemoria e aderenza del paziente restano invariati."
+          />
+          <Divider />
+          <GuideRow
+            icon={Hospital}
+            title="Guide passo-passo per le altre eccezioni"
+            description="Nella stessa pagina trovi anche guide pratiche per: sospendere temporaneamente una terapia, gestire un cambio di dosaggio prescritto dal medico, interrompere definitivamente una cura, registrare l'acquisto di una nuova confezione, gestire un ricovero ospedaliero e sostituire temporaneamente un farmaco con un equivalente."
+          />
+        </div>
       </TabsContent>
 
       {/* ─────────────── PAZIENTE ─────────────── */}
