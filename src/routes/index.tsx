@@ -220,6 +220,13 @@ function LandingPage() {
 
       {/* FOOTER: footer completo, visibile solo prima del login */}
       {!loadingAuth && !user && <SiteFooter />}
+
+      <OnboardingTour
+        open={tourOpen}
+        onOpenChange={setTourOpen}
+        role={tourRole}
+        allowNavigation={!!user}
+      />
     </div>
   );
 }
