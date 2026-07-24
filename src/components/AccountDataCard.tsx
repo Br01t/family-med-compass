@@ -140,9 +140,10 @@ export function AccountDataCard() {
             variant="destructive"
             onClick={() => {
               setConfirmText("");
+              setConfirmChecked(false);
               setConfirmOpen(true);
             }}
-            disabled={deleting}
+            disabled={deleting || exporting}
           >
             <Trash2 className="mr-2 size-4" />
             Elimina account
@@ -150,32 +151,69 @@ export function AccountDataCard() {
         </div>
       </div>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          if (deleting) return; // blocca chiusura durante l'operazione
+          setConfirmOpen(open);
+          if (!open) {
+            setConfirmText("");
+            setConfirmChecked(false);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confermi l'eliminazione?</AlertDialogTitle>
             <AlertDialogDescription>
               Questa azione è <b>irreversibile</b>. Tutti i tuoi dati verranno
-              cancellati dal database e non potranno essere recuperati.
+              cancellati dal database e <b>tutte le sessioni attive su ogni
+              dispositivo verranno revocate immediatamente</b>.
               <br />
               <br />
-              Per confermare, digita <b>{requiredWord}</b> qui sotto.
+              Per confermare, completa entrambi i passaggi qui sotto.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="confirm-delete">Conferma</Label>
-            <Input
-              id="confirm-delete"
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder={requiredWord}
-              autoComplete="off"
-            />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="confirm-delete">
+                1. Digita <b>{requiredWord}</b> per confermare
+              </Label>
+              <Input
+                id="confirm-delete"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder={requiredWord}
+                autoComplete="off"
+                disabled={deleting}
+              />
+            </div>
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
+              <Checkbox
+                id="confirm-check"
+                checked={confirmChecked}
+                onCheckedChange={(v) => setConfirmChecked(v === true)}
+                disabled={deleting}
+                className="mt-0.5"
+              />
+              <Label
+                htmlFor="confirm-check"
+                className="text-xs font-normal leading-relaxed text-muted-foreground"
+              >
+                2. Ho compreso che questa operazione è <b>definitiva e
+                irreversibile</b>: i miei dati saranno cancellati e verrò
+                disconnesso da tutti i dispositivi.
+              </Label>
+            </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Annulla</AlertDialogCancel>
             <AlertDialogAction
-              disabled={deleting || confirmText.trim() !== requiredWord}
+              disabled={
+                deleting ||
+                confirmText.trim() !== requiredWord ||
+                !confirmChecked
+              }
               onClick={(e) => {
                 e.preventDefault();
                 void handleDelete();
