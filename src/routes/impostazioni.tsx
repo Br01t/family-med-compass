@@ -7,6 +7,7 @@ import { signUpUser } from "@/lib/auth-service";
 import { AppShell } from "@/components/AppShell";
 import { PatientShell } from "@/components/PatientShell";
 import { FamilyInviteCard } from "@/components/FamilyInviteCard";
+import { AccountDataCard } from "@/components/AccountDataCard";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -87,6 +88,7 @@ function SettingsPage() {
           </section>
           {myPatient && <FamilyInviteCard patientId={myPatient.id} />}
           <InstallCard />
+          <AccountDataCard />
           <InfoAssistenzaCard />
         </div>
       </PatientShell>
@@ -157,6 +159,8 @@ function SettingsPage() {
         </section>
 
         <InstallCard />
+
+        {user && userProfile && <AccountDataCard />}
 
         <InfoAssistenzaCard />
 
