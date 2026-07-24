@@ -114,7 +114,7 @@ export function AccountDataCard() {
             className="mt-3 w-full"
             variant="outline"
             onClick={handleExport}
-            disabled={exporting}
+            disabled={exporting || deleting}
           >
             {exporting ? "Preparazione..." : "Scarica JSON"}
           </Button>
