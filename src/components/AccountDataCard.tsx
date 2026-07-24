@@ -28,6 +28,7 @@ export function AccountDataCard() {
   const [deleting, setDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [confirmChecked, setConfirmChecked] = useState(false);
 
   async function handleExport() {
     if (!supabase) return;
