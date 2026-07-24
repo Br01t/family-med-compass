@@ -64,9 +64,20 @@ export function AccountDataCard() {
     try {
       const { error } = await supabase.rpc("delete_my_account");
       if (error) throw error;
-      toast.success("Account eliminato definitivamente.");
+      // Revoca esplicita di tutte le sessioni/token su ogni dispositivo.
+      // La cancellazione di auth.users elimina già in cascata sessions e
+      // refresh_tokens lato server, ma chiamiamo comunque signOut global
+      // (best-effort) per invalidare eventuali token ancora in cache locale
+      // su altri client aperti.
+      try {
+        await supabase.auth.signOut({ scope: "global" });
+      } catch {
+        // Il token potrebbe essere già invalido dopo la delete: ignoriamo.
+      }
+      toast.success("Account eliminato definitivamente.", {
+        description: "Tutte le sessioni sono state revocate.",
+      });
       await logout();
-      // Ricarico la pagina per pulire ogni stato residuo
       if (typeof window !== "undefined") window.location.href = "/";
     } catch (err: any) {
       toast.error("Eliminazione fallita", { description: err?.message });
