@@ -1,6 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Bell, Home, LogOut, Pill, Settings } from "lucide-react";
+import { Activity, Bell, Home, LogOut, Pill, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppFooter } from "@/components/AppFooter";
 import { useFamilyMed } from "@/lib/store";
@@ -14,9 +14,11 @@ import { cn } from "@/lib/utils";
 const PATIENT_NAV = [
   { to: "/paziente", label: "Home", icon: Home },
   { to: "/le-mie-terapie", label: "Terapie", icon: Pill },
+  { to: "/parametri", label: "Parametri", icon: Activity },
   { to: "/notifiche", label: "Notifiche", icon: Bell },
   { to: "/impostazioni", label: "Account", icon: Settings },
 ] as const;
+
 
 export function PatientShell({
   title,

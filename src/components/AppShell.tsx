@@ -1,6 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
+  Activity,
   AlertTriangle,
   Bell,
   BookOpen,
@@ -13,6 +14,7 @@ import {
   Users,
   Wrench,
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import { useFamilyMed } from "@/lib/store";
 import {
@@ -38,7 +40,9 @@ const nav = [
   { title: "Terapie", url: "/terapie", icon: Pill },
   { title: "Dose da confermare", url: "/dose-da-confermare", icon: AlertTriangle },
   { title: "Storico & Report", url: "/storico-report", icon: PieChart },
+  { title: "Parametri vitali", url: "/parametri", icon: Activity },
   { title: "Scorte", url: "/scorte", icon: Package },
+
   { title: "Notifiche", url: "/notifiche", icon: Bell },
   { title: "Eccezioni & Imprevisti", url: "/eccezioni", icon: Wrench },
   { title: "Guida", url: "/guida", icon: BookOpen },
