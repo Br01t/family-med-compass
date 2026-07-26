@@ -175,7 +175,7 @@ function VitalSignsPage() {
     const pulseNum = pulse ? parseInt(pulse, 10) : undefined;
 
     setSaving(true);
-    const { error } = await supabase.from("vital_signs").insert({
+    const { error } = await (supabase as any).from("vital_signs").insert({
       patient_id: patientId,
       kind,
       value_primary: primary,
@@ -197,7 +197,7 @@ function VitalSignsPage() {
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("vital_signs").delete().eq("id", id);
+    const { error } = await (supabase as any).from("vital_signs").delete().eq("id", id);
     if (error) {
       toast.error("Impossibile eliminare", { description: error.message });
       return;

@@ -18,6 +18,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegistratiRouteImport } from './routes/registrati'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PazienteRouteImport } from './routes/paziente'
+import { Route as ParametriRouteImport } from './routes/parametri'
 import { Route as NotificheRouteImport } from './routes/notifiche'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeMieTerapieRouteImport } from './routes/le-mie-terapie'
@@ -75,6 +76,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const PazienteRoute = PazienteRouteImport.update({
   id: '/paziente',
   path: '/paziente',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParametriRoute = ParametriRouteImport.update({
+  id: '/parametri',
+  path: '/parametri',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificheRoute = NotificheRouteImport.update({
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/le-mie-terapie': typeof LeMieTerapieRoute
   '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
+  '/parametri': typeof ParametriRoute
   '/paziente': typeof PazienteRoute
   '/privacy': typeof PrivacyRoute
   '/registrati': typeof RegistratiRoute
@@ -179,6 +186,7 @@ export interface FileRoutesByTo {
   '/le-mie-terapie': typeof LeMieTerapieRoute
   '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
+  '/parametri': typeof ParametriRoute
   '/paziente': typeof PazienteRoute
   '/privacy': typeof PrivacyRoute
   '/registrati': typeof RegistratiRoute
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/le-mie-terapie': typeof LeMieTerapieRoute
   '/login': typeof LoginRoute
   '/notifiche': typeof NotificheRoute
+  '/parametri': typeof ParametriRoute
   '/paziente': typeof PazienteRoute
   '/privacy': typeof PrivacyRoute
   '/registrati': typeof RegistratiRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/le-mie-terapie'
     | '/login'
     | '/notifiche'
+    | '/parametri'
     | '/paziente'
     | '/privacy'
     | '/registrati'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/le-mie-terapie'
     | '/login'
     | '/notifiche'
+    | '/parametri'
     | '/paziente'
     | '/privacy'
     | '/registrati'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/le-mie-terapie'
     | '/login'
     | '/notifiche'
+    | '/parametri'
     | '/paziente'
     | '/privacy'
     | '/registrati'
@@ -303,6 +315,7 @@ export interface RootRouteChildren {
   LeMieTerapieRoute: typeof LeMieTerapieRoute
   LoginRoute: typeof LoginRoute
   NotificheRoute: typeof NotificheRoute
+  ParametriRoute: typeof ParametriRoute
   PazienteRoute: typeof PazienteRoute
   PrivacyRoute: typeof PrivacyRoute
   RegistratiRoute: typeof RegistratiRoute
@@ -379,6 +392,13 @@ declare module '@tanstack/react-router' {
       path: '/paziente'
       fullPath: '/paziente'
       preLoaderRoute: typeof PazienteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/parametri': {
+      id: '/parametri'
+      path: '/parametri'
+      fullPath: '/parametri'
+      preLoaderRoute: typeof ParametriRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifiche': {
@@ -487,6 +507,7 @@ const rootRouteChildren: RootRouteChildren = {
   LeMieTerapieRoute: LeMieTerapieRoute,
   LoginRoute: LoginRoute,
   NotificheRoute: NotificheRoute,
+  ParametriRoute: ParametriRoute,
   PazienteRoute: PazienteRoute,
   PrivacyRoute: PrivacyRoute,
   RegistratiRoute: RegistratiRoute,
@@ -502,13 +523,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
