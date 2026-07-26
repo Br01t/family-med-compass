@@ -130,7 +130,7 @@ function VitalSignsPage() {
   const fetchRows = async () => {
     if (!patientId) return;
     setLoading(true);
-    const { data: res, error } = await supabase
+    const { data: res, error } = await (supabase as any)
       .from("vital_signs")
       .select("*")
       .eq("patient_id", patientId)
@@ -141,7 +141,8 @@ function VitalSignsPage() {
       toast.error("Impossibile caricare le misurazioni", { description: error.message });
       return;
     }
-    setRows((res ?? []) as VitalRow[]);
+    setRows(((res ?? []) as unknown) as VitalRow[]);
+
   };
 
   useEffect(() => {
