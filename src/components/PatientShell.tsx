@@ -1,6 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Bell, Home, LogOut, Pill, Settings } from "lucide-react";
+import { Activity, Bell, Home, LogOut, Pill, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppFooter } from "@/components/AppFooter";
 import { useFamilyMed } from "@/lib/store";
@@ -14,9 +14,11 @@ import { cn } from "@/lib/utils";
 const PATIENT_NAV = [
   { to: "/paziente", label: "Home", icon: Home },
   { to: "/le-mie-terapie", label: "Terapie", icon: Pill },
+  { to: "/parametri", label: "Parametri", icon: Activity },
   { to: "/notifiche", label: "Notifiche", icon: Bell },
   { to: "/impostazioni", label: "Account", icon: Settings },
 ] as const;
+
 
 export function PatientShell({
   title,
@@ -74,7 +76,7 @@ export function PatientShell({
 
       {/* Bottom nav: solo sezioni per il paziente */}
       <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-border/60 bg-background/95 backdrop-blur">
-        <ul className="mx-auto grid max-w-xl grid-cols-4">
+        <ul className="mx-auto grid max-w-xl grid-cols-5">
           {PATIENT_NAV.map((item) => {
             const active =
               item.to === "/paziente"
