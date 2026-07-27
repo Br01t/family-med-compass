@@ -106,6 +106,19 @@ function startOfDay(d: Date) {
   return x;
 }
 
+// Solo le colonne effettivamente usate in UI/PDF: evitiamo `select("*")"
+// che scaricherebbe anche created_at/updated_at inutilizzati.
+const VITAL_COLUMNS =
+  "id,patient_id,kind,value_primary,value_secondary,pulse,unit,measured_at,notes,created_by";
+
+// Cache in-memory (per sessione di tab) per paziente: i parametri vitali
+// non hanno canale realtime (coerente col resto dell'app, vedi
+// MIGRATION_egress_realtime_e_stats_giornaliere.sql), quindi non serve
+// rifare la query ogni volta che si torna sulla pagina o si cambia
+// paziente e si torna indietro entro pochi minuti.
+const VITALS_CACHE = new Map<string, { rows: VitalRow[]; fetchedAt: number }>();
+const VITALS_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minuti
+
 function VitalSignsPage() {
   const { data, user, userProfile } = useFamilyMed();
   const isPatient = userProfile?.role === "paziente";
@@ -137,12 +150,20 @@ function VitalSignsPage() {
 
   const currentPatient = data.patients.find((p) => p.id === patientId);
 
-  const fetchRows = async () => {
+  const fetchRows = async (opts?: { force?: boolean }) => {
     if (!patientId) return;
+
+    // Serve dalla cache se ancora fresca: 0 chiamate al DB.
+    const cached = VITALS_CACHE.get(patientId);
+    if (!opts?.force && cached && Date.now() - cached.fetchedAt < VITALS_CACHE_TTL_MS) {
+      setRows(cached.rows);
+      return;
+    }
+
     setLoading(true);
     const { data: res, error } = await (supabase as any)
       .from("vital_signs")
-      .select("*")
+      .select(VITAL_COLUMNS)
       .eq("patient_id", patientId)
       .order("measured_at", { ascending: false })
       .limit(500);
@@ -151,7 +172,9 @@ function VitalSignsPage() {
       toast.error("Impossibile caricare le misurazioni", { description: error.message });
       return;
     }
-    setRows(((res ?? []) as unknown) as VitalRow[]);
+    const next = ((res ?? []) as unknown) as VitalRow[];
+    VITALS_CACHE.set(patientId, { rows: next, fetchedAt: Date.now() });
+    setRows(next);
   };
 
   useEffect(() => {
@@ -185,17 +208,24 @@ function VitalSignsPage() {
     const pulseNum = pulse ? parseInt(pulse, 10) : undefined;
 
     setSaving(true);
-    const { error } = await (supabase as any).from("vital_signs").insert({
-      patient_id: patientId,
-      kind,
-      value_primary: primary,
-      value_secondary: secondary ?? null,
-      pulse: Number.isFinite(pulseNum as number) ? pulseNum : null,
-      unit: KINDS[kind].unit,
-      measured_at: new Date(measuredAt).toISOString(),
-      notes: note.trim() || null,
-      created_by: user?.id ?? null,
-    });
+    // `.select().single()` fa tornare la riga appena creata nella stessa
+    // chiamata: niente bisogno di un secondo round-trip (fetchRows) solo
+    // per rileggere quello che abbiamo appena scritto.
+    const { data: inserted, error } = await (supabase as any)
+      .from("vital_signs")
+      .insert({
+        patient_id: patientId,
+        kind,
+        value_primary: primary,
+        value_secondary: secondary ?? null,
+        pulse: Number.isFinite(pulseNum as number) ? pulseNum : null,
+        unit: KINDS[kind].unit,
+        measured_at: new Date(measuredAt).toISOString(),
+        notes: note.trim() || null,
+        created_by: user?.id ?? null,
+      })
+      .select(VITAL_COLUMNS)
+      .single();
     setSaving(false);
     if (error) {
       toast.error("Errore nel salvataggio", { description: error.message });
@@ -203,7 +233,13 @@ function VitalSignsPage() {
     }
     toast.success("Misurazione registrata");
     resetForm();
-    fetchRows();
+    setRows((r) => {
+      const next = [...r, inserted as VitalRow].sort(
+        (a, b) => new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime(),
+      );
+      if (patientId) VITALS_CACHE.set(patientId, { rows: next, fetchedAt: Date.now() });
+      return next;
+    });
   };
 
   const remove = async (id: string) => {
@@ -213,7 +249,11 @@ function VitalSignsPage() {
       return;
     }
     toast.success("Misurazione eliminata");
-    setRows((r) => r.filter((x) => x.id !== id));
+    setRows((r) => {
+      const next = r.filter((x) => x.id !== id);
+      if (patientId) VITALS_CACHE.set(patientId, { rows: next, fetchedAt: Date.now() });
+      return next;
+    });
   };
 
   // Range temporale in base al periodo
@@ -459,6 +499,14 @@ function VitalSignsPage() {
             </Select>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => fetchRows({ force: true })}
+              disabled={!patientId || loading}
+              title="Ricarica dal server (ignora la cache)"
+            >
+              {loading ? "Aggiorno…" : "Aggiorna"}
+            </Button>
             <Button variant="outline" onClick={exportPdf} disabled={!currentPatient}>
               <FileDown className="mr-2 size-4" />
               PDF ({KINDS[kind].label})
