@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Activity, Droplet, HeartPulse, Scale, Trash2, Plus, Wind } from "lucide-react";
+import { Activity, Droplet, HeartPulse, Scale, Trash2, Plus, Wind, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import {
   LineChart,
@@ -10,6 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  Legend,
 } from "recharts";
 
 import { AppShell } from "@/components/AppShell";
@@ -28,6 +29,12 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useFamilyMed } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import {
+  downloadVitalSignsPdf,
+  movingAverage,
+  type VitalKind,
+  type VitalRow,
+} from "@/lib/vital-signs-report";
 
 export const Route = createFileRoute("/parametri")({
   head: () => ({
@@ -48,20 +55,7 @@ export const Route = createFileRoute("/parametri")({
   component: VitalSignsPage,
 });
 
-type Kind = "blood_pressure" | "glycemia" | "weight" | "saturation";
-
-type VitalRow = {
-  id: string;
-  patient_id: string;
-  kind: Kind;
-  value_primary: number;
-  value_secondary: number | null;
-  pulse: number | null;
-  unit: string | null;
-  measured_at: string;
-  notes: string | null;
-  created_by: string | null;
-};
+type Kind = VitalKind;
 
 const KINDS: Record<
   Kind,
@@ -97,6 +91,21 @@ const KINDS: Record<
   },
 };
 
+type PeriodKey = "7" | "30" | "90" | "all";
+
+const PERIOD_LABELS: Record<PeriodKey, string> = {
+  "7": "Ultimi 7 giorni",
+  "30": "Ultimi 30 giorni",
+  "90": "Ultimi 90 giorni",
+  all: "Tutto lo storico",
+};
+
+function startOfDay(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
 function VitalSignsPage() {
   const { data, user, userProfile } = useFamilyMed();
   const isPatient = userProfile?.role === "paziente";
@@ -112,6 +121,7 @@ function VitalSignsPage() {
   }, [defaultPatient, patientId]);
 
   const [kind, setKind] = useState<Kind>("blood_pressure");
+  const [period, setPeriod] = useState<PeriodKey>("30");
   const [rows, setRows] = useState<VitalRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -135,14 +145,13 @@ function VitalSignsPage() {
       .select("*")
       .eq("patient_id", patientId)
       .order("measured_at", { ascending: false })
-      .limit(200);
+      .limit(500);
     setLoading(false);
     if (error) {
       toast.error("Impossibile caricare le misurazioni", { description: error.message });
       return;
     }
     setRows(((res ?? []) as unknown) as VitalRow[]);
-
   };
 
   useEffect(() => {
@@ -207,23 +216,81 @@ function VitalSignsPage() {
     setRows((r) => r.filter((x) => x.id !== id));
   };
 
-  const filtered = useMemo(() => rows.filter((r) => r.kind === kind), [rows, kind]);
+  // Range temporale in base al periodo
+  const { fromDate, toDate } = useMemo(() => {
+    const to = new Date();
+    if (period === "all") {
+      const oldest = rows.length
+        ? new Date(rows[rows.length - 1].measured_at)
+        : new Date(to.getFullYear(), to.getMonth() - 3, to.getDate());
+      return { fromDate: startOfDay(oldest), toDate: to };
+    }
+    const days = parseInt(period, 10);
+    const from = new Date();
+    from.setDate(from.getDate() - days + 1);
+    return { fromDate: startOfDay(from), toDate: to };
+  }, [period, rows]);
 
-  const chartData = useMemo(
+  const inPeriod = useMemo(
     () =>
-      [...filtered]
-        .reverse()
-        .slice(-30)
-        .map((r) => ({
-          t: new Date(r.measured_at).toLocaleDateString("it-IT", {
-            day: "2-digit",
-            month: "2-digit",
-          }),
-          v: Number(r.value_primary),
-          v2: r.value_secondary != null ? Number(r.value_secondary) : undefined,
-        })),
-    [filtered],
+      rows.filter((r) => {
+        const t = new Date(r.measured_at).getTime();
+        return t >= fromDate.getTime() && t <= toDate.getTime();
+      }),
+    [rows, fromDate, toDate],
   );
+
+  const filtered = useMemo(
+    () => inPeriod.filter((r) => r.kind === kind),
+    [inPeriod, kind],
+  );
+
+  // Aggregazione giornaliera (media del giorno) per grafico + media mobile 7gg
+  const chartData = useMemo(() => {
+    if (!filtered.length) return [] as Array<{
+      t: string;
+      v?: number;
+      v2?: number;
+      ma?: number | null;
+      ma2?: number | null;
+    }>;
+    // raggruppa per giorno YYYY-MM-DD
+    const byDay = new Map<string, { sum1: number; sum2: number; n1: number; n2: number }>();
+    for (const r of filtered) {
+      const d = new Date(r.measured_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const b = byDay.get(key) ?? { sum1: 0, sum2: 0, n1: 0, n2: 0 };
+      b.sum1 += Number(r.value_primary);
+      b.n1 += 1;
+      if (r.value_secondary != null) {
+        b.sum2 += Number(r.value_secondary);
+        b.n2 += 1;
+      }
+      byDay.set(key, b);
+    }
+    const keys = [...byDay.keys()].sort();
+    const values1 = keys.map((k) => {
+      const b = byDay.get(k)!;
+      return b.n1 ? b.sum1 / b.n1 : null;
+    });
+    const values2 = keys.map((k) => {
+      const b = byDay.get(k)!;
+      return b.n2 ? b.sum2 / b.n2 : null;
+    });
+    const window = period === "7" ? 3 : 7;
+    const ma1 = movingAverage(values1, window);
+    const ma2 = movingAverage(values2, window);
+    return keys.map((k, i) => {
+      const d = new Date(k);
+      return {
+        t: d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" }),
+        v: values1[i] != null ? Number(values1[i]!.toFixed(1)) : undefined,
+        v2: values2[i] != null ? Number(values2[i]!.toFixed(1)) : undefined,
+        ma: ma1[i] != null ? Number(ma1[i]!.toFixed(1)) : null,
+        ma2: ma2[i] != null ? Number(ma2[i]!.toFixed(1)) : null,
+      };
+    });
+  }, [filtered, period]);
 
   const latestByKind = useMemo(() => {
     const map: Partial<Record<Kind, VitalRow>> = {};
@@ -232,6 +299,56 @@ function VitalSignsPage() {
     }
     return map;
   }, [rows]);
+
+  // Trend settimanale (variazione media ultima settimana vs precedente, filtrato per periodo)
+  const trend = useMemo(() => {
+    if (filtered.length < 2) return null;
+    const now = Date.now();
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const lastWeek: number[] = [];
+    const prevWeek: number[] = [];
+    for (const r of filtered) {
+      const age = now - new Date(r.measured_at).getTime();
+      const v = Number(r.value_primary);
+      if (age <= weekMs) lastWeek.push(v);
+      else if (age <= 2 * weekMs) prevWeek.push(v);
+    }
+    if (!lastWeek.length || !prevWeek.length) return null;
+    const avg = (a: number[]) => a.reduce((s, x) => s + x, 0) / a.length;
+    const cur = avg(lastWeek);
+    const prev = avg(prevWeek);
+    const delta = cur - prev;
+    const pct = (delta / prev) * 100;
+    return { cur, prev, delta, pct };
+  }, [filtered]);
+
+  const exportPdf = () => {
+    if (!currentPatient) return;
+    if (inPeriod.length === 0) {
+      toast.error("Nessuna misurazione nel periodo selezionato");
+      return;
+    }
+    downloadVitalSignsPdf(currentPatient, rows, {
+      from: fromDate,
+      to: toDate,
+      kinds: [kind],
+    });
+    toast.success("Report PDF generato");
+  };
+
+  const exportAllPdf = () => {
+    if (!currentPatient) return;
+    if (inPeriod.length === 0) {
+      toast.error("Nessuna misurazione nel periodo selezionato");
+      return;
+    }
+    downloadVitalSignsPdf(currentPatient, rows, {
+      from: fromDate,
+      to: toDate,
+      kinds: ["blood_pressure", "glycemia", "weight", "saturation"],
+    });
+    toast.success("Report PDF generato");
+  };
 
   const body = (
     <div className="space-y-6">
@@ -303,6 +420,72 @@ function VitalSignsPage() {
           );
         })}
       </div>
+
+      {/* Filtri + Export */}
+      <section className="rounded-2xl border bg-card p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-[180px] flex-1">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              Periodo
+            </Label>
+            <Select value={period} onValueChange={(v) => setPeriod(v as PeriodKey)}>
+              <SelectTrigger className="mt-2">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(PERIOD_LABELS) as PeriodKey[]).map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {PERIOD_LABELS[p]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-[180px] flex-1">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              Tipo parametro
+            </Label>
+            <Select value={kind} onValueChange={(v) => setKind(v as Kind)}>
+              <SelectTrigger className="mt-2">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(KINDS) as Kind[]).map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {KINDS[k].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={exportPdf} disabled={!currentPatient}>
+              <FileDown className="mr-2 size-4" />
+              PDF ({KINDS[kind].label})
+            </Button>
+            <Button onClick={exportAllPdf} disabled={!currentPatient}>
+              <FileDown className="mr-2 size-4" />
+              PDF completo
+            </Button>
+          </div>
+        </div>
+        {trend && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Trend settimanale ({KINDS[kind].label}):{" "}
+            <span
+              className={cn(
+                "font-semibold",
+                trend.delta > 0 ? "text-orange-600" : trend.delta < 0 ? "text-emerald-600" : "",
+              )}
+            >
+              {trend.delta > 0 ? "▲" : trend.delta < 0 ? "▼" : "→"}{" "}
+              {Math.abs(trend.delta).toFixed(1)} {KINDS[kind].unit} ({trend.pct >= 0 ? "+" : ""}
+              {trend.pct.toFixed(1)}%)
+            </span>{" "}
+            rispetto alla settimana precedente.
+          </p>
+        )}
+      </section>
 
       {/* Form inserimento */}
       <section className="rounded-2xl border bg-card p-5">
@@ -384,24 +567,31 @@ function VitalSignsPage() {
         </div>
       </section>
 
-      {/* Grafico */}
+      {/* Grafico con media mobile */}
       <section className="rounded-2xl border bg-card p-5">
         <div className="mb-3 flex items-center gap-2">
           <Activity className="size-4 text-primary" />
-          <h2 className="text-base font-bold">Andamento — ultimi 30 valori</h2>
+          <h2 className="text-base font-bold">
+            Andamento — {PERIOD_LABELS[period].toLowerCase()}
+          </h2>
         </div>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Media giornaliera con media mobile a {period === "7" ? "3" : "7"} giorni per
+          evidenziare il trend.
+        </p>
         {chartData.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            Nessuna misurazione registrata per {KINDS[kind].label.toLowerCase()}.
+            Nessuna misurazione registrata per {KINDS[kind].label.toLowerCase()} nel periodo.
           </p>
         ) : (
-          <div className="h-64 w-full">
+          <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="t" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} domain={["auto", "auto"]} />
                 <Tooltip />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line
                   type="monotone"
                   dataKey="v"
@@ -410,15 +600,35 @@ function VitalSignsPage() {
                   dot={{ r: 3 }}
                   name={kind === "blood_pressure" ? "Sistolica" : KINDS[kind].label}
                 />
+                <Line
+                  type="monotone"
+                  dataKey="ma"
+                  stroke={KINDS[kind].color}
+                  strokeDasharray="5 4"
+                  strokeWidth={2}
+                  dot={false}
+                  name={kind === "blood_pressure" ? "Media mobile sist." : "Media mobile"}
+                />
                 {kind === "blood_pressure" && (
-                  <Line
-                    type="monotone"
-                    dataKey="v2"
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    name="Diastolica"
-                  />
+                  <>
+                    <Line
+                      type="monotone"
+                      dataKey="v2"
+                      stroke="#6366f1"
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                      name="Diastolica"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="ma2"
+                      stroke="#6366f1"
+                      strokeDasharray="5 4"
+                      strokeWidth={2}
+                      dot={false}
+                      name="Media mobile diast."
+                    />
+                  </>
                 )}
               </LineChart>
             </ResponsiveContainer>
@@ -428,11 +638,13 @@ function VitalSignsPage() {
 
       {/* Storico */}
       <section className="rounded-2xl border bg-card p-5">
-        <h2 className="mb-3 text-base font-bold">Storico misurazioni</h2>
+        <h2 className="mb-3 text-base font-bold">
+          Storico misurazioni — {PERIOD_LABELS[period].toLowerCase()}
+        </h2>
         {loading ? (
           <p className="text-sm text-muted-foreground">Caricamento…</p>
         ) : filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nessuna misurazione.</p>
+          <p className="text-sm text-muted-foreground">Nessuna misurazione nel periodo.</p>
         ) : (
           <ul className="divide-y">
             {filtered.map((r) => {
