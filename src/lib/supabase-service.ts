@@ -946,6 +946,35 @@ export async function updateCaregiverRelationship(
   invalidateCaregiverCaches(patientId);
 }
 
+/**
+ * Promuove un caregiver a "principale" per un paziente.
+ * RLS: consentito solo se l'utente corrente è owner/paziente/primario
+ * (policy "patients: primary or self update" + funzione is_primary_of).
+ */
+export async function promoteCaregiverToPrimary(
+  patientId: string,
+  caregiverId: string,
+): Promise<void> {
+  if (!supabase) throw new Error("Supabase non configurato");
+  const { error } = await supabase
+    .from("patients")
+    .update({ primary_caregiver_id: caregiverId })
+    .eq("id", patientId);
+  if (error) throw error;
+  invalidateCaregiverCaches(patientId);
+}
+
+/** Rimuove un caregiver dal gruppo. RLS: primario può rimuovere secondari;
+ *  ogni caregiver può rimuovere se stesso (unfollow).  */
+export async function removeCaregiverFromPatient(
+  patientId: string,
+  caregiverId: string,
+): Promise<void> {
+  await unfollowPatient(caregiverId, patientId);
+  invalidateCaregiverCaches(patientId);
+}
+
+
 
 /* =========================================================
    MANUAL STOCK ADJUSTMENT (eccezioni e imprevisti)
