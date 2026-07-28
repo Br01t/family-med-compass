@@ -857,10 +857,13 @@ export interface AuditLogEntry {
   patientId: string | null;
   tableName: string;
   recordId: string;
-  action: "INSERT" | "UPDATE" | "DELETE" | "VIEW";
+  action: string;
   actorId: string | null;
+  actorName: string | null;
+  summary: string;
   changedFields: string[] | null;
   detail: Record<string, unknown> | null;
+  meta: Record<string, unknown> | null;
   createdAt: string;
 }
 
@@ -868,15 +871,19 @@ function mapAuditEntry(row: any): AuditLogEntry {
   return {
     id: row.id,
     patientId: row.patient_id,
-    tableName: row.table_name,
-    recordId: row.record_id,
+    tableName: row.table_name ?? row.entity_type ?? "",
+    recordId: row.record_id ?? row.entity_id ?? "",
     action: row.action,
     actorId: row.actor_id,
-    changedFields: row.changed_fields,
-    detail: row.detail,
+    actorName: row.actor_name ?? null,
+    summary: row.summary ?? "",
+    changedFields: row.changed_fields ?? null,
+    detail: row.detail ?? null,
+    meta: row.meta ?? null,
     createdAt: row.created_at,
   };
 }
+
 
 // Dedup client-side: se abbiamo già segnalato la visualizzazione di questo
 // paziente negli ultimi 30 minuti, non ripetiamo nemmeno la chiamata di rete.
@@ -908,7 +915,7 @@ export async function fetchPatientAuditLog(
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("audit_log")
-    .select("id, patient_id, table_name, record_id, action, actor_id, changed_fields, detail, created_at")
+    .select("id, patient_id, actor_id, actor_name, action, entity_type, entity_id, summary, meta, created_at")
     .eq("patient_id", patientId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -945,6 +952,35 @@ export async function updateCaregiverRelationship(
   // Invalida la cache locale dei caregiver per forzare il rinfresco
   invalidateCaregiverCaches(patientId);
 }
+
+/**
+ * Promuove un caregiver a "principale" per un paziente.
+ * RLS: consentito solo se l'utente corrente è owner/paziente/primario
+ * (policy "patients: primary or self update" + funzione is_primary_of).
+ */
+export async function promoteCaregiverToPrimary(
+  patientId: string,
+  caregiverId: string,
+): Promise<void> {
+  if (!supabase) throw new Error("Supabase non configurato");
+  const { error } = await supabase
+    .from("patients")
+    .update({ primary_caregiver_id: caregiverId })
+    .eq("id", patientId);
+  if (error) throw error;
+  invalidateCaregiverCaches(patientId);
+}
+
+/** Rimuove un caregiver dal gruppo. RLS: primario può rimuovere secondari;
+ *  ogni caregiver può rimuovere se stesso (unfollow).  */
+export async function removeCaregiverFromPatient(
+  patientId: string,
+  caregiverId: string,
+): Promise<void> {
+  await unfollowPatient(caregiverId, patientId);
+  invalidateCaregiverCaches(patientId);
+}
+
 
 
 /* =========================================================
