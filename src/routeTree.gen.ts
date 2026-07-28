@@ -32,6 +32,7 @@ import { Route as CaregiverRouteImport } from './routes/caregiver'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PazientiIndexRouteImport } from './routes/pazienti.index'
 import { Route as PazientiIdRouteImport } from './routes/pazienti.$id'
+import { Route as PazientiIdFamigliaRouteImport } from './routes/pazienti.$id.famiglia'
 
 const TerminiRoute = TerminiRouteImport.update({
   id: '/termini',
@@ -148,6 +149,11 @@ const PazientiIdRoute = PazientiIdRouteImport.update({
   path: '/pazienti/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PazientiIdFamigliaRoute = PazientiIdFamigliaRouteImport.update({
+  id: '/famiglia',
+  path: '/famiglia',
+  getParentRoute: () => PazientiIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -171,8 +177,9 @@ export interface FileRoutesByFullPath {
   '/storico-report': typeof StoricoReportRoute
   '/terapie': typeof TerapieRoute
   '/termini': typeof TerminiRoute
-  '/pazienti/$id': typeof PazientiIdRoute
+  '/pazienti/$id': typeof PazientiIdRouteWithChildren
   '/pazienti/': typeof PazientiIndexRoute
+  '/pazienti/$id/famiglia': typeof PazientiIdFamigliaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -196,8 +203,9 @@ export interface FileRoutesByTo {
   '/storico-report': typeof StoricoReportRoute
   '/terapie': typeof TerapieRoute
   '/termini': typeof TerminiRoute
-  '/pazienti/$id': typeof PazientiIdRoute
+  '/pazienti/$id': typeof PazientiIdRouteWithChildren
   '/pazienti': typeof PazientiIndexRoute
+  '/pazienti/$id/famiglia': typeof PazientiIdFamigliaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -222,8 +230,9 @@ export interface FileRoutesById {
   '/storico-report': typeof StoricoReportRoute
   '/terapie': typeof TerapieRoute
   '/termini': typeof TerminiRoute
-  '/pazienti/$id': typeof PazientiIdRoute
+  '/pazienti/$id': typeof PazientiIdRouteWithChildren
   '/pazienti/': typeof PazientiIndexRoute
+  '/pazienti/$id/famiglia': typeof PazientiIdFamigliaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -251,6 +260,7 @@ export interface FileRouteTypes {
     | '/termini'
     | '/pazienti/$id'
     | '/pazienti/'
+    | '/pazienti/$id/famiglia'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -276,6 +286,7 @@ export interface FileRouteTypes {
     | '/termini'
     | '/pazienti/$id'
     | '/pazienti'
+    | '/pazienti/$id/famiglia'
   id:
     | '__root__'
     | '/'
@@ -301,6 +312,7 @@ export interface FileRouteTypes {
     | '/termini'
     | '/pazienti/$id'
     | '/pazienti/'
+    | '/pazienti/$id/famiglia'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -325,7 +337,7 @@ export interface RootRouteChildren {
   StoricoReportRoute: typeof StoricoReportRoute
   TerapieRoute: typeof TerapieRoute
   TerminiRoute: typeof TerminiRoute
-  PazientiIdRoute: typeof PazientiIdRoute
+  PazientiIdRoute: typeof PazientiIdRouteWithChildren
   PazientiIndexRoute: typeof PazientiIndexRoute
 }
 
@@ -492,8 +504,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PazientiIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pazienti/$id/famiglia': {
+      id: '/pazienti/$id/famiglia'
+      path: '/famiglia'
+      fullPath: '/pazienti/$id/famiglia'
+      preLoaderRoute: typeof PazientiIdFamigliaRouteImport
+      parentRoute: typeof PazientiIdRoute
+    }
   }
 }
+
+interface PazientiIdRouteChildren {
+  PazientiIdFamigliaRoute: typeof PazientiIdFamigliaRoute
+}
+
+const PazientiIdRouteChildren: PazientiIdRouteChildren = {
+  PazientiIdFamigliaRoute: PazientiIdFamigliaRoute,
+}
+
+const PazientiIdRouteWithChildren = PazientiIdRoute._addFileChildren(
+  PazientiIdRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -517,7 +548,7 @@ const rootRouteChildren: RootRouteChildren = {
   StoricoReportRoute: StoricoReportRoute,
   TerapieRoute: TerapieRoute,
   TerminiRoute: TerminiRoute,
-  PazientiIdRoute: PazientiIdRoute,
+  PazientiIdRoute: PazientiIdRouteWithChildren,
   PazientiIndexRoute: PazientiIndexRoute,
 }
 export const routeTree = rootRouteImport

@@ -857,10 +857,13 @@ export interface AuditLogEntry {
   patientId: string | null;
   tableName: string;
   recordId: string;
-  action: "INSERT" | "UPDATE" | "DELETE" | "VIEW";
+  action: string;
   actorId: string | null;
+  actorName: string | null;
+  summary: string;
   changedFields: string[] | null;
   detail: Record<string, unknown> | null;
+  meta: Record<string, unknown> | null;
   createdAt: string;
 }
 
@@ -868,15 +871,19 @@ function mapAuditEntry(row: any): AuditLogEntry {
   return {
     id: row.id,
     patientId: row.patient_id,
-    tableName: row.table_name,
-    recordId: row.record_id,
+    tableName: row.table_name ?? row.entity_type ?? "",
+    recordId: row.record_id ?? row.entity_id ?? "",
     action: row.action,
     actorId: row.actor_id,
-    changedFields: row.changed_fields,
-    detail: row.detail,
+    actorName: row.actor_name ?? null,
+    summary: row.summary ?? "",
+    changedFields: row.changed_fields ?? null,
+    detail: row.detail ?? null,
+    meta: row.meta ?? null,
     createdAt: row.created_at,
   };
 }
+
 
 // Dedup client-side: se abbiamo già segnalato la visualizzazione di questo
 // paziente negli ultimi 30 minuti, non ripetiamo nemmeno la chiamata di rete.
