@@ -915,8 +915,6 @@ export async function fetchPatientAuditLog(
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("audit_log")
-  const { data, error } = await supabase
-    .from("audit_log")
     .select("id, patient_id, actor_id, actor_name, action, entity_type, entity_id, summary, meta, created_at")
     .eq("patient_id", patientId)
     .order("created_at", { ascending: false })
