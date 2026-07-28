@@ -216,11 +216,29 @@ function PatientDetail() {
             </Button>
           </div>
 
-          {user && patient.ownerUserId === user.id && (
-            <FamilyInviteCard patientId={patient.id} />
-          )}
+          <Button variant="outline" className="mt-4 w-full" asChild>
+              <Link to="/terapie">Gestisci terapie</Link>
+            </Button>
+          </div>
 
-          <CaregiversCard patientId={patient.id} primaryCaregiverId={patient.primaryCaregiverId} />
+          <Link
+            to="/pazienti/$id/famiglia"
+            params={{ id: patient.id }}
+            className="group block rounded-3xl border border-border/60 bg-card p-6 shadow-card transition-colors hover:border-primary/60"
+          >
+            <div className="flex items-center gap-3">
+              <div className="grid size-11 place-items-center rounded-xl bg-primary-soft text-primary">
+                <Users className="size-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-lg font-black tracking-tight">Gruppo di cura</h3>
+                <p className="text-xs text-muted-foreground">
+                  Membri, ruoli, inviti e registro attività di {patient.name}.
+                </p>
+              </div>
+              <ChevronRight className="size-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+            </div>
+          </Link>
         </aside>
       </div>
     </AppShell>
