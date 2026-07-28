@@ -163,8 +163,13 @@ Deno.serve(async (req) => {
   const horizon = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const past = new Date(now.getTime() - 30 * 60 * 1000);
 
+  // Solo le colonne che servono a buildDoseTimes(): niente dosage/photo/
+  // reminder settings qui, richiesti più sotto solo per gli eventi che
+  // superano i filtri temporali (join mirato in selectCols).
   const { data: therapies, error: tErr } = await sb
-    .from("therapies").select("*").eq("active", true).eq("suspended", false);
+    .from("therapies")
+    .select("id, patient_id, times, recurrence, start_date, end_date")
+    .eq("active", true).eq("suspended", false);
   if (tErr) return new Response(`therapies error: ${tErr.message}`, { status: 500 });
 
   // Genera dosi future mancanti
@@ -191,12 +196,21 @@ Deno.serve(async (req) => {
   // richiederle avrebbe solo aggiunto byte inutili a 5 query ogni minuto.
   const selectCols = "id, therapy_id, patient_id, scheduled_at, status, stage, snoozed_until, final_due_at, therapies(name, quantity, dosage, timeout_minutes, snooze_minutes, post_reminder_minutes, reminder_intervals), patients(name, user_id)";
 
-  // REMINDER_PRE
-  const { data: preEvents } = await sb.from("events").select(selectCols)
+  // REMINDER_PRE + DUE + REMINDER_POST: le tre finestre (rispettivamente
+  // [now, horizon], [now-60s, now+90s], [now-30min, now-60s]) sono tutte
+  // contenute in [now-30min, horizon]. Prima erano 3 query quasi identiche
+  // (stesso status, stessi join) eseguite ogni minuto: ora è UNA sola query
+  // e i controlli per-evento restano IDENTICI a prima (nessuna condizione
+  // tolta), applicati in memoria — stesso comportamento, un terzo delle
+  // query verso PostgREST.
+  const { data: scheduledEvents } = await sb.from("events").select(selectCols)
     .in("status", ["scheduled"])
-    .gte("scheduled_at", now.toISOString())
+    .gte("scheduled_at", past.toISOString())
     .lte("scheduled_at", horizon.toISOString());
-  for (const ev of (preEvents ?? []) as any[]) {
+  const evs = (scheduledEvents ?? []) as any[];
+
+  // REMINDER_PRE
+  for (const ev of evs) {
     const th = ev.therapies; const pt = ev.patients;
     const before = reminderBeforeMin(th);
     const diffMin = (new Date(ev.scheduled_at).getTime() - now.getTime()) / 60000;
@@ -211,12 +225,12 @@ Deno.serve(async (req) => {
     });
   }
 
-  // DUE (ora esatta ±90s)
-  const { data: dueEvents } = await sb.from("events").select(selectCols)
-    .in("status", ["scheduled"])
-    .gte("scheduled_at", new Date(now.getTime() - 60_000).toISOString())
-    .lte("scheduled_at", new Date(now.getTime() + 90_000).toISOString());
-  for (const ev of (dueEvents ?? []) as any[]) {
+  // DUE (ora esatta ±90s) — la query non filtra più a questo range da
+  // sola, quindi il controllo che prima faceva il WHERE lo rifacciamo qui,
+  // identico nei limiti (-60s / +90s).
+  for (const ev of evs) {
+    const diffMs = new Date(ev.scheduled_at).getTime() - now.getTime();
+    if (diffMs < -60_000 || diffMs > 90_000) continue;
     const th = ev.therapies; const pt = ev.patients;
     await sb.from("events").update({ stage: "due" }).eq("id", ev.id).in("status", ["scheduled"]);
     await notifyBoth(sb, ev, pt, th, {
@@ -230,11 +244,7 @@ Deno.serve(async (req) => {
   }
 
   // REMINDER_POST: dopo N minuti dall'orario, se ancora scheduled/due
-  const { data: postEvents } = await sb.from("events").select(selectCols)
-    .in("status", ["scheduled"])
-    .lte("scheduled_at", new Date(now.getTime() - 60_000).toISOString())
-    .gte("scheduled_at", new Date(now.getTime() - 30 * 60_000).toISOString());
-  for (const ev of (postEvents ?? []) as any[]) {
+  for (const ev of evs) {
     const th = ev.therapies; const pt = ev.patients;
     const postMin = Math.max(1, Number(th?.post_reminder_minutes ?? 5));
     const elapsed = (now.getTime() - new Date(ev.scheduled_at).getTime()) / 60000;
@@ -280,7 +290,7 @@ Deno.serve(async (req) => {
     .in("status", ["scheduled", "snoozed"])
     .lte("scheduled_at", new Date(now.getTime() - 5 * 60_000).toISOString());
   for (const ev of (pendingEvents ?? []) as any[]) {
-    const th = ev.therapies; const pt = ev.patients;
+    const th = ev.therapies;
     const timeoutMin = Number(th?.timeout_minutes ?? 10);
     const postMin = Math.max(1, Number(th?.post_reminder_minutes ?? 5));
     const scheduledMs = new Date(ev.scheduled_at).getTime();
@@ -294,21 +304,18 @@ Deno.serve(async (req) => {
       : scheduledMs + timeoutMin * 60_000;
     if (now.getTime() < hardDeadline) continue;
 
+    // Nota: NON chiamiamo notifyBoth() qui. Il trigger DB
+    // trg_dose_status_change scatta automaticamente su questo UPDATE
+    // (status -> 'missed') e crea già le notifiche a paziente e
+    // caregiver — vedi supabase/migrations/20260718151217_...sql.
+    // Farlo anche qui creava notifiche duplicate (dose_key diverso:
+    // timestamp formattato da JS vs da Postgres) e una query in più
+    // su caregiver_patients ad ogni dose persa.
     await sb.from("events").update({
       status: "missed",
       stage: "missed",
       timeline: [{ at: now.toISOString(), kind: "missed", message: "Dose non confermata entro il tempo massimo" }],
     }).eq("id", ev.id).in("status", ["scheduled", "snoozed"]);
-
-    await notifyBoth(sb, ev, pt, th, {
-      kind: "missed",
-      severity: "alert",
-      patientTitle: `Cura dimenticata: ${th?.name ?? "farmaco"}`,
-      patientBody: `La dose delle ${romeHM(ev.scheduled_at)} è stata segnata come dimenticata. Probabilmente verrai contattato da un familiare.`,
-      caregiverTitle: `${pt?.name ?? "Paziente"} non ha preso ${th?.name ?? "il farmaco"} (dimenticata)`,
-      caregiverBody: `Dose delle ${romeHM(ev.scheduled_at)} — segnata come dimenticata dopo il tempo massimo. Contatta il paziente e conferma la dose dalla pagina "Dose da confermare".`,
-      notifyCaregiver: true,
-    });
   }
 
   return new Response(JSON.stringify({ ok: true, at: now.toISOString() }), {
