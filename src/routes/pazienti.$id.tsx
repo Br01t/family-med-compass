@@ -216,10 +216,7 @@ function PatientDetail() {
             </Button>
           </div>
 
-          <Button variant="outline" className="mt-4 w-full" asChild>
-              <Link to="/terapie">Gestisci terapie</Link>
-            </Button>
-          </div>
+
 
           <Link
             to="/pazienti/$id/famiglia"
