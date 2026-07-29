@@ -215,28 +215,28 @@ function PatientDetail() {
               <Link to="/terapie">Gestisci terapie</Link>
             </Button>
           </div>
+        </aside>
 
-
-
+        <div className="lg:col-span-12">
           <Link
             to="/pazienti/$id/famiglia"
             params={{ id: patient.id }}
-            className="group block rounded-3xl border border-border/60 bg-card p-6 shadow-card transition-colors hover:border-primary/60"
+            className="group mx-auto block max-w-3xl rounded-3xl border border-border/60 bg-card p-6 shadow-card transition-colors hover:border-primary/60"
           >
-            <div className="flex items-center gap-3">
-              <div className="grid size-11 place-items-center rounded-xl bg-primary-soft text-primary">
-                <Users className="size-5" />
+            <div className="flex items-center gap-4">
+              <div className="grid size-12 place-items-center rounded-xl bg-primary-soft text-primary">
+                <Users className="size-6" />
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="text-lg font-black tracking-tight">Gruppo di cura</h3>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Membri, ruoli, inviti e registro attività di {patient.name}.
                 </p>
               </div>
               <ChevronRight className="size-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
             </div>
           </Link>
-        </aside>
+        </div>
       </div>
     </AppShell>
   );
