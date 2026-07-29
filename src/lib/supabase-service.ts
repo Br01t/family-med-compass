@@ -1330,3 +1330,188 @@ export async function migrateAllTherapyPhotosToStorage(): Promise<{ migrated: nu
   }
   return { migrated, skipped, errors };
 }
+
+/* =========================================================
+   MEDICAL PROFILE
+   Scheda anagrafica e clinica di emergenza.
+   Una riga per paziente; fetch one-shot + cache TTL 5 min.
+   Nessun canale Realtime — zero egress WebSocket aggiuntivo.
+========================================================= */
+
+export type EmergencyContact = {
+  name: string;
+  role: string;  // es. "Medico di Base", "Cardiologo", "Familiare"
+  phone: string;
+};
+
+export type MedicalProfile = {
+  patientId: string;
+  bloodType: string | null;
+  /** Array di allergie/intolleranze. Array vuoto = nessuna allergia nota. */
+  allergies: string[];
+  /** Testo libero patologie e note. Null/vuoto = nessuna patologia registrata. */
+  diagnoses: string | null;
+  emergencyContacts: EmergencyContact[];
+  notes: string | null;
+  updatedAt: string | null;
+  updatedBy: string | null;
+};
+
+// Cache TTL 5 minuti: la scheda medica cambia raramente
+const medicalProfileCache = makeTTLCache<string, MedicalProfile | null>(5 * 60 * 1000);
+
+function mapMedicalProfileRow(row: any): MedicalProfile {
+  return {
+    patientId: row.patient_id,
+    bloodType: row.blood_type ?? null,
+    allergies: Array.isArray(row.allergies) ? row.allergies : [],
+    diagnoses: row.diagnoses ?? null,
+    emergencyContacts: Array.isArray(row.emergency_contacts) ? row.emergency_contacts : [],
+    notes: row.notes ?? null,
+    updatedAt: row.updated_at ?? null,
+    updatedBy: row.updated_by ?? null,
+  };
+}
+
+/**
+ * Fetch one-shot della scheda medica per paziente.
+ * Restituisce `null` se non ancora compilata (profilo inesistente).
+ * I risultati sono cachati per 5 minuti per minimizzare le query al DB.
+ */
+export async function fetchMedicalProfile(patientId: string): Promise<MedicalProfile | null> {
+  if (!isReady(patientId)) return null;
+
+  const cached = medicalProfileCache.get(patientId);
+  if (cached !== undefined) return cached;  // null incluso (profilo vuoto già verificato)
+
+  const { data, error } = await supabase!
+    .from("patient_medical_profiles")
+    .select("patient_id, blood_type, allergies, diagnoses, emergency_contacts, notes, updated_at, updated_by")
+    .eq("patient_id", patientId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[fetchMedicalProfile] errore:", error);
+    return null;
+  }
+
+  const result = data ? mapMedicalProfileRow(data) : null;
+  medicalProfileCache.set(patientId, result);
+  return result;
+}
+
+/**
+ * UPSERT della scheda medica (insert se non esiste, update se esiste).
+ * Una sola chiamata al DB. Invalida la cache locale dopo il salvataggio.
+ */
+export async function saveMedicalProfile(
+  patientId: string,
+  profile: Omit<MedicalProfile, "patientId" | "updatedAt" | "updatedBy">,
+): Promise<{ error: string | null }> {
+  if (!isReady(patientId)) return { error: "Non autenticato" };
+
+  const { error } = await supabase!
+    .from("patient_medical_profiles")
+    .upsert(
+      {
+        patient_id: patientId,
+        blood_type: profile.bloodType || null,
+        allergies: profile.allergies,
+        diagnoses: profile.diagnoses || null,
+        emergency_contacts: profile.emergencyContacts,
+        notes: profile.notes || null,
+      },
+      { onConflict: "patient_id" },
+    );
+
+  if (error) {
+    console.error("[saveMedicalProfile] errore:", error);
+    return { error: error.message };
+  }
+
+  medicalProfileCache.delete(patientId);
+  return { error: null };
+}
+
+/**
+ * Elimina la scheda medica del paziente.
+ * Solo il caregiver primario è autorizzato (RLS lato DB).
+ */
+export async function deleteMedicalProfile(patientId: string): Promise<{ error: string | null }> {
+  if (!isReady(patientId)) return { error: "Non autenticato" };
+
+  const { error } = await supabase!
+    .from("patient_medical_profiles")
+    .delete()
+    .eq("patient_id", patientId);
+
+  if (error) {
+    console.error("[deleteMedicalProfile] errore:", error);
+    return { error: error.message };
+  }
+
+  medicalProfileCache.delete(patientId);
+  return { error: null };
+}
+
+/** Invalida la cache della scheda medica (es. dopo realtime o navigazione). */
+export function invalidateMedicalProfileCache(patientId?: string) {
+  if (patientId) {
+    medicalProfileCache.delete(patientId);
+  } else {
+    medicalProfileCache.clear();
+  }
+}
+
+/* =========================================================
+   RESET STORICO PAZIENTE
+   Chiama la RPC atomica `reset_patient_history` che in una
+   singola transazione PostgreSQL elimina eventi, notifiche e
+   stock_movements, e reimposta pills_remaining sulle terapie.
+   Solo il caregiver primario è autorizzato (verifica interna DB).
+========================================================= */
+
+export type ResetPatientHistoryResult = {
+  ok: boolean;
+  eventsDeleted: number;
+  notifDeleted: number;
+  stockDeleted: number;
+  error: string | null;
+};
+
+/**
+ * Azzera lo storico operativo del paziente (dosi, notifiche, movimenti scorta).
+ * Mantiene intatti: anagrafica, terapie (configurazione), caregiver, scheda medica.
+ * L'autorizzazione è verificata lato DB — genera errore se non si è il primario.
+ */
+export async function resetPatientHistory(
+  patientId: string,
+): Promise<ResetPatientHistoryResult> {
+  if (!isReady(patientId)) {
+    return { ok: false, eventsDeleted: 0, notifDeleted: 0, stockDeleted: 0, error: "Non autenticato" };
+  }
+
+  const { data, error } = await supabase!.rpc("reset_patient_history", {
+    _patient_id: patientId,
+  });
+
+  if (error) {
+    console.error("[resetPatientHistory] errore:", error);
+    return {
+      ok: false,
+      eventsDeleted: 0,
+      notifDeleted: 0,
+      stockDeleted: 0,
+      error: error.message,
+    };
+  }
+
+  const d = data as any;
+  return {
+    ok: true,
+    eventsDeleted: d?.events_deleted ?? 0,
+    notifDeleted: d?.notif_deleted ?? 0,
+    stockDeleted: d?.stock_deleted ?? 0,
+    error: null,
+  };
+}
