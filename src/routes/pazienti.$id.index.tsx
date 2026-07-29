@@ -147,11 +147,37 @@ function PatientDetail() {
               })}
             </div>
           </div>
+
+          <div className="lg:col-span-12">
+          <Link
+            to="/pazienti/$id/famiglia"
+            params={{ id: patient.id }}
+            className="group mx-auto block max-w-3xl rounded-3xl border border-border/60 bg-card p-6 shadow-card transition-colors hover:border-primary/60"
+          >
+            <div className="flex items-center gap-4">
+              <div className="grid size-12 place-items-center rounded-xl bg-primary-soft text-primary">
+                <Users className="size-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-lg font-black tracking-tight">Gruppo di cura</h3>
+                <p className="text-sm text-muted-foreground">
+                  Membri, ruoli, inviti e registro attività di {patient.name}.
+                </p>
+              </div>
+              <ChevronRight className="size-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+            </div>
+          </Link>
+        </div>
         </section>
 
         <aside className="space-y-4 lg:col-span-4">
           <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
-            <h3 className="text-lg font-black tracking-tight">Piano terapeutico</h3>
+            <div className="flex items-center justify-between gap-4">
+              <h3 className="text-lg font-black tracking-tight">Piano terapeutico</h3>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/terapie">Gestisci terapie</Link>
+              </Button>
+            </div>
             <ul className="mt-3 space-y-2">
               {therapies.map((t) => (
                 <li
@@ -211,32 +237,8 @@ function PatientDetail() {
                 </li>
               ))}
             </ul>
-            <Button variant="outline" className="mt-4 w-full" asChild>
-              <Link to="/terapie">Gestisci terapie</Link>
-            </Button>
           </div>
         </aside>
-
-        <div className="lg:col-span-12">
-          <Link
-            to="/pazienti/$id/famiglia"
-            params={{ id: patient.id }}
-            className="group mx-auto block max-w-3xl rounded-3xl border border-border/60 bg-card p-6 shadow-card transition-colors hover:border-primary/60"
-          >
-            <div className="flex items-center gap-4">
-              <div className="grid size-12 place-items-center rounded-xl bg-primary-soft text-primary">
-                <Users className="size-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-lg font-black tracking-tight">Gruppo di cura</h3>
-                <p className="text-sm text-muted-foreground">
-                  Membri, ruoli, inviti e registro attività di {patient.name}.
-                </p>
-              </div>
-              <ChevronRight className="size-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
-            </div>
-          </Link>
-        </div>
       </div>
     </AppShell>
   );
