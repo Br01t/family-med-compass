@@ -40,10 +40,19 @@ ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS created_at  timestamptz NO
 CREATE INDEX IF NOT EXISTS idx_audit_log_patient_created
   ON public.audit_log (patient_id, created_at DESC);
 
--- Rendi opzionali eventuali colonne legacy NOT NULL della vecchia audit_log
+-- Bonifica completa per audit_log preesistenti/legacy:
+-- - vecchie colonne tecniche (es. table_name) non devono bloccare i nuovi log
+-- - vecchi CHECK su action non devono rifiutare le nuove azioni del gruppo di cura
+-- - meta/summary/action/created_at devono avere default sicuri per righe legacy
 DO $$
 DECLARE r record;
 BEGIN
+  UPDATE public.audit_log
+    SET action = coalesce(action, 'legacy_event'),
+        summary = coalesce(summary, 'Evento registrato'),
+        meta = coalesce(meta, '{}'::jsonb),
+        created_at = coalesce(created_at, now());
+
   FOR r IN
     SELECT column_name FROM information_schema.columns
     WHERE table_schema='public' AND table_name='audit_log'
@@ -52,7 +61,29 @@ BEGIN
   LOOP
     EXECUTE format('ALTER TABLE public.audit_log ALTER COLUMN %I DROP NOT NULL', r.column_name);
   END LOOP;
+
+  FOR r IN
+    SELECT c.conname
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public'
+      AND t.relname = 'audit_log'
+      AND c.contype = 'c'
+      AND pg_get_constraintdef(c.oid) ILIKE '%action%'
+  LOOP
+    EXECUTE format('ALTER TABLE public.audit_log DROP CONSTRAINT IF EXISTS %I', r.conname);
+  END LOOP;
 END $$;
+
+ALTER TABLE public.audit_log ALTER COLUMN action SET DEFAULT 'legacy_event';
+ALTER TABLE public.audit_log ALTER COLUMN action SET NOT NULL;
+ALTER TABLE public.audit_log ALTER COLUMN summary SET DEFAULT 'Evento registrato';
+ALTER TABLE public.audit_log ALTER COLUMN summary SET NOT NULL;
+ALTER TABLE public.audit_log ALTER COLUMN meta SET DEFAULT '{}'::jsonb;
+ALTER TABLE public.audit_log ALTER COLUMN meta SET NOT NULL;
+ALTER TABLE public.audit_log ALTER COLUMN created_at SET DEFAULT now();
+ALTER TABLE public.audit_log ALTER COLUMN created_at SET NOT NULL;
 
 -- 2) GRANTS + RLS ------------------------------------------------------
 GRANT SELECT ON public.audit_log TO authenticated;
