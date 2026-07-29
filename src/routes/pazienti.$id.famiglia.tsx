@@ -34,9 +34,8 @@ import { useFamilyMed } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
   createFamilyInvite,
+  fetchFamilyGroupData,
   fetchPatientAuditLog,
-  listCaregiversForPatient,
-  listFamilyInvites,
   promoteCaregiverToPrimary,
   removeCaregiverFromPatient,
   revokeFamilyInvite,
@@ -124,12 +123,13 @@ function FamilyPage() {
     if (!patient) return;
     setLoading(true);
     try {
-      // Tre query in parallelo → un solo round-trip visibile all'utente.
-      const [m, inv, l] = await Promise.all([
-        listCaregiversForPatient(patient.id, patient.primaryCaregiverId ?? null),
-        listFamilyInvites(patient.id),
-        fetchPatientAuditLog(patient.id, AUDIT_PAGE + 1),
-      ]);
+      // Un'unica RPC lato DB al posto di 3 query separate — vedi
+      // MIGRATION_family_group_rpc.sql e fetchFamilyGroupData.
+      const { members: m, invites: inv, logs: l } = await fetchFamilyGroupData(
+        patient.id,
+        patient.primaryCaregiverId ?? null,
+        AUDIT_PAGE + 1,
+      );
       setMembers(m);
       setInvites(inv);
       setLogsHasMore(l.length > AUDIT_PAGE);
@@ -176,15 +176,11 @@ function FamilyPage() {
     try {
       const inv = await createFamilyInvite(patient!.id, 1440, 1);
       toast.success("Codice generato", { description: inv.code });
-      // Ricarica solo inviti + audit (evita di rileggere i membri).
-      const [inv2, l2] = await Promise.all([
-        listFamilyInvites(patient!.id),
-        fetchPatientAuditLog(patient!.id, AUDIT_PAGE + 1),
-      ]);
-      setInvites(inv2);
-      setLogsHasMore(l2.length > AUDIT_PAGE);
-      setLogs(l2.slice(0, AUDIT_PAGE));
-      setLogsPage(1);
+      // createFamilyInvite ritorna già la riga completa: aggiorniamo lo
+      // stato locale invece di rileggere inviti + audit dal DB (0 round
+      // trip aggiuntivi). La riga "invito creato" nel registro attività
+      // comparirà comunque al prossimo caricamento della pagina.
+      setInvites((prev) => [inv, ...prev]);
     } catch (e) {
       toast.error("Impossibile generare il codice", {
         description: e instanceof Error ? e.message : "Riprova.",

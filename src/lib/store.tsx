@@ -151,19 +151,11 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     };
 
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const u = session?.user ?? null;
-      if (!u) {
-        finalizeAuth(null, null);
-        return;
-      }
-
-      getUserProfile(u.id, u)
-        .then((profile) => finalizeAuth(u, profile))
-        .catch(() => finalizeAuth(u, null));
-    });
-
+    // Nota: niente più supabase.auth.getSession() esplicita qui sotto.
+    // onAuthStateChange emette da solo un evento INITIAL_SESSION con la
+    // sessione corrente non appena ci si iscrive (comportamento garantito
+    // da supabase-js v2+): tenere anche la getSession() duplicava ad ogni
+    // avvio il fetch di profilo/pazienti/caregiver/notifiche.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const u = session?.user ?? null;
       if (!u) {

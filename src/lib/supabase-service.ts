@@ -40,14 +40,22 @@ function makeTTLCache<K, V>(ttlMs: number) {
 const caregiverIdsCache = makeTTLCache<string, string[]>(5 * 60 * 1000);
 const caregiverListCache = makeTTLCache<string, import('./mock-data').Patient[]>(5 * 60 * 1000);
 
+// 60 secondi — dati della pagina "Gruppo di cura" (membri+inviti+audit).
+// TTL più corto degli altri perché include gli inviti attivi (hanno una
+// scadenza in minuti/ore) e l'audit log, entrambi più "vivi" della sola
+// lista membri.
+const familyGroupCache = makeTTLCache<string, unknown>(60 * 1000);
+
 /** Invalida le cache dei caregiver quando un invito viene accettato o revocato. */
 export function invalidateCaregiverCaches(patientId?: string) {
   if (patientId) {
     caregiverIdsCache.delete(patientId);
     caregiverListCache.delete(patientId);
+    familyGroupCache.delete(patientId);
   } else {
     caregiverIdsCache.clear();
     caregiverListCache.clear();
+    familyGroupCache.clear();
   }
 }
 
@@ -815,6 +823,7 @@ export async function createFamilyInvite(
     _max_uses: maxUses,
   });
   if (error) throw error;
+  invalidateCaregiverCaches(patientId);
   return mapInvite(data);
 }
 
@@ -845,6 +854,9 @@ export async function revokeFamilyInvite(id: string): Promise<void> {
   if (!supabase) throw new Error("Supabase non configurato");
   const { error } = await supabase.from("family_invites").delete().eq("id", id);
   if (error) throw error;
+  // Non conosciamo il patientId qui: pulizia completa della cache gruppo di
+  // cura. Costo trascurabile, la revoca è un'azione rara.
+  invalidateCaregiverCaches();
 }
 
 /* =========================================================
@@ -1144,6 +1156,66 @@ export async function listCaregiversForPatient(
     });
 
   caregiverListCache.set(cacheKey as any, result as any);
+  return result;
+}
+
+export interface FamilyGroupData {
+  members: PatientCaregiver[];
+  invites: FamilyInvite[];
+  logs: AuditLogEntry[];
+}
+
+/**
+ * Dati completi della pagina "Gruppo di cura" (membri, inviti, audit log)
+ * in un'unica chiamata RPC — vedi MIGRATION_family_group_rpc.sql.
+ * Sostituisce le 3 query separate (caregiver_patients+caregivers,
+ * family_invites, audit_log) con un solo round-trip.
+ */
+export async function fetchFamilyGroupData(
+  patientId: string,
+  primaryCaregiverId?: string | null,
+  auditLimit = 31,
+): Promise<FamilyGroupData> {
+  const empty: FamilyGroupData = { members: [], invites: [], logs: [] };
+  if (!supabase) return empty;
+
+  const cacheKey = `${patientId}:${primaryCaregiverId ?? ""}:${auditLimit}`;
+  const cached = familyGroupCache.get(cacheKey);
+  if (cached) return cached as FamilyGroupData;
+
+  const { data, error } = await supabase.rpc("get_family_group_data", {
+    _patient_id: patientId,
+    _audit_limit: auditLimit,
+  });
+  if (error) {
+    console.warn("[fetchFamilyGroupData]", error.message);
+    return empty;
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return empty;
+
+  const membersRaw = (row.members ?? []) as any[];
+  const members: PatientCaregiver[] = membersRaw
+    .map((m): PatientCaregiver => ({
+      id: m.caregiver_id,
+      name: (m.name as string | null)?.trim() || "Caregiver",
+      relation: m.relation ?? null,
+      photo: m.photo ?? null,
+      relationship: m.relationship,
+      linkedAt: m.created_at,
+      isPrimary: !!primaryCaregiverId && m.caregiver_id === primaryCaregiverId,
+    }))
+    .sort((a, b) => {
+      if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
+      return a.name.localeCompare(b.name, "it");
+    });
+
+  const invites: FamilyInvite[] = ((row.invites ?? []) as any[]).map(mapInvite);
+  const logs: AuditLogEntry[] = ((row.audit_log ?? []) as any[]).map(mapAuditEntry);
+
+  const result: FamilyGroupData = { members, invites, logs };
+  familyGroupCache.set(cacheKey, result);
   return result;
 }
 

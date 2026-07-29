@@ -32,6 +32,7 @@ import { Route as CaregiverRouteImport } from './routes/caregiver'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PazientiIndexRouteImport } from './routes/pazienti.index'
 import { Route as PazientiIdRouteImport } from './routes/pazienti.$id'
+import { Route as PazientiIdIndexRouteImport } from './routes/pazienti.$id.index'
 import { Route as PazientiIdFamigliaRouteImport } from './routes/pazienti.$id.famiglia'
 
 const TerminiRoute = TerminiRouteImport.update({
@@ -149,6 +150,11 @@ const PazientiIdRoute = PazientiIdRouteImport.update({
   path: '/pazienti/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PazientiIdIndexRoute = PazientiIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PazientiIdRoute,
+} as any)
 const PazientiIdFamigliaRoute = PazientiIdFamigliaRouteImport.update({
   id: '/famiglia',
   path: '/famiglia',
@@ -180,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/pazienti/$id': typeof PazientiIdRouteWithChildren
   '/pazienti/': typeof PazientiIndexRoute
   '/pazienti/$id/famiglia': typeof PazientiIdFamigliaRoute
+  '/pazienti/$id/': typeof PazientiIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -203,9 +210,9 @@ export interface FileRoutesByTo {
   '/storico-report': typeof StoricoReportRoute
   '/terapie': typeof TerapieRoute
   '/termini': typeof TerminiRoute
-  '/pazienti/$id': typeof PazientiIdRouteWithChildren
   '/pazienti': typeof PazientiIndexRoute
   '/pazienti/$id/famiglia': typeof PazientiIdFamigliaRoute
+  '/pazienti/$id': typeof PazientiIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -233,6 +240,7 @@ export interface FileRoutesById {
   '/pazienti/$id': typeof PazientiIdRouteWithChildren
   '/pazienti/': typeof PazientiIndexRoute
   '/pazienti/$id/famiglia': typeof PazientiIdFamigliaRoute
+  '/pazienti/$id/': typeof PazientiIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -261,6 +269,7 @@ export interface FileRouteTypes {
     | '/pazienti/$id'
     | '/pazienti/'
     | '/pazienti/$id/famiglia'
+    | '/pazienti/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -284,9 +293,9 @@ export interface FileRouteTypes {
     | '/storico-report'
     | '/terapie'
     | '/termini'
-    | '/pazienti/$id'
     | '/pazienti'
     | '/pazienti/$id/famiglia'
+    | '/pazienti/$id'
   id:
     | '__root__'
     | '/'
@@ -313,6 +322,7 @@ export interface FileRouteTypes {
     | '/pazienti/$id'
     | '/pazienti/'
     | '/pazienti/$id/famiglia'
+    | '/pazienti/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -504,6 +514,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PazientiIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pazienti/$id/': {
+      id: '/pazienti/$id/'
+      path: '/'
+      fullPath: '/pazienti/$id/'
+      preLoaderRoute: typeof PazientiIdIndexRouteImport
+      parentRoute: typeof PazientiIdRoute
+    }
     '/pazienti/$id/famiglia': {
       id: '/pazienti/$id/famiglia'
       path: '/famiglia'
@@ -516,10 +533,12 @@ declare module '@tanstack/react-router' {
 
 interface PazientiIdRouteChildren {
   PazientiIdFamigliaRoute: typeof PazientiIdFamigliaRoute
+  PazientiIdIndexRoute: typeof PazientiIdIndexRoute
 }
 
 const PazientiIdRouteChildren: PazientiIdRouteChildren = {
   PazientiIdFamigliaRoute: PazientiIdFamigliaRoute,
+  PazientiIdIndexRoute: PazientiIdIndexRoute,
 }
 
 const PazientiIdRouteWithChildren = PazientiIdRoute._addFileChildren(
@@ -554,3 +573,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
