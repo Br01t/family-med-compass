@@ -40,6 +40,20 @@ ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS created_at  timestamptz NO
 CREATE INDEX IF NOT EXISTS idx_audit_log_patient_created
   ON public.audit_log (patient_id, created_at DESC);
 
+-- Rendi opzionali eventuali colonne legacy NOT NULL della vecchia audit_log
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN
+    SELECT column_name FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='audit_log'
+      AND is_nullable='NO'
+      AND column_name NOT IN ('id','action','summary','meta','created_at')
+  LOOP
+    EXECUTE format('ALTER TABLE public.audit_log ALTER COLUMN %I DROP NOT NULL', r.column_name);
+  END LOOP;
+END $$;
+
 -- 2) GRANTS + RLS ------------------------------------------------------
 GRANT SELECT ON public.audit_log TO authenticated;
 GRANT ALL    ON public.audit_log TO service_role;
