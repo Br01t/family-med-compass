@@ -26,6 +26,17 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
   created_at   timestamptz NOT NULL DEFAULT now()
 );
 
+-- Se la tabella esisteva già con schema diverso, aggiungi le colonne mancanti
+ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS actor_id    uuid;
+ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS actor_name  text;
+ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS entity_type text;
+ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS entity_id   text;
+ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS summary     text;
+ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS meta        jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS patient_id  text;
+ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS action      text;
+ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS created_at  timestamptz NOT NULL DEFAULT now();
+
 CREATE INDEX IF NOT EXISTS idx_audit_log_patient_created
   ON public.audit_log (patient_id, created_at DESC);
 
