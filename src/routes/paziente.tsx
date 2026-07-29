@@ -67,9 +67,9 @@ function PatientPage() {
   // Tick ogni 30s per aggiornare gli stati derivati (reminder → due → late)
   const [tick, setTick] = useState(0);
   useEffect(() => {
-      const id = setInterval(() => setTick((t) => t + 1), 1000);
-      return () => clearInterval(id);
-    }, []);
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
   const now = new Date();
   void tick;
 

@@ -63,32 +63,45 @@ function computeStatus(
   return "due";
 }
 
+function buildEventMap(events: MedicationEvent[]): Map<string, MedicationEvent> {
+  const map = new Map<string, MedicationEvent>();
+  for (let i = 0; i < events.length; i++) {
+    const e = events[i];
+    if (!e.therapyId || !e.scheduledAt) continue;
+    const ms = Math.round(new Date(e.scheduledAt).getTime() / 60_000) * 60_000;
+    map.set(`${e.therapyId}@${ms}`, e);
+  }
+  return map;
+}
+
 export function getDosesForPatientOnDate(
   data: FamilyMedData,
   patientId: string,
   date: Date,
   now: Date = new Date(),
+  prebuiltEventMap?: Map<string, MedicationEvent>,
 ): ScheduledDose[] {
   const dayStart = new Date(date);
   dayStart.setHours(0, 0, 0, 0);
 
+  const eventMap = prebuiltEventMap ?? buildEventMap(data.events);
+
   const doses: ScheduledDose[] = [];
-  for (const therapy of data.therapies) {
+  for (let i = 0; i < data.therapies.length; i++) {
+    const therapy = data.therapies[i];
     if (therapy.patientId !== patientId) continue;
     if (!therapy.active || therapy.suspended) continue;
     if (!scheduledOnDate(therapy.recurrence, dayStart, therapy.startDate)) continue;
     if (therapy.endDate && new Date(therapy.endDate) < dayStart) continue;
 
-    for (const time of therapy.times) {
+    for (let j = 0; j < therapy.times.length; j++) {
+      const time = therapy.times[j];
       const [h, m] = time.split(":").map(Number);
       const scheduledAt = new Date(dayStart);
       scheduledAt.setHours(h, m, 0, 0);
 
-      const event = data.events.find(
-        (e) =>
-          e.therapyId === therapy.id &&
-          Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000,
-      );
+      const targetMs = Math.round(scheduledAt.getTime() / 60_000) * 60_000;
+      const event = eventMap.get(`${therapy.id}@${targetMs}`);
 
       const status = computeStatus(
         scheduledAt,
@@ -139,13 +152,15 @@ export function getAdherenceForPatient(
   days = 7,
 ): number {
   const now = new Date();
+  const eventMap = buildEventMap(data.events);
   let total = 0;
   let taken = 0;
   for (let i = 0; i < days; i++) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    const doses = getDosesForPatientOnDate(data, patientId, d, now);
-    for (const dose of doses) {
+    const doses = getDosesForPatientOnDate(data, patientId, d, now, eventMap);
+    for (let j = 0; j < doses.length; j++) {
+      const dose = doses[j];
       if (dose.scheduledAt > now) continue;
       total++;
       if (dose.status === "taken") taken++;
