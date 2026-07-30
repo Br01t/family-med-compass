@@ -1,15 +1,25 @@
 -- =====================================================================
---  MIGRATION_famiglia_audit_log.sql
---  Registro attività (audit log) della "famiglia" attorno a un paziente
---  + RPC log_patient_view (già usato da src/lib/supabase-service.ts)
---  + Cleanup periodico
+--  MIGRATION_famiglia_audit_log.sql  (v2 — "solo ciò che serve")
+--  Registro attività (audit log) sicurezza + GDPR attorno a un paziente.
 --
---  OBIETTIVO EGRESS:
---    - Tutti gli inserimenti nell'audit avvengono lato DB tramite trigger
---      SECURITY DEFINER → zero traffico client per la registrazione.
---    - Il client legge solo la lista paginata quando l'utente apre la
---      schermata "Gruppo di lavoro".
---    - Retention 90 giorni (cron giornaliero).
+--  PRINCIPIO: si registra SOLO ciò che è necessario per sicurezza e
+--  accountability GDPR (art. 5.2 / 32), niente cronaca clinica.
+--
+--  REGISTRATO (eventi rari, alto valore):
+--    - therapy_created / therapy_updated / therapy_deleted  (dato sanitario)
+--    - member_added / member_removed                        (accesso ai dati)
+--    - primary_changed                                      (privilegi)
+--    - invite_created / invite_redeemed                     (accesso ai dati)
+--    - patient_viewed                                       (accesso, max 1/24h per utente)
+--    - data_exported / account_deleted                      (diritti GDPR)
+--
+--  NON registrato (rumore ad alto volume, già presente in `events`):
+--    - conferme/rimandi/salti/dimenticanze delle dosi
+--    - variazioni automatiche di scorte (pills_remaining)
+--
+--  EGRESS: tutte le scritture avvengono da trigger SECURITY DEFINER lato
+--  DB (zero traffico client). Il client legge solo la pagina "Gruppo di
+--  lavoro", paginata. Retention 180 giorni.
 -- =====================================================================
 
 -- 1) TABELLA -----------------------------------------------------------
@@ -40,10 +50,16 @@ ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS created_at  timestamptz NO
 CREATE INDEX IF NOT EXISTS idx_audit_log_patient_created
   ON public.audit_log (patient_id, created_at DESC);
 
+-- Indice mirato per il dedup degli accessi (patient_viewed): evita scan
+-- sull'intera tabella ad ogni apertura di scheda paziente.
+CREATE INDEX IF NOT EXISTS idx_audit_log_view_dedup
+  ON public.audit_log (patient_id, actor_id, created_at DESC)
+  WHERE action = 'patient_viewed';
+
 -- Bonifica completa per audit_log preesistenti/legacy:
 -- - vecchie colonne tecniche (es. table_name) non devono bloccare i nuovi log
--- - vecchi CHECK su action non devono rifiutare le nuove azioni del gruppo di cura
--- - meta/summary/action/created_at devono avere default sicuri per righe legacy
+-- - vecchi CHECK su action non devono rifiutare le nuove azioni
+-- - meta/summary/action/created_at devono avere default sicuri
 DO $$
 DECLARE r record;
 BEGIN
@@ -108,8 +124,8 @@ USING (
       )
   )
 );
--- Nessuna policy INSERT/UPDATE/DELETE: l'audit si scrive solo via trigger
--- SECURITY DEFINER (bypassa RLS) → i client non possono manomettere lo storico.
+-- Nessuna policy INSERT/UPDATE/DELETE: l'audit si scrive solo via funzioni
+-- SECURITY DEFINER (bypassano RLS) → i client non possono manomettere lo storico.
 
 -- 3) HELPER: nome umano di un utente -----------------------------------
 CREATE OR REPLACE FUNCTION public.audit_actor_name(_uid uuid)
@@ -121,7 +137,8 @@ AS $$
   FROM public.profiles WHERE id = _uid
 $$;
 
--- 4) TRIGGER: therapies (INSERT / UPDATE / DELETE) ---------------------
+-- 4) TRIGGER: therapies (dato sanitario — INSERT / UPDATE / DELETE) ----
+--    Le variazioni automatiche di scorte NON vengono registrate.
 CREATE OR REPLACE FUNCTION public.trg_audit_therapies()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public AS $$
@@ -135,11 +152,13 @@ BEGIN
     VALUES (NEW.patient_id, v_actor, v_name, 'therapy_created', 'therapy', NEW.id,
             v_name || ' ha aggiunto la terapia "' || NEW.name || '"');
   ELSIF TG_OP = 'UPDATE' THEN
-    IF NEW.dosage         IS DISTINCT FROM OLD.dosage         THEN v_changed := v_changed || jsonb_build_object('dosaggio', jsonb_build_array(OLD.dosage,         NEW.dosage)); END IF;
-    IF NEW.quantity       IS DISTINCT FROM OLD.quantity       THEN v_changed := v_changed || jsonb_build_object('quantità', jsonb_build_array(OLD.quantity,       NEW.quantity)); END IF;
-    IF NEW.times          IS DISTINCT FROM OLD.times          THEN v_changed := v_changed || jsonb_build_object('orari',    jsonb_build_array(OLD.times,          NEW.times)); END IF;
-    IF NEW.suspended      IS DISTINCT FROM OLD.suspended      THEN v_changed := v_changed || jsonb_build_object('sospesa',  jsonb_build_array(OLD.suspended,      NEW.suspended)); END IF;
-    IF NEW.pills_remaining IS DISTINCT FROM OLD.pills_remaining THEN v_changed := v_changed || jsonb_build_object('scorte',jsonb_build_array(OLD.pills_remaining, NEW.pills_remaining)); END IF;
+    IF NEW.name      IS DISTINCT FROM OLD.name      THEN v_changed := v_changed || jsonb_build_object('nome',     jsonb_build_array(OLD.name,      NEW.name)); END IF;
+    IF NEW.dosage    IS DISTINCT FROM OLD.dosage    THEN v_changed := v_changed || jsonb_build_object('dosaggio', jsonb_build_array(OLD.dosage,    NEW.dosage)); END IF;
+    IF NEW.quantity  IS DISTINCT FROM OLD.quantity  THEN v_changed := v_changed || jsonb_build_object('quantità', jsonb_build_array(OLD.quantity,  NEW.quantity)); END IF;
+    IF NEW.times     IS DISTINCT FROM OLD.times     THEN v_changed := v_changed || jsonb_build_object('orari',    jsonb_build_array(OLD.times,     NEW.times)); END IF;
+    IF NEW.suspended IS DISTINCT FROM OLD.suspended THEN v_changed := v_changed || jsonb_build_object('sospesa',  jsonb_build_array(OLD.suspended, NEW.suspended)); END IF;
+    IF NEW.active    IS DISTINCT FROM OLD.active    THEN v_changed := v_changed || jsonb_build_object('attiva',   jsonb_build_array(OLD.active,    NEW.active)); END IF;
+    IF NEW.end_date  IS DISTINCT FROM OLD.end_date  THEN v_changed := v_changed || jsonb_build_object('fine',     jsonb_build_array(OLD.end_date,  NEW.end_date)); END IF;
     IF v_changed = '{}'::jsonb THEN RETURN NEW; END IF;
     INSERT INTO public.audit_log(patient_id, actor_id, actor_name, action, entity_type, entity_id, summary, meta)
     VALUES (NEW.patient_id, v_actor, v_name, 'therapy_updated', 'therapy', NEW.id,
@@ -153,45 +172,24 @@ BEGIN
 END; $$;
 
 DROP TRIGGER IF EXISTS trg_audit_therapies ON public.therapies;
+-- UPDATE limitato alle sole colonne "di merito": un cambio di
+-- pills_remaining (scorte, molto frequente) non sveglia nemmeno il trigger.
 CREATE TRIGGER trg_audit_therapies
-AFTER INSERT OR UPDATE OR DELETE ON public.therapies
+AFTER INSERT OR DELETE OR UPDATE OF name, dosage, quantity, times, suspended, active, end_date
+ON public.therapies
 FOR EACH ROW EXECUTE FUNCTION public.trg_audit_therapies();
 
--- 5) TRIGGER: events (cambi di stato dose) -----------------------------
-CREATE OR REPLACE FUNCTION public.trg_audit_events()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public AS $$
-DECLARE
-  v_actor  uuid := auth.uid();
-  v_name   text := coalesce(public.audit_actor_name(auth.uid()), 'Sistema');
-  v_th     public.therapies%rowtype;
-  v_hhmm   text;
-  v_summary text;
-BEGIN
-  IF TG_OP = 'UPDATE' AND NEW.status = COALESCE(OLD.status, '') THEN RETURN NEW; END IF;
-  IF NEW.status NOT IN ('taken','snoozed','missed','skipped') THEN RETURN NEW; END IF;
-
-  SELECT * INTO v_th FROM public.therapies WHERE id = NEW.therapy_id;
-  v_hhmm := to_char(NEW.scheduled_at AT TIME ZONE 'Europe/Rome','HH24:MI');
-
-  v_summary := CASE NEW.status
-    WHEN 'taken'   THEN v_name || ' ha confermato ' || v_th.name || ' delle ' || v_hhmm
-    WHEN 'snoozed' THEN v_name || ' ha rimandato ' || v_th.name || ' delle ' || v_hhmm
-    WHEN 'skipped' THEN v_name || ' ha saltato ' || v_th.name || ' delle ' || v_hhmm
-    WHEN 'missed'  THEN v_th.name || ' delle ' || v_hhmm || ' non è stata assunta (dimenticata)'
-  END;
-
-  INSERT INTO public.audit_log(patient_id, actor_id, actor_name, action, entity_type, entity_id, summary)
-  VALUES (NEW.patient_id, v_actor, v_name, 'dose_' || NEW.status, 'event', NEW.id, v_summary);
-  RETURN NEW;
-END; $$;
-
+-- 5) NIENTE audit sulle dosi -------------------------------------------
+--    Le conferme/rimandi/salti sono cronaca clinica ad alto volume, già
+--    tracciata in public.events: registrarla di nuovo raddoppierebbe
+--    scritture e storage senza valore per sicurezza/GDPR.
 DROP TRIGGER IF EXISTS trg_audit_events ON public.events;
-CREATE TRIGGER trg_audit_events
-AFTER INSERT OR UPDATE OF status ON public.events
-FOR EACH ROW EXECUTE FUNCTION public.trg_audit_events();
+DROP FUNCTION IF EXISTS public.trg_audit_events();
 
--- 6) TRIGGER: membri del gruppo (caregiver_patients) -------------------
+-- Pulizia dello storico già accumulato con la versione precedente
+DELETE FROM public.audit_log WHERE action LIKE 'dose_%';
+
+-- 6) TRIGGER: membri del gruppo (chi ha accesso ai dati) ---------------
 CREATE OR REPLACE FUNCTION public.trg_audit_caregiver_patients()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public AS $$
@@ -204,7 +202,7 @@ BEGIN
     v_member := coalesce(public.audit_actor_name(NEW.caregiver_id), 'Un caregiver');
     INSERT INTO public.audit_log(patient_id, actor_id, actor_name, action, entity_type, entity_id, summary)
     VALUES (NEW.patient_id, v_actor, v_name, 'member_added', 'caregiver', NEW.caregiver_id::text,
-            v_member || ' è entrato nel gruppo di cura');
+            v_member || ' ha ottenuto accesso ai dati del paziente');
   ELSIF TG_OP = 'DELETE' THEN
     v_member := coalesce(public.audit_actor_name(OLD.caregiver_id), 'Un caregiver');
     INSERT INTO public.audit_log(patient_id, actor_id, actor_name, action, entity_type, entity_id, summary)
@@ -221,25 +219,32 @@ CREATE TRIGGER trg_audit_caregiver_patients
 AFTER INSERT OR DELETE ON public.caregiver_patients
 FOR EACH ROW EXECUTE FUNCTION public.trg_audit_caregiver_patients();
 
--- 7) TRIGGER: creazione codici invito ---------------------------------
+-- 7) TRIGGER: inviti (creazione + utilizzo) ---------------------------
 CREATE OR REPLACE FUNCTION public.trg_audit_family_invites()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public AS $$
-DECLARE v_name text;
+DECLARE v_name text; v_user text;
 BEGIN
-  v_name := coalesce(public.audit_actor_name(NEW.created_by), 'Un caregiver');
-  INSERT INTO public.audit_log(patient_id, actor_id, actor_name, action, entity_type, entity_id, summary)
-  VALUES (NEW.patient_id, NEW.created_by, v_name, 'invite_created', 'invite', NEW.id::text,
-          v_name || ' ha generato un codice invito');
+  IF TG_OP = 'INSERT' THEN
+    v_name := coalesce(public.audit_actor_name(NEW.created_by), 'Un caregiver');
+    INSERT INTO public.audit_log(patient_id, actor_id, actor_name, action, entity_type, entity_id, summary)
+    VALUES (NEW.patient_id, NEW.created_by, v_name, 'invite_created', 'invite', NEW.id::text,
+            v_name || ' ha generato un codice invito');
+  ELSIF NEW.used_by IS NOT NULL AND OLD.used_by IS DISTINCT FROM NEW.used_by THEN
+    v_user := coalesce(public.audit_actor_name(NEW.used_by), 'Un utente');
+    INSERT INTO public.audit_log(patient_id, actor_id, actor_name, action, entity_type, entity_id, summary)
+    VALUES (NEW.patient_id, NEW.used_by, v_user, 'invite_redeemed', 'invite', NEW.id::text,
+            v_user || ' ha utilizzato un codice invito');
+  END IF;
   RETURN NEW;
 END; $$;
 
 DROP TRIGGER IF EXISTS trg_audit_family_invites ON public.family_invites;
 CREATE TRIGGER trg_audit_family_invites
-AFTER INSERT ON public.family_invites
+AFTER INSERT OR UPDATE OF used_by ON public.family_invites
 FOR EACH ROW EXECUTE FUNCTION public.trg_audit_family_invites();
 
--- 8) TRIGGER: cambio caregiver principale -----------------------------
+-- 8) TRIGGER: cambio caregiver principale (privilegi) ------------------
 CREATE OR REPLACE FUNCTION public.trg_audit_patient_primary()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public AS $$
@@ -262,7 +267,10 @@ CREATE TRIGGER trg_audit_patient_primary
 AFTER UPDATE OF primary_caregiver_id ON public.patients
 FOR EACH ROW EXECUTE FUNCTION public.trg_audit_patient_primary();
 
--- 9) RPC: log_patient_view (già usata dal client) ---------------------
+-- 9) RPC: log_patient_view — accesso ai dati sanitari ------------------
+--    Dedup 24h per (paziente, attore): una riga al giorno per utente,
+--    sufficiente a dimostrare "chi ha consultato cosa" senza gonfiare
+--    tabella ed egress.
 CREATE OR REPLACE FUNCTION public.log_patient_view(_patient_id text)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public AS $$
@@ -270,13 +278,12 @@ DECLARE v_recent boolean;
 BEGIN
   IF auth.uid() IS NULL OR _patient_id IS NULL THEN RETURN; END IF;
 
-  -- Dedup lato server: max 1 riga per (paziente, attore) ogni 30 minuti.
   SELECT EXISTS (
     SELECT 1 FROM public.audit_log
     WHERE patient_id = _patient_id
       AND actor_id   = auth.uid()
       AND action     = 'patient_viewed'
-      AND created_at > now() - interval '30 minutes'
+      AND created_at > now() - interval '24 hours'
   ) INTO v_recent;
   IF v_recent THEN RETURN; END IF;
 
@@ -284,17 +291,38 @@ BEGIN
   VALUES (_patient_id, auth.uid(),
           coalesce(public.audit_actor_name(auth.uid()), 'Utente'),
           'patient_viewed', 'patient', _patient_id,
-          coalesce(public.audit_actor_name(auth.uid()), 'Utente') || ' ha aperto la scheda paziente');
+          coalesce(public.audit_actor_name(auth.uid()), 'Utente') || ' ha consultato i dati del paziente');
 END; $$;
 
 REVOKE ALL ON FUNCTION public.log_patient_view(text) FROM public;
 GRANT EXECUTE ON FUNCTION public.log_patient_view(text) TO authenticated;
 
--- 10) CLEANUP periodico (retention 90 giorni) -------------------------
+-- 10) RPC: eventi GDPR (export dati / cancellazione account) ----------
+--     Da chiamare dalle rispettive RPC GDPR o dal client dopo l'azione.
+CREATE OR REPLACE FUNCTION public.log_gdpr_event(_action text, _patient_id text DEFAULT NULL)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public AS $$
+DECLARE v_name text; v_summary text;
+BEGIN
+  IF auth.uid() IS NULL THEN RETURN; END IF;
+  IF _action NOT IN ('data_exported','account_deleted') THEN RETURN; END IF;
+  v_name := coalesce(public.audit_actor_name(auth.uid()), 'Utente');
+  v_summary := CASE _action
+    WHEN 'data_exported'   THEN v_name || ' ha esportato i propri dati (portabilità GDPR)'
+    ELSE                        v_name || ' ha richiesto la cancellazione dell''account'
+  END;
+  INSERT INTO public.audit_log(patient_id, actor_id, actor_name, action, entity_type, entity_id, summary)
+  VALUES (_patient_id, auth.uid(), v_name, _action, 'account', auth.uid()::text, v_summary);
+END; $$;
+
+REVOKE ALL ON FUNCTION public.log_gdpr_event(text, text) FROM public;
+GRANT EXECUTE ON FUNCTION public.log_gdpr_event(text, text) TO authenticated;
+
+-- 11) CLEANUP periodico (retention 180 giorni) ------------------------
 CREATE OR REPLACE FUNCTION public.cleanup_audit_log()
 RETURNS void LANGUAGE sql SECURITY DEFINER
 SET search_path = public AS $$
-  DELETE FROM public.audit_log WHERE created_at < now() - interval '90 days';
+  DELETE FROM public.audit_log WHERE created_at < now() - interval '180 days';
 $$;
 
 -- Suggerito: pianificare la pulizia con pg_cron (una volta al giorno).

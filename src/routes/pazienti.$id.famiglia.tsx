@@ -74,22 +74,18 @@ function relTime(iso: string): string {
 }
 
 function actionTone(action: string): { label: string; className: string } {
-  if (action.startsWith("dose_taken"))
-    return { label: "Conferma", className: "bg-success/15 text-success" };
-  if (action.startsWith("dose_snoozed"))
-    return { label: "Rimando", className: "bg-warning/15 text-warning" };
-  if (action.startsWith("dose_skipped"))
-    return { label: "Saltata", className: "bg-destructive/15 text-destructive" };
-  if (action.startsWith("dose_missed"))
-    return { label: "Dimenticata", className: "bg-destructive/15 text-destructive" };
   if (action.startsWith("therapy_"))
     return { label: "Terapia", className: "bg-primary-soft text-primary" };
-  if (action.startsWith("member_") || action === "primary_changed")
+  if (action === "primary_changed")
+    return { label: "Permessi", className: "bg-warning/15 text-warning" };
+  if (action.startsWith("member_"))
     return { label: "Gruppo", className: "bg-primary/10 text-primary" };
-  if (action === "invite_created")
+  if (action.startsWith("invite_"))
     return { label: "Invito", className: "bg-muted text-muted-foreground" };
   if (action === "patient_viewed")
     return { label: "Accesso", className: "bg-muted text-muted-foreground" };
+  if (action === "data_exported" || action === "account_deleted")
+    return { label: "GDPR", className: "bg-destructive/15 text-destructive" };
   return { label: "Attività", className: "bg-muted text-muted-foreground" };
 }
 

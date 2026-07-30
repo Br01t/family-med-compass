@@ -48,6 +48,11 @@ export function AccountDataCard() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      // Audit GDPR (best-effort, 1 sola riga per esportazione).
+      supabase.rpc("log_gdpr_event", { _action: "data_exported" }).then(
+        () => {},
+        () => {},
+      );
       toast.success("Esportazione completata", {
         description: "Il file JSON è stato scaricato.",
       });
@@ -62,9 +67,14 @@ export function AccountDataCard() {
     if (!supabase) return;
     setDeleting(true);
     try {
+      // Audit GDPR: registrato PRIMA della delete, finché la sessione è valida.
+      try {
+        await supabase.rpc("log_gdpr_event", { _action: "account_deleted" });
+      } catch {
+        // best-effort
+      }
       const { error } = await supabase.rpc("delete_my_account");
       if (error) throw error;
-      // Revoca esplicita di tutte le sessioni/token su ogni dispositivo.
       // La cancellazione di auth.users elimina già in cascata sessions e
       // refresh_tokens lato server, ma chiamiamo comunque signOut global
       // (best-effort) per invalidare eventuali token ancora in cache locale
