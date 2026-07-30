@@ -897,11 +897,10 @@ function mapAuditEntry(row: any): AuditLogEntry {
 }
 
 
-// Dedup client-side: se abbiamo già segnalato la visualizzazione di questo
-// paziente negli ultimi 30 minuti, non ripetiamo nemmeno la chiamata di rete.
-// Lo stesso guard esiste anche lato DB (log_patient_view) come rete di
-// sicurezza, ma evitare la round-trip quando non serve costa zero egress.
-const patientViewLoggedCache = makeTTLCache<string, true>(30 * 60 * 1000);
+// Dedup client-side allineato al DB: una sola registrazione di accesso per
+// paziente ogni 24h. Evita del tutto la round-trip quando non serve (0 egress).
+// Lo stesso guard esiste lato DB (log_patient_view) come rete di sicurezza.
+const patientViewLoggedCache = makeTTLCache<string, true>(24 * 60 * 60 * 1000);
 
 /**
  * Registra che l'utente corrente ha aperto la scheda/lo storico di un paziente.
