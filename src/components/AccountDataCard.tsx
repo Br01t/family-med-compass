@@ -48,6 +48,11 @@ export function AccountDataCard() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      // Audit GDPR (best-effort, 1 sola riga per esportazione).
+      supabase.rpc("log_gdpr_event", { _action: "data_exported" }).then(
+        () => {},
+        () => {},
+      );
       toast.success("Esportazione completata", {
         description: "Il file JSON è stato scaricato.",
       });
