@@ -16,8 +16,8 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { useFamilyMed } from "@/lib/store";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
-import demoVideo from "@/assets/familymed-demo.mp4.asset.json";
-import demoPoster from "@/assets/familymed-demo-poster.jpg.asset.json";
+import demoVideoUrl from "@/assets/familymed-demo.mp4";
+import demoPosterUrl from "@/assets/familymed-demo-poster.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -248,8 +248,8 @@ function LandingPage() {
           <div className="mt-8 overflow-hidden rounded-3xl border border-border/60 bg-card shadow-lift">
             <video
               className="block w-full aspect-video bg-surface-muted"
-              src={demoVideo.url}
-              poster={demoPoster.url}
+              src={demoVideoUrl}
+              poster={demoPosterUrl}
               controls
               playsInline
               preload="none"
