@@ -1,25 +1,95 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, HeartPulse, Pill, ShieldCheck, Users } from "lucide-react";
+import {
+  ArrowRight,
+  BellRing,
+  Check,
+  FileText,
+  HeartPulse,
+  Pill,
+  PlayCircle,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { SiteFooter } from "@/components/SiteFooter";
 import { useFamilyMed } from "@/lib/store";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
+import demoVideo from "@/assets/familymed-demo.mp4.asset.json";
+import demoPoster from "@/assets/familymed-demo-poster.jpg.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "FamilyMed — Terapia condivisa in famiglia" },
+      { title: "FamilyMed — La tranquillità di sapere che prendono le medicine" },
       {
         name: "description",
         content:
-          "Promemoria in un tap per l'anziano, monitoraggio in tempo reale per la famiglia. Meno ansia, più cura.",
+          "Promemoria in un tap per chi assume la terapia, monitoraggio in tempo reale per la famiglia. Alert sulle dosi dimenticate, scorte e report per il medico.",
       },
+      { property: "og:title", content: "FamilyMed — Terapia condivisa in famiglia" },
+      {
+        property: "og:description",
+        content:
+          "La tranquillità di sapere che i tuoi cari prendono le medicine giuste, al momento giusto.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: LandingPage,
 });
+
+const PLANS = [
+  {
+    name: "Free",
+    price: "0€",
+    period: "per sempre",
+    tagline: "Per iniziare con una persona da seguire.",
+    cta: "Inizia gratis",
+    highlight: false,
+    features: [
+      "1 paziente seguito",
+      "Promemoria e sveglia sonora",
+      "Conferma dose in un tap",
+      "Timeline di oggi",
+      "Alert dosi dimenticate",
+    ],
+  },
+  {
+    name: "Pro",
+    price: "4,99€",
+    period: "al mese",
+    tagline: "Per la famiglia che vuole vedere tutto, sempre.",
+    cta: "Prova Pro",
+    highlight: true,
+    features: [
+      "Fino a 2 pazienti",
+      "Tutto del piano Free",
+      "Parametri vitali (pressione, glicemia, peso, saturazione)",
+      "Report PDF 7 / 30 / 90 giorni",
+      "Gestione scorte e avvisi esaurimento",
+      "Storico completo e statistiche di aderenza",
+    ],
+  },
+  {
+    name: "Max",
+    price: "9,99€",
+    period: "al mese",
+    tagline: "Per gruppi di cura estesi e badanti.",
+    cta: "Scegli Max",
+    highlight: false,
+    features: [
+      "Pazienti illimitati",
+      "Tutto del piano Pro",
+      "Gruppo di cura con ruoli e permessi",
+      "Inviti con link e QR Code",
+      "Registro attività (audit log)",
+      "Export dati GDPR e priorità supporto",
+    ],
+  },
+];
 
 function LandingPage() {
   const navigate = useNavigate();
@@ -68,6 +138,12 @@ function LandingPage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <a
+            href="#prezzi"
+            className="hidden sm:inline-flex text-sm font-semibold text-foreground/80 hover:text-primary transition-colors px-2"
+          >
+            Prezzi
+          </a>
           {!user ? (
             <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2.5 sm:px-3" asChild>
               <Link to="/login">Accedi</Link>
@@ -80,36 +156,32 @@ function LandingPage() {
         </div>
       </header>
 
-      {/* HERO & CONTENT */}
+      {/* HERO */}
       <section className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6 md:pt-16 block w-full min-w-0">
         <div className="grid gap-10 md:grid-cols-2 md:items-center w-full">
-          
-          {/* Testo Hero */}
           <div className="fm-reveal w-full block">
             <span className="inline-flex items-center gap-2 rounded-full bg-primary-soft px-3 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-widest text-primary max-w-full truncate">
               <span className="size-1.5 shrink-0 rounded-full bg-primary" />
-              <span className="truncate">Un piccolo aiuto per chi vuoi bene 💙</span>
+              <span className="truncate">Per chi si prende cura di qualcuno 💙</span>
             </span>
 
-            <h1 className="mt-4 text-3xl font-black leading-[1.1] tracking-tight sm:text-5xl md:text-6xl text-left block">
-              Le medicine <br className="hidden sm:block" />
-              <span className="text-primary">non si dimenticano</span> <br />
-              in famiglia.
+            <h1 className="mt-4 text-3xl font-black leading-[1.1] tracking-tight sm:text-5xl md:text-[3.4rem] text-left block">
+              La tranquillità di sapere che i tuoi cari prendono{" "}
+              <span className="text-primary">le medicine giuste, al momento giusto.</span>
             </h1>
 
-            <p className="mt-4 max-w-md text-sm sm:text-base md:text-lg text-muted-foreground leading-relaxed">
-              Per il paziente: un pulsante grande "Ho preso la medicina". Per i familiari:
-              monitoraggio in tempo reale, alert, scorte e storico.
+            <p className="mt-5 max-w-md text-sm sm:text-base md:text-lg text-muted-foreground leading-relaxed">
+              Basta telefonate per controllare. Il paziente conferma con un tap, tu vedi tutto in
+              tempo reale — e se una dose salta, lo sai subito.
             </p>
 
-            {/* Pulsanti reattivi */}
             <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:items-center w-full">
               <Button
                 size="lg"
                 className="h-12 sm:h-14 px-5 sm:px-6 text-sm sm:text-base font-bold w-full sm:w-auto"
                 onClick={handleEnter}
               >
-                {user ? "Entra" : "Accedi"}
+                {user ? "Entra" : "Inizia gratis"}
                 <ArrowRight className="ml-2 size-4 sm:size-5 shrink-0" />
               </Button>
 
@@ -119,14 +191,19 @@ function LandingPage() {
                 className="h-12 sm:h-14 px-5 sm:px-6 text-sm sm:text-base font-bold w-full sm:w-auto"
                 asChild
               >
-                <Link to="/guida-pubblica" className="truncate">
-                  Guarda come funziona
-                </Link>
+                <a href="#demo" className="truncate">
+                  <PlayCircle className="mr-2 size-5 shrink-0" />
+                  Guarda la demo (30s)
+                </a>
               </Button>
             </div>
+
+            <p className="mt-4 text-xs text-muted-foreground">
+              Nessuna carta richiesta · Dati sanitari cifrati e conformi GDPR
+            </p>
           </div>
 
-          {/* MOCK UI - Blindata per schermi microscopici */}
+          {/* MOCK UI */}
           <div className="relative fm-reveal [animation-delay:120ms] w-full flex justify-center">
             <div className="absolute -left-8 -top-6 hidden size-40 rounded-full bg-primary-soft blur-3xl md:block" />
             <div className="absolute -bottom-10 -right-4 hidden size-52 rounded-full bg-accent-soft blur-3xl md:block" />
@@ -155,7 +232,33 @@ function LandingPage() {
           </div>
         </div>
 
-        {/* FEATURES - Gestione responsiva a griglia fluida (1 col su mobile, 2 col su tablet, 3 su desktop) */}
+        {/* VIDEO DEMO */}
+        <div id="demo" className="mt-20 sm:mt-28 scroll-mt-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <span className="text-xs font-bold uppercase tracking-widest text-accent">Demo · 30 secondi</span>
+            <h2 className="mt-3 text-2xl sm:text-4xl font-black tracking-tight">
+              Come funziona, in mezzo minuto
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-muted-foreground">
+              La vista paziente, la dashboard della famiglia, gli alert sulle dosi dimenticate e i
+              report per il medico.
+            </p>
+          </div>
+
+          <div className="mt-8 overflow-hidden rounded-3xl border border-border/60 bg-card shadow-lift">
+            <video
+              className="block w-full aspect-video bg-surface-muted"
+              src={demoVideo.url}
+              poster={demoPoster.url}
+              controls
+              playsInline
+              preload="none"
+              aria-label="Video demo di FamilyMed"
+            />
+          </div>
+        </div>
+
+        {/* FEATURES */}
         <div className="mt-16 sm:mt-24 grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 w-full">
           {[
             {
@@ -169,15 +272,29 @@ function LandingPage() {
               body: "Monitor live multi-paziente, timeline eventi, aderenza, alert.",
             },
             {
+              icon: BellRing,
+              title: "Dosi dimenticate",
+              body: "Se la dose non arriva entro il tempo previsto diventa dimenticata: notifica e alert in dashboard.",
+            },
+            {
               icon: ShieldCheck,
               title: "Notifiche & scorte",
-              body: "Alert automatici per le azioni del paziente e quando le pillole finiscono, sincronizzazione Calendar.",
-              className: "sm:col-span-2 md:col-span-1" // Su tablet si allarga per estetica
+              body: "Avvisi automatici quando le pillole stanno finendo, con sincronizzazione Calendar.",
+            },
+            {
+              icon: FileText,
+              title: "Report per il medico",
+              body: "Storico aderenza e parametri vitali esportabili in PDF a 7, 30 o 90 giorni.",
+            },
+            {
+              icon: Users,
+              title: "Gruppo di cura",
+              body: "Familiari e badanti insieme, con ruoli, permessi e registro attività trasparente.",
             },
           ].map((f) => (
             <div
               key={f.title}
-              className={cn("rounded-2xl sm:rounded-3xl border border-border/60 bg-card p-5 sm:p-6 shadow-card block text-left", f.className)}
+              className="rounded-2xl sm:rounded-3xl border border-border/60 bg-card p-5 sm:p-6 shadow-card block text-left"
             >
               <div className="grid size-10 sm:size-11 place-items-center rounded-xl bg-primary-soft text-primary shrink-0">
                 <f.icon className="size-4.5 sm:size-5" />
@@ -187,9 +304,90 @@ function LandingPage() {
             </div>
           ))}
         </div>
+
+        {/* PREZZI */}
+        <div id="prezzi" className="mt-20 sm:mt-28 scroll-mt-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <span className="text-xs font-bold uppercase tracking-widest text-primary">Prezzi</span>
+            <h2 className="mt-3 text-2xl sm:text-4xl font-black tracking-tight">
+              Inizia gratis, cresci quando serve
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-muted-foreground">
+              Nessun vincolo: puoi cambiare o disdire il piano in qualsiasi momento.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-5 md:grid-cols-3 items-start">
+            {PLANS.map((plan) => (
+              <div
+                key={plan.name}
+                className={cn(
+                  "relative flex h-full flex-col rounded-3xl border bg-card p-6 shadow-card",
+                  plan.highlight
+                    ? "border-primary/40 shadow-lift ring-1 ring-primary/20 md:-mt-3 md:pb-8"
+                    : "border-border/60",
+                )}
+              >
+                {plan.highlight && (
+                  <span className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground shadow-lift">
+                    Più scelto
+                  </span>
+                )}
+
+                <p className="text-lg font-black tracking-tight">{plan.name}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{plan.tagline}</p>
+
+                <div className="mt-5 flex items-end gap-1.5">
+                  <span className="text-4xl font-black tracking-tight">{plan.price}</span>
+                  <span className="pb-1 text-xs text-muted-foreground">{plan.period}</span>
+                </div>
+
+                <ul className="mt-6 space-y-2.5 text-sm">
+                  {plan.features.map((feat) => (
+                    <li key={feat} className="flex items-start gap-2">
+                      <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                      <span className="text-foreground/85 leading-snug">{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <Button
+                  className="mt-7 h-12 w-full font-bold"
+                  variant={plan.highlight ? "default" : "outline"}
+                  onClick={handleEnter}
+                >
+                  {plan.cta}
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            FamilyMed non sostituisce il parere medico: segui sempre le indicazioni del medico curante.
+          </p>
+        </div>
+
+        {/* CTA FINALE */}
+        <div className="mt-16 sm:mt-24 rounded-3xl border border-primary/20 bg-primary-soft/40 p-8 text-center">
+          <p className="text-xl sm:text-2xl font-black tracking-tight">
+            Smetti di chiedere «hai preso la pillola?»
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Bastano due minuti per impostare la prima terapia.
+          </p>
+          <div className="mt-5 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
+            <Button size="lg" className="h-12 px-6 font-bold w-full sm:w-auto" onClick={handleEnter}>
+              Inizia gratis
+              <ArrowRight className="ml-2 size-5" />
+            </Button>
+            <Button size="lg" variant="outline" className="h-12 px-6 font-bold w-full sm:w-auto" asChild>
+              <Link to="/guida-pubblica">Guarda la guida</Link>
+            </Button>
+          </div>
+        </div>
       </section>
 
-      {/* FOOTER: footer completo, visibile solo prima del login */}
+      {/* FOOTER */}
       {!loadingAuth && !user && <SiteFooter />}
     </div>
   );
