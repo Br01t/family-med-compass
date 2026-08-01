@@ -92,7 +92,7 @@ function DoseDaConfermarePage() {
           <select
             value={patientFilter}
             onChange={(e) => setPatientFilter(e.target.value)}
-            className="rounded-full border border-border bg-card px-4 py-1.5 text-xs font-bold text-foreground"
+            className="w-full rounded-full border border-border bg-card px-4 py-1.5 text-xs font-bold text-foreground sm:w-auto"
           >
             <option value="">Tutti i pazienti</option>
             {data.patients.map((p) => (
@@ -129,10 +129,10 @@ function DoseDaConfermarePage() {
             return (
               <li
                 key={e.id}
-                className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm"
+                className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-5"
               >
-                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-4">
-                  <div className={cn("grid size-12 shrink-0 place-items-center rounded-xl", tone)}>
+                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 sm:gap-4">
+                  <div className={cn("grid size-10 shrink-0 place-items-center rounded-xl sm:size-12", tone)}>
                     <AlertTriangle className="size-6" />
                   </div>
                   <div className="min-w-0">
@@ -173,12 +173,12 @@ function DoseDaConfermarePage() {
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                   <Button
                     size="sm"
                     onClick={() => handleConfirm(e)}
                     disabled={busy === e.id}
-                    className="gap-2"
+                    className="w-full gap-2 sm:w-auto"
                   >
                     <Check className="size-4" />
                     Segna come confermata
@@ -188,7 +188,7 @@ function DoseDaConfermarePage() {
                     variant="outline"
                     onClick={() => handleAcknowledge(e)}
                     disabled={busy === e.id}
-                    className="gap-2"
+                    className="w-full gap-2 sm:w-auto"
                   >
                     <XCircle className="size-4" />
                     Segnala come gestita

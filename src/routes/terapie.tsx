@@ -37,24 +37,25 @@ function TherapiesPage() {
           return (
             <section key={p.id}>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="grid size-10 place-items-center rounded-xl bg-primary-soft font-black text-primary">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft font-black text-primary">
                     {p.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                   </div>
-                  <div>
-                    <h2 className="text-xl font-black tracking-tight">{p.name}</h2>
+                  <div className="min-w-0">
+                    <h2 className="truncate text-xl font-black tracking-tight">{p.name}</h2>
                     <p className="text-xs text-muted-foreground">
                       {therapies.length} terapie
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex w-full flex-wrap gap-2 sm:w-auto">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           variant="outline"
                           size="sm"
+                          className="w-full sm:w-auto"
                           onClick={() => {
                             if (therapies.length === 0) {
                               toast.error("Nessuna terapia da includere nel resoconto");
@@ -85,7 +86,7 @@ function TherapiesPage() {
                     <AddTherapyDialog
                       initialPatientId={p.id}
                       trigger={
-                        <Button variant="outline" size="sm" id={`add-therapy-${p.id}`}>
+                        <Button variant="outline" size="sm" className="w-full sm:w-auto" id={`add-therapy-${p.id}`}>
                           <Plus className="mr-1.5 size-3.5" /> Terapia
                         </Button>
                       }
@@ -93,12 +94,12 @@ function TherapiesPage() {
                   )}
                 </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {therapies.map((t) => (
                   <div
                     key={t.id}
                     className={cn(
-                      "rounded-3xl border border-border/60 bg-card p-5 shadow-card transition",
+                      "rounded-3xl border border-border/60 bg-card p-4 shadow-card transition sm:p-5",
                       t.suspended && "opacity-60",
                     )}
                   >
@@ -190,12 +191,12 @@ function TherapiesPage() {
                       </p>
                     )}
 
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                       {canManage && (
                         <AddTherapyDialog
                           editTherapy={t}
                           trigger={
-                            <Button variant="outline" size="sm" className="flex-1">
+                            <Button variant="outline" size="sm" className="w-full sm:w-auto sm:flex-1">
                               Modifica
                             </Button>
                           }
@@ -207,6 +208,7 @@ function TherapiesPage() {
                             <Button
                               variant="outline"
                               size="sm"
+                              className="w-full sm:w-auto"
                               onClick={() => {
                                 const method = addTherapyToCalendar(t, p);
                                 if (method === "google") {
@@ -241,7 +243,7 @@ function TherapiesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive sm:w-auto"
                           onClick={() => {
                             if (confirm(`Eliminare "${t.name}"?`)) {
                               deleteTherapy(t.id);
