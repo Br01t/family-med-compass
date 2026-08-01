@@ -199,7 +199,7 @@ function PatientPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="mx-auto flex max-w-xl items-center justify-between px-5 pt-5">
+      <header className="mx-auto flex max-w-xl sm:max-w-2xl items-center justify-between px-4 sm:px-5 pt-5">
         <Link to="/" className="flex items-center gap-2 font-black tracking-tight">
           <span className="grid size-8 place-items-center rounded-xl bg-primary text-primary-foreground">
             <Pill className="size-4" />
@@ -221,11 +221,11 @@ function PatientPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-xl px-5 pb-24 pt-4">
+      <main className="mx-auto max-w-xl sm:max-w-2xl px-4 sm:px-5 pb-24 pt-4">
         {/* Hero */}
         <section className="fm-reveal">
-          <p className="text-2xl text-muted-foreground">{greeting},</p>
-          <h1 className="text-5xl font-black tracking-tight">{firstName}</h1>
+          <p className="text-xl sm:text-2xl text-muted-foreground">{greeting},</p>
+          <h1 className="truncate text-4xl sm:text-5xl font-black tracking-tight">{firstName}</h1>
           <p className="mt-2 text-base capitalize text-muted-foreground">
             {formatDateLong(now)} · {formatTime(now)}
           </p>
@@ -443,7 +443,7 @@ void secondTick;
   return (
     <section
       className={cn(
-        "fm-reveal mt-8 rounded-3xl border-l-8 bg-card p-6 shadow-lift ring-1 ring-border [animation-delay:60ms]",
+        "fm-reveal mt-8 rounded-3xl border-l-8 bg-card p-4 sm:p-6 shadow-lift ring-1 ring-border [animation-delay:60ms]",
         isLate ? "border-accent" : isSnoozed ? "border-warning" : isReminder ? "border-warning" : "border-primary",
       )}
     >
@@ -483,7 +483,7 @@ void secondTick;
           </p>
           <p
             className={cn(
-              "mt-1 text-4xl font-black tabular-nums",
+              "mt-1 text-3xl sm:text-4xl font-black tabular-nums",
               snoozedCritical ? "text-destructive" : "text-warning-foreground",
             )}
           >
@@ -509,7 +509,7 @@ void secondTick;
           </div>
         )}
         <div className="min-w-0">
-          <h3 className="truncate text-3xl font-black leading-tight">
+          <h3 className="truncate text-2xl sm:text-3xl font-black leading-tight">
             {dose.therapy.name}
           </h3>
           <p className="text-base text-muted-foreground">
@@ -538,7 +538,7 @@ void secondTick;
         onClick={onConfirm}
         disabled={!canAct}
         aria-disabled={!canAct}
-        className="mt-6 h-20 w-full rounded-2xl bg-primary text-xl font-black text-primary-foreground shadow-lift transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:active:scale-100"
+        className="mt-6 h-16 sm:h-20 w-full rounded-2xl bg-primary text-lg sm:text-xl font-black text-primary-foreground shadow-lift transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:active:scale-100"
       >
         Ho preso la medicina
       </button>

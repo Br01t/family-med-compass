@@ -463,8 +463,8 @@ function VitalSignsPage() {
 
       {/* Filtri + Export */}
       <section className="rounded-2xl border bg-card p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[180px] flex-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="min-w-0 flex-1 sm:min-w-[180px]">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">
               Periodo
             </Label>
@@ -481,7 +481,7 @@ function VitalSignsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="min-w-[180px] flex-1">
+          <div className="min-w-0 flex-1 sm:min-w-[180px]">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">
               Tipo parametro
             </Label>
@@ -498,20 +498,21 @@ function VitalSignsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <Button
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => fetchRows({ force: true })}
               disabled={!patientId || loading}
               title="Ricarica dal server (ignora la cache)"
             >
               {loading ? "Aggiorno…" : "Aggiorna"}
             </Button>
-            <Button variant="outline" onClick={exportPdf} disabled={!currentPatient}>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={exportPdf} disabled={!currentPatient}>
               <FileDown className="mr-2 size-4" />
               PDF ({KINDS[kind].label})
             </Button>
-            <Button onClick={exportAllPdf} disabled={!currentPatient}>
+            <Button className="w-full sm:w-auto" onClick={exportAllPdf} disabled={!currentPatient}>
               <FileDown className="mr-2 size-4" />
               PDF completo
             </Button>
@@ -536,9 +537,9 @@ function VitalSignsPage() {
       </section>
 
       {/* Form inserimento */}
-      <section className="rounded-2xl border bg-card p-5">
+      <section className="rounded-2xl border bg-card p-4 sm:p-5">
         <div className="mb-4 flex items-center gap-2">
-          <Plus className="size-4 text-primary" />
+          <Plus className="size-4 shrink-0 text-primary" />
           <h2 className="text-base font-bold">Nuova misurazione — {KINDS[kind].label}</h2>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">{KINDS[kind].description}</p>
@@ -616,7 +617,7 @@ function VitalSignsPage() {
       </section>
 
       {/* Grafico con media mobile */}
-      <section className="rounded-2xl border bg-card p-5">
+      <section className="rounded-2xl border bg-card p-4 sm:p-5">
         <div className="mb-3 flex items-center gap-2">
           <Activity className="size-4 text-primary" />
           <h2 className="text-base font-bold">
@@ -632,9 +633,9 @@ function VitalSignsPage() {
             Nessuna misurazione registrata per {KINDS[kind].label.toLowerCase()} nel periodo.
           </p>
         ) : (
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
+          <div className="h-64 w-full overflow-x-auto sm:h-72">
+            <ResponsiveContainer width="100%" height="100%" minWidth={320}>
+              <LineChart data={chartData} margin={{ left: -20, right: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="t" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} domain={["auto", "auto"]} />
@@ -685,7 +686,7 @@ function VitalSignsPage() {
       </section>
 
       {/* Storico */}
-      <section className="rounded-2xl border bg-card p-5">
+      <section className="rounded-2xl border bg-card p-4 sm:p-5">
         <h2 className="mb-3 text-base font-bold">
           Storico misurazioni — {PERIOD_LABELS[period].toLowerCase()}
         </h2>
@@ -698,7 +699,7 @@ function VitalSignsPage() {
             {filtered.map((r) => {
               const canDelete = r.created_by === user?.id || !isPatient;
               return (
-                <li key={r.id} className="flex items-center justify-between gap-3 py-3">
+                <li key={r.id} className="flex items-center justify-between gap-3 py-3 min-w-0">
                   <div className="min-w-0">
                     <p className="font-semibold">
                       {kind === "blood_pressure"
