@@ -72,7 +72,7 @@ function SettingsPage() {
     return (
       <PatientShell title="Impostazioni" subtitle="Il tuo account e l'app">
         <div className="space-y-4">
-          <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+          <section className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
             <h2 className="text-lg font-black tracking-tight">Il tuo account</h2>
             <div className="mt-4 space-y-4">
               <Field label="Nome" value={userProfile.name} />
@@ -98,7 +98,7 @@ function SettingsPage() {
   return (
     <AppShell title="Impostazioni" subtitle="Account e installazione">
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+        <section className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
           <h2 className="text-lg font-black tracking-tight">Profilo & Account</h2>
           {loadingAuth ? (
             <div className="py-8 text-center text-sm text-muted-foreground">Caricamento account...</div>
@@ -164,14 +164,14 @@ function SettingsPage() {
 
         <InfoAssistenzaCard />
 
-        <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+        <section className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
           <h2 className="text-lg font-black tracking-tight">Sincronizzazione</h2>
           <p className="mt-3 text-sm text-muted-foreground">
             {user
               ? "✓ Dati sincronizzati sul cloud in tempo reale. Ogni azione è condivisa istantaneamente tra paziente e caregiver."
               : "Accedi per sincronizzare i tuoi dati sul cloud."}
           </p>
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-border/50 p-3">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
                 Stato
@@ -192,7 +192,7 @@ function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+        <section className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
           <h2 className="text-lg font-black tracking-tight">Uno strumento in più per la famiglia</h2>
           <p className="mt-3 text-sm text-muted-foreground">
             FamilyMed nasce per aiutare paziente e familiari a rimanere sincronizzati
@@ -228,7 +228,7 @@ const INFO_LINKS = [
 
 function InfoAssistenzaCard() {
   return (
-    <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+    <section className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
       <h2 className="text-lg font-black tracking-tight">Informazioni & assistenza</h2>
       <p className="mt-2 text-sm text-muted-foreground">
         Guida all'app e documenti legali di FamilyMed.
@@ -296,7 +296,7 @@ function InstallCard() {
   }
 
   return (
-    <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+    <section className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
       <h2 className="text-lg font-black tracking-tight">Installa app</h2>
       <p className="mt-2 text-sm text-muted-foreground">
         Installa FamilyMed sul telefono per usarla come una vera app, sempre disponibile in home.

@@ -366,12 +366,12 @@ function MembersCard(props: {
   } = props;
 
   return (
-    <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
-      <div className="flex items-center gap-3">
-        <div className="grid size-11 place-items-center rounded-xl bg-primary-soft text-primary">
+    <section className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
           <Users className="size-5" />
         </div>
-        <div>
+        <div className="min-w-0">
           <h2 className="text-xl font-black tracking-tight">Membri del gruppo</h2>
           <p className="text-sm text-muted-foreground">
             {members.length} {members.length === 1 ? "persona segue" : "persone seguono"} questo
@@ -473,7 +473,7 @@ function MembersCard(props: {
                   </div>
 
                   {isPrimary && !c.isPrimary && (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
                       <Button
                         size="sm"
                         variant="outline"
@@ -536,13 +536,13 @@ function InvitesCard(props: {
 }) {
   const { invites, creating, onCreate, onRevoke } = props;
   return (
-    <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+    <section className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="grid size-11 place-items-center rounded-xl bg-primary-soft text-primary">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
             <KeyRound className="size-5" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-xl font-black tracking-tight">Inviti attivi</h2>
             <p className="text-sm text-muted-foreground">
               Ogni codice vale 24 ore ed è utilizzabile una sola volta. Chi lo usa entra nel
@@ -550,7 +550,7 @@ function InvitesCard(props: {
             </p>
           </div>
         </div>
-        <Button onClick={onCreate} disabled={creating}>
+        <Button className="w-full sm:w-auto" onClick={onCreate} disabled={creating}>
           {creating ? <Loader2 className="mr-2 size-4 animate-spin" /> : <KeyRound className="mr-2 size-4" />}
           Genera codice
         </Button>
@@ -592,8 +592,8 @@ function InviteRow({ invite, onRevoke }: { invite: FamilyInvite; onRevoke: () =>
         : `scade fra ${Math.round(expDiff / 3600_000)} h`;
 
   return (
-    <li className="flex gap-4 rounded-2xl border border-border/60 p-4">
-      <div className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted">
+    <li className="flex flex-wrap gap-4 rounded-2xl border border-border/60 p-4 sm:flex-nowrap">
+      <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted sm:size-24">
         {qr ? <img src={qr} alt="QR invito" className="size-full" /> : <Loader2 className="size-4 animate-spin text-muted-foreground" />}
       </div>
       <div className="min-w-0 flex-1">
@@ -644,12 +644,12 @@ function AuditLogCard(props: {
 }) {
   const { logs, loading, hasMore, loadingMore, onLoadMore } = props;
   return (
-    <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
-      <div className="flex items-center gap-3">
-        <div className="grid size-11 place-items-center rounded-xl bg-primary-soft text-primary">
+    <section className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
           <ScrollText className="size-5" />
         </div>
-        <div>
+        <div className="min-w-0">
           <h2 className="text-xl font-black tracking-tight">Registro attività</h2>
           <p className="text-sm text-muted-foreground">
             Ultime azioni svolte dai membri del gruppo. Trasparenza per evitare equivoci.

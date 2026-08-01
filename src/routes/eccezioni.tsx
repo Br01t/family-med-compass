@@ -163,7 +163,7 @@ function GuideCard({ guide }: { guide: Guide }) {
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "w-full flex items-start gap-4 px-5 py-4 text-left transition-colors",
+          "w-full flex items-start gap-3 px-4 py-3 text-left transition-colors sm:gap-4 sm:px-5 sm:py-4",
           `bg-gradient-to-r ${guide.bgGradient}`,
           "hover:brightness-95 dark:hover:brightness-110",
         )}
@@ -292,7 +292,7 @@ function ExceptionsPage() {
         {/* ── Banner intro ──────────────────────────────────────────────── */}
         <div className="flex items-start gap-4 rounded-2xl border border-border/60 bg-gradient-to-r from-primary/5 to-accent/5 px-5 py-4">
           <ShieldAlert className="mt-0.5 size-6 flex-shrink-0 text-primary" />
-          <div>
+          <div className="min-w-0">
             <p className="font-semibold text-sm text-foreground">Gestione situazioni impreviste</p>
             <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
               Questa pagina serve per due cose diverse: <strong className="text-foreground">scalare le scorte a mano</strong>{" "}
@@ -310,11 +310,11 @@ function ExceptionsPage() {
             SEZIONE 1 — SCALA SCORTE MANUALMENTE
         ════════════════════════════════════════════════════════════════ */}
         <section aria-labelledby="adjust-heading" className="space-y-5">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-warning/15">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-warning/15">
               <Wrench className="size-5 text-warning" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 id="adjust-heading" className="text-base font-bold tracking-tight text-foreground">
                 Scala scorte manualmente
               </h2>
@@ -323,7 +323,7 @@ function ExceptionsPage() {
           </div>
 
           {/* Spiegazione: come e perché usare questa funzione */}
-          <div className="rounded-2xl border border-border/60 bg-muted/30 p-5 space-y-3">
+          <div className="rounded-2xl border border-border/60 bg-muted/30 p-4 space-y-3 sm:p-5">
             <div className="flex items-center gap-2">
               <Info className="size-4 text-primary flex-shrink-0" />
               <p className="text-sm font-semibold text-foreground">Perché usarla</p>
@@ -350,7 +350,7 @@ function ExceptionsPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-border/60 bg-surface/60 p-5 space-y-5">
+          <div className="rounded-2xl border border-border/60 bg-surface/60 p-4 space-y-5 sm:p-5">
 
             {/* Selettore paziente */}
             {patients.length > 1 && (
@@ -422,7 +422,7 @@ function ExceptionsPage() {
               >
                 Quantità da scalare (dosi/compresse)
               </label>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   id="qty-decrease"
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -509,11 +509,11 @@ function ExceptionsPage() {
             SEZIONE 2 — GUIDE PRATICHE
         ════════════════════════════════════════════════════════════════ */}
         <section aria-labelledby="guides-heading" className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
               <Clock className="size-5 text-primary" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 id="guides-heading" className="text-base font-bold tracking-tight text-foreground">
                 Come gestire le altre eccezioni
               </h2>
