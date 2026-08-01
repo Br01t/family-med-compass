@@ -126,7 +126,7 @@ function CaregiverHome() {
       title="Panoramica famiglia"
       subtitle={`${patients.length} pazienti seguiti · aggiornamento live`}
     >
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
         <p className="text-xs text-muted-foreground">
           {refreshedLabel
             ? `Statistiche aggiornate: ${refreshedLabel}`
@@ -137,7 +137,7 @@ function CaregiverHome() {
           size="sm"
           onClick={handleRefresh}
           disabled={refreshing || onCooldown}
-          className="gap-2"
+          className="w-full gap-2 sm:w-auto"
         >
           <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
           {refreshing
@@ -148,7 +148,7 @@ function CaregiverHome() {
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
         <MetricCard
           label="Aderenza media 7gg"
           value={`${totalAdherence}%`}
@@ -179,7 +179,7 @@ function CaregiverHome() {
         </Link>
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-12">
+      <div className="mt-6 grid gap-6 sm:mt-8 lg:grid-cols-12">
         <section className="space-y-4 lg:col-span-8">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
@@ -192,7 +192,7 @@ function CaregiverHome() {
             </Button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {patients.map((patient) => (
               <PatientCard key={patient.id} patientId={patient.id} />
             ))}
@@ -277,19 +277,19 @@ function MetricCard({
   return (
     <div
       className={cn(
-        "relative rounded-3xl border border-border/60 bg-card p-6 shadow-card",
+        "relative rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6",
         clickable && ringStyles,
       )}
     >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4">
-        <div className={cn("grid size-12 place-items-center rounded-2xl", styles)}>
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-4">
+        <div className={cn("grid size-10 shrink-0 place-items-center rounded-2xl sm:size-12", styles)}>
           <Icon className="size-5" />
         </div>
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="truncate text-xs font-bold uppercase tracking-widest text-muted-foreground">
             {label}
           </p>
-          <p className="mt-1 text-3xl font-black tracking-tight">{value}</p>
+          <p className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">{value}</p>
           <p className="mt-2 text-xs leading-5 text-muted-foreground whitespace-normal">{hint}</p>
         </div>
         {clickable && (
@@ -322,10 +322,10 @@ function PatientCard({ patientId }: { patientId: string }) {
     <Link
       to="/pazienti/$id"
       params={{ id: patientId }}
-      className="block rounded-3xl border border-border/60 bg-card p-6 shadow-card transition hover:shadow-lift"
+      className="block rounded-3xl border border-border/60 bg-card p-4 shadow-card transition hover:shadow-lift sm:p-6"
     >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-4">
-        <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-primary-soft text-lg font-black text-primary">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 sm:gap-4">
+        <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary-soft text-lg font-black text-primary sm:size-14">
           {patient.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
         </div>
         <div className="min-w-0">
@@ -414,7 +414,7 @@ function WeeklyAdherenceCard() {
   });
 
   return (
-    <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+    <div className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
       <div className="flex items-center gap-2">
         <Pill className="size-4 text-primary" />
         <h3 className="text-lg font-black tracking-tight">Aderenza settimanale</h3>
@@ -462,20 +462,20 @@ function TimelineCard({ now }: { now: Date }) {
   ];
 
   return (
-    <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+    <div className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
         <h3 className="truncate text-lg font-black tracking-tight">Timeline dosi</h3>
         <span className="shrink-0 text-xs text-muted-foreground">{doses.length} dosi</span>
       </div>
 
-      <div className="mt-4 inline-flex rounded-full border border-border/60 bg-surface-muted p-1">
+      <div className="mt-4 flex overflow-x-auto rounded-full border border-border/60 bg-surface-muted p-1">
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setDayOffset(t.id)}
             className={cn(
-              "rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest transition",
+              "shrink-0 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest transition",
               dayOffset === t.id
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",

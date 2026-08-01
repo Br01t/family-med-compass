@@ -52,7 +52,7 @@ export function PatientShell({
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <header className="mx-auto flex max-w-xl items-center justify-between px-5 pt-5">
+      <header className="mx-auto flex max-w-xl sm:max-w-2xl items-center justify-between px-4 sm:px-5 pt-5">
         <Link to="/paziente" className="flex items-center gap-2 font-black tracking-tight">
           <span className="grid size-8 place-items-center rounded-xl bg-primary text-primary-foreground">
             <Pill className="size-4" />
@@ -64,9 +64,9 @@ export function PatientShell({
         </Button>
       </header>
 
-      <main className="mx-auto max-w-xl px-5 pt-6">
+      <main className="mx-auto max-w-xl sm:max-w-2xl px-4 sm:px-5 pt-6">
         <div className="mb-6">
-          <h1 className="text-4xl font-black tracking-tight">{title}</h1>
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight">{title}</h1>
           {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
         </div>
         {children}
@@ -76,7 +76,7 @@ export function PatientShell({
 
       {/* Bottom nav: solo sezioni per il paziente */}
       <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-border/60 bg-background/95 backdrop-blur">
-        <ul className="mx-auto grid max-w-xl grid-cols-5">
+        <ul className="mx-auto grid max-w-xl sm:max-w-2xl grid-cols-5">
           {PATIENT_NAV.map((item) => {
             const active =
               item.to === "/paziente"

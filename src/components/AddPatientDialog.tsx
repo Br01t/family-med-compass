@@ -102,7 +102,7 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
         )}
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-black tracking-tight">
             Nuovo paziente
@@ -160,10 +160,11 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
             </div>
 
 
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() => {
                   form.reset();
                   setOpen(false);
@@ -171,7 +172,7 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
               >
                 Annulla
               </Button>
-              <Button type="submit" id="save-patient-btn">
+              <Button type="submit" id="save-patient-btn" className="w-full sm:w-auto">
                 Salva paziente
               </Button>
             </div>

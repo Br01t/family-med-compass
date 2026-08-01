@@ -285,7 +285,7 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
 
       <DialogContent
         aria-describedby="therapy-dialog-description"
-        className="flex flex-col sm:max-w-2xl max-h-[90vh]"
+        className="flex max-h-[90vh] w-full max-w-[calc(100vw-2rem)] flex-col sm:max-w-2xl"
       >
         <DialogHeader className="shrink-0">
           <DialogTitle className="text-xl font-black tracking-tight">
@@ -335,7 +335,7 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
               />
 
               {/* Name + Dosage */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="name"
@@ -365,7 +365,7 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
               </div>
 
               {/* Category + Quantity */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="category"
@@ -461,7 +461,7 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
               </FormItem>
 
               {/* Recurrence */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="recurrenceKind"
@@ -564,7 +564,7 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
               </div>
 
               {/* Dates */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="startDate"
@@ -629,7 +629,7 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
                 <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                   Scorte
                 </p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <FormField
                     control={form.control}
                     name="pillsPerPack"
@@ -730,15 +730,16 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
         </ScrollArea>
 
         {/* Footer actions outside scroll */}
-        <div className="mt-4 flex shrink-0 justify-end gap-3 border-t border-border/60 pt-4">
+        <div className="mt-4 flex shrink-0 flex-col-reverse gap-3 border-t border-border/60 pt-4 sm:flex-row sm:justify-end">
           <Button
             type="button"
             variant="outline"
+            className="w-full sm:w-auto"
             onClick={() => handleOpenChange(false)}
           >
             Annulla
           </Button>
-          <Button type="submit" form="therapy-form" id="save-therapy-btn" disabled={data.patients.length === 0}>
+          <Button type="submit" form="therapy-form" id="save-therapy-btn" className="w-full sm:w-auto" disabled={data.patients.length === 0}>
             {isEdit ? "Salva modifiche" : "Aggiungi terapia"}
           </Button>
         </div>
@@ -780,7 +781,7 @@ function PhotoField({
   return (
     <div>
       <p className="mb-2 text-sm font-medium text-foreground">{label}</p>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         {value ? (
           <div className="relative">
             <img

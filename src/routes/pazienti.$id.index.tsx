@@ -108,7 +108,7 @@ function PatientDetail() {
     >
       <div className="grid gap-6 lg:grid-cols-12">
         <section className="space-y-4 lg:col-span-8">
-          <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+          <div className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
             <h3 className="text-lg font-black tracking-tight">Terapie di oggi</h3>
             <ul className="mt-4 space-y-3">
               {doses.length === 0 && (
@@ -119,7 +119,7 @@ function PatientDetail() {
               {doses.map((d) => (
                 <li
                   key={d.id}
-                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-2xl border border-border/60 p-4"
+                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border/60 p-3 sm:gap-4 sm:p-4"
                 >
                   <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary-soft font-mono text-sm font-black text-primary">
                     {formatTime(d.scheduledAt)}
@@ -143,7 +143,7 @@ function PatientDetail() {
             </ul>
           </div>
 
-          <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+          <div className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
             <h3 className="text-lg font-black tracking-tight">Timeline di oggi</h3>
             <div className="relative mt-6 space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-border">
               {todayEvents.length === 0 && (
@@ -175,7 +175,7 @@ function PatientDetail() {
           <Link
             to="/pazienti/$id/famiglia"
             params={{ id: patient.id }}
-            className="group mx-auto block max-w-3xl rounded-3xl border border-border/60 bg-card p-6 shadow-card transition-colors hover:border-primary/60"
+            className="group mx-auto block max-w-3xl rounded-3xl border border-border/60 bg-card p-4 shadow-card transition-colors hover:border-primary/60 sm:p-6"
           >
             <div className="flex items-center gap-4">
               <div className="grid size-12 place-items-center rounded-xl bg-primary-soft text-primary">
@@ -199,10 +199,10 @@ function PatientDetail() {
         </section>
 
         <aside className="space-y-4 lg:col-span-4">
-          <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
-            <div className="flex items-center justify-between gap-4">
+          <div className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="text-lg font-black tracking-tight">Piano terapeutico</h3>
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="shrink-0">
                 <Link to="/terapie">Gestisci terapie</Link>
               </Button>
             </div>
@@ -275,7 +275,7 @@ function PatientDetail() {
       {isPrimary && (
         <section
           id="danger-zone"
-          className="mt-8 rounded-3xl border-2 border-destructive/30 bg-destructive/5 p-6"
+          className="mt-8 rounded-3xl border-2 border-destructive/30 bg-destructive/5 p-4 sm:p-6"
         >
           <div className="flex items-start gap-4">
             <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-destructive/15 text-destructive">
@@ -293,7 +293,7 @@ function PatientDetail() {
 
           <div className="mt-5 rounded-2xl border border-destructive/20 bg-card p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="font-bold">Azzera storico di {patient.name}</p>
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   Elimina definitivamente tutte le dosi registrate, le notifiche e i
@@ -307,7 +307,7 @@ function PatientDetail() {
               <Button
                 variant="destructive"
                 size="sm"
-                className="shrink-0"
+                className="w-full shrink-0 sm:w-auto"
                 onClick={() => {
                   setResetConfirmName("");
                   setShowResetDialog(true);

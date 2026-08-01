@@ -77,7 +77,7 @@ function MyTherapiesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="mx-auto flex max-w-xl items-center justify-between px-5 pt-5">
+      <header className="mx-auto flex max-w-xl sm:max-w-2xl items-center justify-between px-4 sm:px-5 pt-5">
         <Link
           to="/paziente"
           className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
@@ -97,10 +97,10 @@ function MyTherapiesPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-xl px-5 pb-24 pt-4">
+      <main className="mx-auto max-w-xl sm:max-w-2xl px-4 sm:px-5 pb-24 pt-4">
         <section className="fm-reveal">
-          <p className="text-2xl text-muted-foreground">Le terapie di</p>
-          <h1 className="text-4xl font-black tracking-tight">{patient.name}</h1>
+          <p className="text-xl sm:text-2xl text-muted-foreground">Le terapie di</p>
+          <h1 className="truncate text-3xl sm:text-4xl font-black tracking-tight">{patient.name}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {therapies.length === 0
               ? "Nessuna terapia attualmente assegnata."
@@ -156,22 +156,22 @@ function MyTherapiesPage() {
               return (
                 <article
                   key={t.id}
-                  className="rounded-3xl border border-border/60 bg-card p-5 shadow-card fm-reveal"
+                  className="rounded-3xl border border-border/60 bg-card p-4 sm:p-5 shadow-card fm-reveal"
                 >
                   <div className="flex items-start gap-4">
                     {t.photoPackage || t.photoDrug ? (
                       <img
                         src={t.photoPackage ?? t.photoDrug}
                         alt={t.name}
-                        className="size-24 shrink-0 rounded-2xl object-cover ring-1 ring-border"
+                        className="size-16 sm:size-24 shrink-0 rounded-2xl object-cover ring-1 ring-border"
                       />
                     ) : (
-                      <div className="grid size-24 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary">
-                        <Pill className="size-10" />
+                      <div className="grid size-16 sm:size-24 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary">
+                        <Pill className="size-7 sm:size-10" />
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <h2 className="truncate text-2xl font-black leading-tight">
+                      <h2 className="truncate text-xl sm:text-2xl font-black leading-tight">
                         {t.name}
                       </h2>
                       <p className="text-base text-muted-foreground">

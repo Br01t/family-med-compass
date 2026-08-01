@@ -72,7 +72,7 @@ function PatientsListPage() {
     >
       {/* Redeem invite */}
       {isCaregiver && (
-        <section className="mb-6 rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+        <section className="mb-6 rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
           <div className="mb-3 flex items-center gap-3">
             <div className="grid size-10 place-items-center rounded-xl bg-primary-soft text-primary">
               <KeyRound className="size-5" />
@@ -90,10 +90,10 @@ function PatientsListPage() {
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               maxLength={12}
-              className="font-mono tracking-widest"
+              className="min-w-0 font-mono tracking-widest"
               autoCapitalize="characters"
             />
-            <Button type="submit" disabled={redeeming || code.trim().length < 4}>
+            <Button type="submit" disabled={redeeming || code.trim().length < 4} className="w-full shrink-0 sm:w-auto">
               {redeeming ? "Verifica…" : "Usa codice"}
             </Button>
           </form>
@@ -116,7 +116,7 @@ function PatientsListPage() {
               : "Nessun paziente collegato al tuo account."}
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {data.patients.map((p) => {
               const adherence = getAdherenceForPatient(data, p.id);
               const next = getNextDose(data, p.id);
@@ -127,10 +127,10 @@ function PatientsListPage() {
                   <Link
                     to="/pazienti/$id"
                     params={{ id: p.id }}
-                    className="block rounded-3xl border border-border/60 bg-card p-6 shadow-card transition hover:shadow-lift"
+                    className="block rounded-3xl border border-border/60 bg-card p-4 shadow-card transition hover:shadow-lift sm:p-6"
                   >
-                    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4">
-                      <div className="grid size-14 place-items-center rounded-2xl bg-primary-soft font-black text-primary">
+                    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-4">
+                      <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary-soft font-black text-primary sm:size-14">
                         {p.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                       </div>
                       <div className="min-w-0">
@@ -153,7 +153,7 @@ function PatientsListPage() {
                       </div>
                       <p
                         className={cn(
-                          "shrink-0 text-2xl font-black",
+                          "shrink-0 text-xl font-black sm:text-2xl",
                           adherence >= 90
                             ? "text-success"
                             : adherence >= 75
@@ -179,7 +179,7 @@ function PatientsListPage() {
                     </div>
                   </Link>
 
-                  <div className="absolute right-4 top-4 flex gap-2 opacity-0 transition group-hover:opacity-100">
+                  <div className="absolute right-3 top-3 flex gap-2 opacity-100 transition sm:right-4 sm:top-4 sm:opacity-0 sm:group-hover:opacity-100">
                     {isCaregiver && (
                       <button
                         className="grid size-8 place-items-center rounded-lg border border-border/60 bg-card text-muted-foreground hover:border-primary/40 hover:bg-primary/10 hover:text-primary"

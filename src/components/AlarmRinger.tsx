@@ -322,7 +322,7 @@ export function AlarmRinger() {
   if (modal.kind === "reminder_pre") {
     return (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-        <div className="w-full max-w-md rounded-3xl border-2 border-primary/60 bg-card p-6 shadow-xl">
+        <div className="max-h-[90vh] w-full max-w-[calc(100vw-2rem)] overflow-y-auto rounded-3xl border-2 border-primary/60 bg-card p-4 shadow-xl sm:max-w-md sm:p-6">
           <div className="flex items-center justify-center gap-3">
             <Bell className="size-7 text-primary" />
             <p className="text-sm font-black uppercase tracking-widest text-primary">
@@ -367,7 +367,7 @@ export function AlarmRinger() {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/95 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-3xl border-4 border-primary bg-card p-6 shadow-2xl animate-pulse-slow">
+      <div className="max-h-[90vh] w-full max-w-[calc(100vw-2rem)] overflow-y-auto rounded-3xl border-4 border-primary bg-card p-4 shadow-2xl animate-pulse-slow sm:max-w-md sm:p-6">
         <div className="flex items-center justify-center gap-3">
           <AlertOctagon className="size-8 text-primary animate-bounce" />
           <p className="text-sm font-black uppercase tracking-widest text-primary">
