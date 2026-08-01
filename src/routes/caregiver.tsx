@@ -126,7 +126,7 @@ function CaregiverHome() {
       title="Panoramica famiglia"
       subtitle={`${patients.length} pazienti seguiti · aggiornamento live`}
     >
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
         <p className="text-xs text-muted-foreground">
           {refreshedLabel
             ? `Statistiche aggiornate: ${refreshedLabel}`
@@ -137,7 +137,7 @@ function CaregiverHome() {
           size="sm"
           onClick={handleRefresh}
           disabled={refreshing || onCooldown}
-          className="gap-2"
+          className="w-full gap-2 sm:w-auto"
         >
           <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
           {refreshing
@@ -148,7 +148,7 @@ function CaregiverHome() {
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
         <MetricCard
           label="Aderenza media 7gg"
           value={`${totalAdherence}%`}
@@ -179,7 +179,7 @@ function CaregiverHome() {
         </Link>
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-12">
+      <div className="mt-6 grid gap-6 sm:mt-8 lg:grid-cols-12">
         <section className="space-y-4 lg:col-span-8">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
@@ -192,7 +192,7 @@ function CaregiverHome() {
             </Button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {patients.map((patient) => (
               <PatientCard key={patient.id} patientId={patient.id} />
             ))}
