@@ -248,9 +248,11 @@ const StepScene: React.FC<{ step: Step; total: number }> = ({ step, total }) => 
       <div style={{ position: "relative" }}>
         <Phone
           style={{
+            position: "relative",
             transform: `translateY(${interpolate(enter, [0, 1], [70, 0])}px) scale(${0.9 * breathe})`,
           }}
         >
+
           <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: -1.2 }}>
             {step.screen.header}
           </div>
