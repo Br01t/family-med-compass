@@ -162,15 +162,19 @@ const StepScene: React.FC<{ step: Step; total: number }> = ({ step, total }) => 
   const targetIdx = rows.findIndex((r) => r.target);
   const tapCta = step.screen.tapCta ?? targetIdx < 0;
 
-  // posizioni approssimative dentro il telefono (coordinate schermo)
-  const phoneLeft = 1130;
-  const phoneTop = 110;
-  const rowsTop = phoneTop + (step.screen.bigValue ? 330 : 190);
-  const cursorTargetY = tapCta
-    ? phoneTop + 720
-    : rowsTop + targetIdx * 118 + 46;
-  const cursorX = interpolate(travel, [0, 1], [phoneLeft + 480, phoneLeft + 250]);
-  const cursorY = interpolate(travel, [0, 1], [phoneTop + 820, cursorTargetY]);
+  // coordinate locali al telefono (padding 34)
+  const rowsTop =
+    34 + 50 + (step.screen.sub ? 34 : 0) + (step.screen.bigValue ? 178 : 0) + 24;
+  const rowHeight = (r: Row) => (r.sub ? 100 : 70);
+  const rowY = (idx: number) =>
+    rowsTop +
+    rows.slice(0, idx).reduce((acc, r) => acc + rowHeight(r) + 16, 0) +
+    rowHeight(rows[idx]!) / 2;
+  const rowsHeight = rows.reduce((acc, r) => acc + rowHeight(r) + 16, 0);
+  const cursorTargetY = tapCta ? rowsTop + rowsHeight + 30 + 46 : rowY(targetIdx);
+  const cursorX = interpolate(travel, [0, 1], [400, 250]);
+  const cursorY = interpolate(travel, [0, 1], [820, cursorTargetY]);
+
 
   return (
     <AbsoluteFill
