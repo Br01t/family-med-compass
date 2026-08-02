@@ -326,15 +326,10 @@ const StepScene: React.FC<{ step: Step; total: number }> = ({ step, total }) => 
               {tapCta && done ? "✓ Fatto" : step.screen.cta}
             </div>
           )}
+          <Cursor x={cursorX} y={cursorY} pressed={pressed} visible={cursorIn} />
         </Phone>
-
-        <Cursor
-          x={cursorX - phoneLeft + 230}
-          y={cursorY - phoneTop - 40}
-          pressed={pressed}
-          visible={cursorIn}
-        />
       </div>
+
     </AbsoluteFill>
   );
 };
