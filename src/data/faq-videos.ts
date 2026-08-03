@@ -1,18 +1,27 @@
 import type { LucideIcon } from "lucide-react";
 import { Pill, Users, HeartPulse, Activity, FileText, Package } from "lucide-react";
 
-import v_faq_crea_terapia from "@/assets/faq/faq-crea-terapia.mp4.asset.json";
-import p_faq_crea_terapia from "@/assets/faq/faq-crea-terapia.jpg.asset.json";
-import v_faq_invita_caregiver from "@/assets/faq/faq-invita-caregiver.mp4.asset.json";
-import p_faq_invita_caregiver from "@/assets/faq/faq-invita-caregiver.jpg.asset.json";
-import v_faq_conferma_dose from "@/assets/faq/faq-conferma-dose.mp4.asset.json";
-import p_faq_conferma_dose from "@/assets/faq/faq-conferma-dose.jpg.asset.json";
-import v_faq_parametri_vitali from "@/assets/faq/faq-parametri-vitali.mp4.asset.json";
-import p_faq_parametri_vitali from "@/assets/faq/faq-parametri-vitali.jpg.asset.json";
-import v_faq_report_pdf from "@/assets/faq/faq-report-pdf.mp4.asset.json";
-import p_faq_report_pdf from "@/assets/faq/faq-report-pdf.jpg.asset.json";
-import v_faq_scorte from "@/assets/faq/faq-scorte.mp4.asset.json";
-import p_faq_scorte from "@/assets/faq/faq-scorte.jpg.asset.json";
+// I file mp4/jpg sono import reali di src/assets/faq/*, esattamente come il video
+// demo (src/assets/familymed-demo.mp4): Vite li tratta come asset con fingerprint
+// nel nome file, quindi il browser puo' tenerli in cache indefinitamente tra un
+// deploy e l'altro (cache-busting automatico quando il contenuto cambia).
+// NB: prima puntavano ai riferimenti asset di Lovable (*.asset.json, risolti
+// tramite il proxy interno /__l5e/assets-v1/...), che funziona solo dentro
+// l'editor/preview di Lovable e dava 404 ovunque altrove.
+// Per (ri)generare questi file: remotion/scripts/render-faq-assets.mjs
+
+import v_faq_crea_terapia from "@/assets/faq/faq-crea-terapia.mp4";
+import p_faq_crea_terapia from "@/assets/faq/faq-crea-terapia.jpg";
+import v_faq_invita_caregiver from "@/assets/faq/faq-invita-caregiver.mp4";
+import p_faq_invita_caregiver from "@/assets/faq/faq-invita-caregiver.jpg";
+import v_faq_conferma_dose from "@/assets/faq/faq-conferma-dose.mp4";
+import p_faq_conferma_dose from "@/assets/faq/faq-conferma-dose.jpg";
+import v_faq_parametri_vitali from "@/assets/faq/faq-parametri-vitali.mp4";
+import p_faq_parametri_vitali from "@/assets/faq/faq-parametri-vitali.jpg";
+import v_faq_report_pdf from "@/assets/faq/faq-report-pdf.mp4";
+import p_faq_report_pdf from "@/assets/faq/faq-report-pdf.jpg";
+import v_faq_scorte from "@/assets/faq/faq-scorte.mp4";
+import p_faq_scorte from "@/assets/faq/faq-scorte.jpg";
 
 export type FaqVideo = {
   id: string;
@@ -35,8 +44,8 @@ export const FAQ_VIDEOS: FaqVideo[] = [
     short: "Aggiungi un farmaco con dosaggio, orari e scorta iniziale.",
     duration: 22,
     icon: Pill,
-    src: v_faq_crea_terapia.url,
-    poster: p_faq_crea_terapia.url,
+    src: v_faq_crea_terapia,
+    poster: p_faq_crea_terapia,
     captions: "/faq/faq-crea-terapia.vtt",
     transcript: [
       "Come creare una terapia.",
@@ -55,8 +64,8 @@ export const FAQ_VIDEOS: FaqVideo[] = [
     short: "Invita familiari o badanti con link o QR e gestisci i permessi.",
     duration: 22,
     icon: Users,
-    src: v_faq_invita_caregiver.url,
-    poster: p_faq_invita_caregiver.url,
+    src: v_faq_invita_caregiver,
+    poster: p_faq_invita_caregiver,
     captions: "/faq/faq-invita-caregiver.vtt",
     transcript: [
       "Come invitare un caregiver.",
@@ -75,8 +84,8 @@ export const FAQ_VIDEOS: FaqVideo[] = [
     short: "Conferma, posticipa o salta una dose in un tap.",
     duration: 19,
     icon: HeartPulse,
-    src: v_faq_conferma_dose.url,
-    poster: p_faq_conferma_dose.url,
+    src: v_faq_conferma_dose,
+    poster: p_faq_conferma_dose,
     captions: "/faq/faq-conferma-dose.vtt",
     transcript: [
       "Come confermare una dose.",
@@ -94,8 +103,8 @@ export const FAQ_VIDEOS: FaqVideo[] = [
     short: "Registra pressione, glicemia, peso e saturazione e leggi i trend.",
     duration: 19,
     icon: Activity,
-    src: v_faq_parametri_vitali.url,
-    poster: p_faq_parametri_vitali.url,
+    src: v_faq_parametri_vitali,
+    poster: p_faq_parametri_vitali,
     captions: "/faq/faq-parametri-vitali.vtt",
     transcript: [
       "Come registrare i parametri vitali.",
@@ -113,8 +122,8 @@ export const FAQ_VIDEOS: FaqVideo[] = [
     short: "Scarica lo storico aderenza in PDF a 7, 30 o 90 giorni.",
     duration: 19,
     icon: FileText,
-    src: v_faq_report_pdf.url,
-    poster: p_faq_report_pdf.url,
+    src: v_faq_report_pdf,
+    poster: p_faq_report_pdf,
     captions: "/faq/faq-report-pdf.vtt",
     transcript: [
       "Come scaricare il report PDF.",
@@ -132,8 +141,8 @@ export const FAQ_VIDEOS: FaqVideo[] = [
     short: "Registra le confezioni e ricevi l'avviso prima che finiscano.",
     duration: 19,
     icon: Package,
-    src: v_faq_scorte.url,
-    poster: p_faq_scorte.url,
+    src: v_faq_scorte,
+    poster: p_faq_scorte,
     captions: "/faq/faq-scorte.vtt",
     transcript: [
       "Come gestire le scorte di farmaci.",

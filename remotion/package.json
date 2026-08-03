@@ -3,6 +3,9 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "render:faq": "bun run scripts/render-faq-assets.mjs"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "typescript": "5.9.2"
