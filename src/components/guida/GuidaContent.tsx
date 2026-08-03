@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { OnboardingTour, resetOnboarding } from "@/components/onboarding/OnboardingTour";
-import { Sparkles } from "lucide-react";
+import { FaqVideoLibrary } from "@/components/faq/FaqVideoLibrary";
+import { Sparkles, PlayCircle } from "lucide-react";
 import {
   Bell,
   CheckCircle2,
@@ -31,11 +32,23 @@ import {
 export function GuidaContent() {
   const [tourOpen, setTourOpen] = useState(false);
   const [tourRole, setTourRole] = useState<"caregiver" | "paziente">("caregiver");
+  const [tab, setTab] = useState("caregiver");
   const launchTour = (role: "caregiver" | "paziente") => {
     resetOnboarding(role);
     setTourRole(role);
     setTourOpen(true);
   };
+
+  // apri direttamente i video se si arriva da un link #faq-video
+  useEffect(() => {
+    if (window.location.hash === "#faq-video") {
+      setTab("video");
+      requestAnimationFrame(() =>
+        document.getElementById("faq-video")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      );
+    }
+  }, []);
+
 
   return (
     <>
@@ -63,13 +76,16 @@ export function GuidaContent() {
         </div>
       </div>
 
-    <Tabs defaultValue="caregiver" className="space-y-6">
+    <Tabs value={tab} onValueChange={setTab} className="space-y-6">
       <TabsList className="flex-wrap h-auto gap-1 rounded-2xl bg-secondary p-1">
         <TabsTrigger value="caregiver" className="rounded-xl gap-2 data-[state=active]:shadow-card">
           <Users className="size-4" /> Caregiver
         </TabsTrigger>
         <TabsTrigger value="paziente" className="rounded-xl gap-2 data-[state=active]:shadow-card">
           <HeartPulse className="size-4" /> Paziente
+        </TabsTrigger>
+        <TabsTrigger value="video" className="rounded-xl gap-2 data-[state=active]:shadow-card">
+          <PlayCircle className="size-4" /> Video FAQ
         </TabsTrigger>
         <TabsTrigger value="privacy" className="rounded-xl gap-2 data-[state=active]:shadow-card">
           <Shield className="size-4" /> Privacy & famiglia
@@ -78,6 +94,18 @@ export function GuidaContent() {
           <Download className="size-4" /> Installazione
         </TabsTrigger>
       </TabsList>
+
+      {/* ─────────────── VIDEO FAQ ─────────────── */}
+      <TabsContent value="video" className="space-y-6">
+        <HeroCard
+          icon={PlayCircle}
+          color="primary"
+          title="Video tutorial"
+          description="Mini-video da 20 secondi che mostrano passo passo le azioni principali. Ogni video ha sottotitoli in italiano e una trascrizione testuale completa."
+        />
+        <FaqVideoLibrary />
+      </TabsContent>
+
 
       {/* ─────────────── CAREGIVER ─────────────── */}
       <TabsContent value="caregiver" className="space-y-6">

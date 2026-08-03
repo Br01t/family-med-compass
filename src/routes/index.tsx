@@ -18,6 +18,9 @@ import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import demoVideoUrl from "@/assets/familymed-demo.mp4";
 import demoPosterUrl from "@/assets/familymed-demo-poster.jpg";
+import { VideoWithTranscript } from "@/components/faq/VideoWithTranscript";
+import { FAQ_VIDEOS } from "@/data/faq-videos";
+import { DEMO_CAPTIONS, DEMO_TRANSCRIPT } from "@/data/demo-video";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -245,16 +248,62 @@ function LandingPage() {
             </p>
           </div>
 
-          <div className="mt-8 overflow-hidden rounded-3xl border border-border/60 bg-card shadow-lift">
-            <video
-              className="block w-full aspect-video bg-surface-muted"
-              src={demoVideoUrl}
-              poster={demoPosterUrl}
-              controls
-              playsInline
-              preload="none"
-              aria-label="Video demo di FamilyMed"
-            />
+          <VideoWithTranscript
+            id="familymed-demo"
+            className="mt-8"
+            src={demoVideoUrl}
+            poster={demoPosterUrl}
+            captions={DEMO_CAPTIONS}
+            title="Video demo di FamilyMed"
+            transcript={DEMO_TRANSCRIPT}
+          />
+        </div>
+
+        {/* VIDEO FAQ */}
+        <div id="faq" className="mt-20 sm:mt-28 scroll-mt-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <span className="text-xs font-bold uppercase tracking-widest text-primary">Video FAQ</span>
+            <h2 className="mt-3 text-2xl sm:text-4xl font-black tracking-tight">
+              Ogni funzione spiegata in 20 secondi
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-muted-foreground">
+              Sei mini-video con sottotitoli e trascrizione: creare una terapia, invitare un
+              caregiver, confermare una dose, parametri vitali, report PDF e scorte.
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {FAQ_VIDEOS.map((v) => (
+              <Link
+                key={v.id}
+                to="/guida-pubblica"
+                hash="faq-video"
+                className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card text-left shadow-card transition-shadow hover:shadow-lift"
+              >
+                <img
+                  src={v.poster}
+                  alt={`Anteprima del video tutorial: ${v.title}`}
+                  loading="lazy"
+                  className="block aspect-video w-full object-cover"
+                />
+                <span className="flex min-w-0 flex-1 flex-col p-4">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    {v.category} · {v.duration}s
+                  </span>
+                  <span className="mt-1.5 text-sm font-black tracking-tight">{v.title}</span>
+                  <span className="mt-1 text-xs leading-relaxed text-muted-foreground">{v.short}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+
+          <div className="mt-6 text-center">
+            <Button variant="outline" size="lg" className="h-12 px-6 font-bold" asChild>
+              <Link to="/guida-pubblica" hash="faq-video">
+                <PlayCircle className="mr-2 size-5" />
+                Guarda tutti i video FAQ
+              </Link>
+            </Button>
           </div>
         </div>
 
