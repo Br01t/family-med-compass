@@ -10,5 +10,3 @@ export const DEMO_TRANSCRIPT: string[] = [
   "Storico aderenza e report PDF a 7, 30 o 90 giorni per il medico.",
   "FamilyMed — inizia gratis, per la tua famiglia.",
 ];
-
-export const DEMO_CAPTIONS = "/faq/familymed-demo.vtt";
