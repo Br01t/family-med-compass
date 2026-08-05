@@ -19,12 +19,35 @@ export type Row = {
   target?: boolean;
 };
 
+export type Field = {
+  /** etichetta del campo, come nell'app */
+  label: string;
+  /** valore compilato mostrato nel campo */
+  value: string;
+  /** aspetto del controllo */
+  kind?: "input" | "select" | "time" | "toggle" | "chips";
+  /** per kind = "chips": opzioni mostrate; la prima è selezionata */
+  options?: string[];
+  /** campo evidenziato / toccato dal cursore */
+  target?: boolean;
+};
+
+export type Form = {
+  /** titolo della modale */
+  title: string;
+  /** sottotitolo/descrizione della modale */
+  sub?: string;
+  fields: Field[];
+};
+
 export type Screen = {
   header: string;
   sub?: string;
   bigValue?: string;
   bigLabel?: string;
   rows?: Row[];
+  /** modale con campi reali dell'app */
+  form?: Form;
   cta?: string;
   /** il tap avviene sulla CTA invece che su una riga */
   tapCta?: boolean;
@@ -159,8 +182,11 @@ const StepScene: React.FC<{ step: Step; total: number }> = ({ step, total }) => 
   });
 
   const rows = step.screen.rows ?? [];
+  const form = step.screen.form;
+  const fields = form?.fields ?? [];
   const targetIdx = rows.findIndex((r) => r.target);
-  const tapCta = step.screen.tapCta ?? targetIdx < 0;
+  const targetFieldIdx = fields.findIndex((f) => f.target);
+  const tapCta = step.screen.tapCta ?? (targetIdx < 0 && targetFieldIdx < 0);
 
   // coordinate locali al telefono (padding 34)
   const rowsTop =
@@ -171,7 +197,21 @@ const StepScene: React.FC<{ step: Step; total: number }> = ({ step, total }) => 
     rows.slice(0, idx).reduce((acc, r) => acc + rowHeight(r) + 16, 0) +
     rowHeight(rows[idx]!) / 2;
   const rowsHeight = rows.reduce((acc, r) => acc + rowHeight(r) + 16, 0);
-  const cursorTargetY = tapCta ? rowsTop + rowsHeight + 30 + 46 : rowY(targetIdx);
+
+  // geometria della modale (campi)
+  const FIELD_H = 96;
+  const FIELD_GAP = 14;
+  const formTop = rowsTop + (rows.length ? rowsHeight + 20 : 0);
+  const fieldsTop = formTop + 22 + 44 + (form?.sub ? 32 : 0) + 18;
+  const fieldsHeight = fields.length * FIELD_H + Math.max(0, fields.length - 1) * FIELD_GAP;
+  const fieldY = (idx: number) => fieldsTop + idx * (FIELD_H + FIELD_GAP) + 62;
+  const contentBottom = form ? fieldsTop + fieldsHeight + 22 : rowsTop + rowsHeight;
+
+  const cursorTargetY = tapCta
+    ? contentBottom + 30 + 46
+    : targetFieldIdx >= 0
+      ? fieldY(targetFieldIdx)
+      : rowY(targetIdx);
   const cursorX = interpolate(travel, [0, 1], [400, 250]);
   const cursorY = interpolate(travel, [0, 1], [820, cursorTargetY]);
 
@@ -309,6 +349,132 @@ const StepScene: React.FC<{ step: Step; total: number }> = ({ step, total }) => 
               );
             })}
           </div>
+
+          {form && (
+            <div
+              style={{
+                marginTop: rows.length ? 20 : 0,
+                background: C.white,
+                border: "2px solid rgba(34,32,28,0.10)",
+                borderRadius: 26,
+                padding: 22,
+                boxShadow: "0 24px 50px -30px rgba(34,32,28,0.45)",
+                opacity: spring({ frame: frame - 6, fps, config: { damping: 22, stiffness: 140 } }),
+              }}
+            >
+              <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: -1 }}>{form.title}</div>
+              {form.sub && (
+                <div style={{ fontSize: 21, color: C.inkSoft, marginTop: 4 }}>{form.sub}</div>
+              )}
+
+              <div
+                style={{
+                  marginTop: 18,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: FIELD_GAP,
+                }}
+              >
+                {fields.map((f, i) => {
+                  const app = spring({
+                    frame: frame - 16 - i * 7,
+                    fps,
+                    config: { damping: 22, stiffness: 140 },
+                  });
+                  const hot = f.target && done;
+                  const typed =
+                    f.kind === "input" || f.kind === undefined
+                      ? f.value.slice(
+                          0,
+                          Math.round(
+                            interpolate(frame, [18 + i * 7, 46 + i * 7], [0, f.value.length], {
+                              extrapolateLeft: "clamp",
+                              extrapolateRight: "clamp",
+                            }),
+                          ),
+                        )
+                      : f.value;
+                  return (
+                    <div
+                      key={f.label}
+                      style={{
+                        height: FIELD_H,
+                        opacity: app,
+                        transform: `translateY(${interpolate(app, [0, 1], [18, 0])}px)`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 20,
+                          fontWeight: 800,
+                          letterSpacing: 0.6,
+                          color: C.inkSoft,
+                          height: 26,
+                        }}
+                      >
+                        {f.label}
+                      </div>
+                      {f.kind === "chips" ? (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6, height: 62, alignItems: "center", overflow: "hidden" }}>
+                          {(f.options ?? []).map((o, oi) => (
+                            <div
+                              key={o}
+                              style={{
+                                padding: "8px 12px",
+                                borderRadius: 999,
+                                fontSize: 18,
+                                fontWeight: 800,
+                                background: oi === 0 ? C.sageSoft : C.bgDeep,
+                                color: oi === 0 ? C.sageDeep : C.inkSoft,
+                                border: `2px solid ${oi === 0 ? C.sage : "transparent"}`,
+                              }}
+                            >
+                              {o}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            marginTop: 6,
+                            height: 62,
+                            borderRadius: 18,
+                            background: f.kind === "toggle" ? C.sageSoft : C.bgDeep,
+                            border: `2px solid ${hot ? C.sage : "rgba(34,32,28,0.08)"}`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "0 18px",
+                            transform: `scale(${f.target && pressed ? 0.98 : 1})`,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 25,
+                              fontWeight: 800,
+                              color: f.kind === "toggle" ? C.sageDeep : C.ink,
+                            }}
+                          >
+                            {typed}
+                          </span>
+                          <span style={{ fontSize: 22, color: C.inkSoft, fontWeight: 800 }}>
+                            {f.kind === "select"
+                              ? "▾"
+                              : f.kind === "time"
+                                ? "🕒"
+                                : f.kind === "toggle"
+                                  ? "●"
+                                  : ""}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
 
           {step.screen.cta && (
             <div

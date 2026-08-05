@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, FileText } from "lucide-react";
+import { ChevronDown, FileText, Volume2, Volume1, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -31,6 +31,9 @@ export function VideoWithTranscript({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [inView, setInView] = useState(false);
+  // Volume della musica di sottofondo: preferenza ricordata tra un video e l'altro.
+  const [volume, setVolume] = useState(0.5);
+  const [muted, setMuted] = useState(false);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -58,6 +61,33 @@ export function VideoWithTranscript({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  // Ricorda la preferenza audio dell'utente tra un tutorial e l'altro.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("faq-video-audio");
+      if (!raw) return;
+      const saved = JSON.parse(raw) as { volume?: number; muted?: boolean };
+      if (typeof saved.volume === "number") setVolume(Math.min(1, Math.max(0, saved.volume)));
+      if (typeof saved.muted === "boolean") setMuted(saved.muted);
+    } catch {
+      /* preferenza non disponibile: si usano i valori di default */
+    }
+  }, []);
+
+  // Applica volume/mute al player (anche quando si cambia video).
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.volume = volume;
+    v.muted = muted || volume === 0;
+    try {
+      localStorage.setItem("faq-video-audio", JSON.stringify({ volume, muted }));
+    } catch {
+      /* storage non disponibile */
+    }
+  }, [volume, muted, inView, src]);
+
 
   return (
     <div className={cn("w-full min-w-0", className)} ref={wrapperRef}>
@@ -88,6 +118,43 @@ export function VideoWithTranscript({
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="inline-flex min-h-9 items-center gap-2 rounded-full border border-border/60 px-3 py-1">
+          <button
+            type="button"
+            onClick={() => setMuted((m) => !m)}
+            aria-pressed={muted}
+            aria-label={muted ? "Riattiva la musica di sottofondo" : "Silenzia la musica di sottofondo"}
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold text-foreground/80 transition-colors hover:text-primary"
+          >
+            {muted || volume === 0 ? (
+              <VolumeX className="size-3.5" aria-hidden="true" />
+            ) : volume < 0.5 ? (
+              <Volume1 className="size-3.5" aria-hidden="true" />
+            ) : (
+              <Volume2 className="size-3.5" aria-hidden="true" />
+            )}
+            <span className="hidden sm:inline">{muted || volume === 0 ? "Musica off" : "Musica"}</span>
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={muted ? 0 : Math.round(volume * 100)}
+            onChange={(e) => {
+              const next = Number(e.target.value) / 100;
+              setVolume(next);
+              setMuted(next === 0);
+            }}
+            aria-label="Volume musica di sottofondo"
+            className="h-1.5 w-24 cursor-pointer appearance-none rounded-full bg-border accent-primary sm:w-32"
+          />
+          <span className="w-8 text-right text-[10px] font-bold tabular-nums text-muted-foreground">
+            {muted ? 0 : Math.round(volume * 100)}%
+          </span>
+        </div>
+
+
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}

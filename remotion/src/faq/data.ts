@@ -39,43 +39,57 @@ export const FAQ_VIDEOS: Record<string, TutorialProps> = {
       },
       {
         n: 3,
-        caption: "Inserisci nome e dosaggio",
-        detail: "Nome del farmaco, dose per assunzione e forma (compressa, gocce, fiala…).",
+        caption: "Compila i dati del farmaco",
+        detail:
+          "Paziente, nome farmaco, dosaggio, categoria e unità per dose: gli stessi campi della modale «Nuova terapia».",
         screen: {
-          header: "Nuova terapia",
-          sub: "Dati del farmaco",
-          rows: [
-            { label: "Lasix", sub: "Nome del farmaco", tone: "sage" },
-            { label: "25 mg", sub: "Dosaggio" },
-            { label: "1 compressa", sub: "Quantità per assunzione", target: true },
-          ],
+          header: "Terapie",
+          form: {
+            title: "Nuova terapia",
+            sub: "Farmaco, orari e scorte",
+            fields: [
+              { label: "Paziente", value: "Mario Rossi", kind: "select" },
+              { label: "Nome farmaco", value: "Lasix", kind: "input" },
+              { label: "Dosaggio", value: "25 mg", kind: "input", target: true },
+              { label: "Categoria", value: "Cardiologico", kind: "select" },
+            ],
+          },
         },
       },
       {
         n: 4,
-        caption: "Imposta gli orari",
-        detail: "Aggiungi uno o più orari al giorno: il promemoria suonerà puntuale.",
+        caption: "Orari, ricorrenza e promemoria",
+        detail:
+          "Aggiungi fino a 6 orari, scegli la ricorrenza e decidi quanti minuti prima e dopo far scattare gli avvisi.",
         screen: {
-          header: "Orari",
-          bigLabel: "PROMEMORIA",
-          bigValue: "08:00",
-          rows: [
-            { label: "13:00", sub: "Secondo promemoria", tone: "amber" },
-            { label: "+ Aggiungi orario", sub: "Fino a 6 al giorno", target: true },
-          ],
+          header: "Terapie",
+          form: {
+            title: "Orari e promemoria",
+            fields: [
+              { label: "Orari di assunzione", value: "08:00 · 13:00", kind: "time" },
+              { label: "Ricorrenza", value: "Ogni giorno", kind: "select", target: true },
+              { label: "Avviso prima della dose", value: "15 minuti prima", kind: "select" },
+              { label: "Avviso post se non confermata", value: "60 minuti", kind: "select" },
+            ],
+          },
         },
       },
       {
         n: 5,
-        caption: "Salva: è già attiva",
-        detail: "Il paziente riceve subito il promemoria e tu vedi le conferme in tempo reale.",
+        caption: "Scorte, date e salva",
+        detail:
+          "Imposta pillole per confezione, soglia di allerta e data inizio: poi salva, la terapia è già attiva.",
         screen: {
-          header: "Riepilogo",
-          sub: "Lasix · 25mg",
-          rows: [
-            { label: "Ogni giorno", sub: "08:00 e 13:00", tone: "sage" },
-            { label: "Scorta: 30 compresse", sub: "Avviso sotto le 7" },
-          ],
+          header: "Terapie",
+          form: {
+            title: "Scorte e periodo",
+            fields: [
+              { label: "Unità per dose", value: "1 compressa", kind: "input" },
+              { label: "Pillole/confezione · N° confezioni", value: "30 × 1", kind: "input" },
+              { label: "Soglia allerta scorte", value: "7 dosi", kind: "input" },
+              { label: "Data inizio", value: "Oggi", kind: "select" },
+            ],
+          },
           cta: "Salva terapia",
           tapCta: true,
         },
@@ -118,17 +132,22 @@ export const FAQ_VIDEOS: Record<string, TutorialProps> = {
       },
       {
         n: 3,
-        caption: "Genera l'invito",
-        detail: "Scegli il ruolo (familiare, badante) e crea il codice: vale 7 giorni.",
+        caption: "Compila l'invito",
+        detail:
+          "Scegli il ruolo, il livello di permessi e la scadenza del codice: sono i campi della modale «Nuovo invito».",
         screen: {
           header: "Gruppo di cura",
-          sub: "Membri e inviti",
-          rows: [
-            { label: "Marco — Figlio", sub: "Principale" },
-            { label: "Elena — Badante", sub: "Secondario" },
-          ],
+          form: {
+            title: "Nuovo invito",
+            sub: "Chi entra nel gruppo di cura",
+            fields: [
+              { label: "Nome (facoltativo)", value: "Giulia", kind: "input" },
+              { label: "Relazione", value: "Sorella", kind: "select" },
+              { label: "Ruolo", value: "Caregiver secondario", kind: "select", target: true },
+              { label: "Scadenza codice", value: "7 giorni", kind: "select" },
+            ],
+          },
           cta: "Crea invito",
-          tapCta: true,
         },
       },
       {
@@ -171,12 +190,16 @@ export const FAQ_VIDEOS: Record<string, TutorialProps> = {
       {
         n: 1,
         caption: "Arriva il promemoria",
-        detail: "All'orario stabilito il telefono suona e mostra il farmaco da prendere.",
+        detail:
+          "All'orario stabilito il telefono suona: vedi farmaco, dose e il countdown prima che diventi dimenticata.",
         screen: {
           header: "Promemoria",
           bigLabel: "ORA",
           bigValue: "08:00",
-          rows: [{ label: "Cardioaspirina 100mg", sub: "1 compressa", tone: "clay" }],
+          rows: [
+            { label: "Cardioaspirina 100mg", sub: "1 compressa", tone: "clay" },
+            { label: "Scade tra 59:12", sub: "Poi risulta dimenticata", tone: "amber" },
+          ],
           cta: "Apri",
           tapCta: true,
         },
@@ -196,22 +219,27 @@ export const FAQ_VIDEOS: Record<string, TutorialProps> = {
       },
       {
         n: 3,
-        caption: "Non ora? Rimanda",
-        detail: "Con «Posticipa» la sveglia torna dopo 10 minuti senza segnare la dose.",
+        caption: "Non ora? Rimanda o salta",
+        detail:
+          "«Rimanda» è disponibile una volta sola e sposta la dose del tempo previsto dalla terapia. Se salti, indichi il motivo.",
         screen: {
           header: "Cardioaspirina",
-          sub: "Cosa vuoi fare?",
-          rows: [
-            { label: "Ho preso la medicina", sub: "Conferma subito", tone: "sage" },
-            { label: "Posticipa 10 min", sub: "La sveglia torna", tone: "amber", target: true },
-            { label: "Salta questa dose", sub: "Con motivazione", tone: "clay" },
-          ],
+          form: {
+            title: "Cosa vuoi fare?",
+            sub: "Dose delle 08:00",
+            fields: [
+              { label: "Azione", value: "Rimanda una volta", kind: "select", target: true },
+              { label: "Nuovo orario", value: "08:15", kind: "time" },
+              { label: "Motivo (se salti)", value: "Nausea", kind: "select" },
+              { label: "Avvisa la famiglia", value: "Sempre attivo", kind: "toggle" },
+            ],
+          },
         },
       },
       {
         n: 4,
         caption: "La famiglia lo vede subito",
-        detail: "La conferma arriva in tempo reale nella dashboard di chi ti segue.",
+        detail: "La conferma arriva in tempo reale nella dashboard e nel centro notifiche di chi ti segue.",
         screen: {
           header: "Oggi",
           sub: "Timeline",
@@ -261,15 +289,20 @@ export const FAQ_VIDEOS: Record<string, TutorialProps> = {
       {
         n: 3,
         caption: "Inserisci i valori",
-        detail: "Sistolica, diastolica e battito. Data e ora si compilano da sole.",
+        detail:
+          "Sistolica, diastolica, battito, data/ora e una nota: sono esattamente i campi della modale di registrazione.",
         screen: {
-          header: "Pressione",
-          bigLabel: "SISTOLICA / DIASTOLICA",
-          bigValue: "128 / 82",
-          rows: [
-            { label: "Battito: 72 bpm", sub: "Opzionale" },
-            { label: "Oggi, 09:15", sub: "Modifica data e ora", target: true },
-          ],
+          header: "Parametri vitali",
+          form: {
+            title: "Pressione arteriosa",
+            sub: "Valori in mmHg",
+            fields: [
+              { label: "Sistolica / Diastolica", value: "128 / 82", kind: "input" },
+              { label: "Battito (opzionale)", value: "72 bpm", kind: "input" },
+              { label: "Data e ora", value: "Oggi, 09:15", kind: "time", target: true },
+              { label: "Nota", value: "A digiuno", kind: "input" },
+            ],
+          },
           cta: "Salva misurazione",
         },
       },
@@ -325,14 +358,25 @@ export const FAQ_VIDEOS: Record<string, TutorialProps> = {
       {
         n: 3,
         caption: "Filtra terapie e stati",
-        detail: "Puoi includere solo alcuni farmaci o solo le dosi dimenticate.",
+        detail:
+          "Selezioni paziente, periodo, quali farmaci includere e quali stati mostrare: il PDF rispetta gli stessi filtri.",
         screen: {
-          header: "Filtri",
-          rows: [
-            { label: "Cardioaspirina", sub: "Inclusa", tone: "sage" },
-            { label: "Metformina", sub: "Inclusa", tone: "sage" },
-            { label: "Solo dimenticate", sub: "Filtro stato", tone: "clay", target: true },
-          ],
+          header: "Storico e report",
+          form: {
+            title: "Filtri",
+            sub: "Valgono anche per il PDF",
+            fields: [
+              { label: "Paziente", value: "Mario Rossi", kind: "select" },
+              { label: "Periodo", value: "Ultimi 30 giorni", kind: "select" },
+              {
+                label: "Terapie incluse",
+                value: "",
+                kind: "chips",
+                options: ["Cardioaspirina", "Metformina", "+1"],
+              },
+              { label: "Stati", value: "Prese · Dimenticate", kind: "select", target: true },
+            ],
+          },
         },
       },
       {
@@ -343,9 +387,7 @@ export const FAQ_VIDEOS: Record<string, TutorialProps> = {
           header: "Aderenza",
           bigLabel: "ULTIMI 30 GIORNI",
           bigValue: "94%",
-          rows: [
-            { label: "78 dosi prese", sub: "5 dimenticate", tone: "sage" },
-          ],
+          rows: [{ label: "78 dosi prese", sub: "5 dimenticate", tone: "sage" }],
           cta: "Scarica PDF",
           tapCta: true,
         },
@@ -374,19 +416,27 @@ export const FAQ_VIDEOS: Record<string, TutorialProps> = {
       {
         n: 2,
         caption: "Registra la confezione",
-        detail: "Inserisci quante compresse hai comprato: lo scalo è automatico a ogni dose.",
+        detail:
+          "Pillole per confezione, numero di confezioni e soglia di avviso: lo scarico è automatico a ogni dose confermata.",
         screen: {
-          header: "Cardioaspirina",
-          bigLabel: "RIMANENTI",
-          bigValue: "6",
-          rows: [{ label: "+ 30 compresse", sub: "Nuova confezione", target: true }],
+          header: "Scorte",
+          form: {
+            title: "Cardioaspirina 100mg",
+            sub: "Aggiorna magazzino",
+            fields: [
+              { label: "Dosi rimanenti", value: "6", kind: "input" },
+              { label: "Pillole per confezione", value: "30", kind: "input", target: true },
+              { label: "N° confezioni acquistate", value: "1", kind: "input" },
+              { label: "Soglia allerta", value: "7 dosi", kind: "input" },
+            ],
+          },
           cta: "Aggiorna scorta",
         },
       },
       {
         n: 3,
-        caption: "Imposta la soglia di avviso",
-        detail: "Sotto la soglia ricevi la notifica «scorta in esaurimento».",
+        caption: "Chi viene avvisato",
+        detail: "Sotto la soglia parte la notifica «scorta in esaurimento», anche ai caregiver.",
         screen: {
           header: "Avvisi",
           rows: [
