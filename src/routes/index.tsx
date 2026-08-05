@@ -20,7 +20,7 @@ import demoVideoUrl from "@/assets/familymed-demo.mp4";
 import demoPosterUrl from "@/assets/familymed-demo-poster.jpg";
 import { VideoWithTranscript } from "@/components/faq/VideoWithTranscript";
 import { FAQ_VIDEOS } from "@/data/faq-videos";
-import { DEMO_CAPTIONS, DEMO_TRANSCRIPT } from "@/data/demo-video";
+import { DEMO_TRANSCRIPT } from "@/data/demo-video";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -253,7 +253,6 @@ function LandingPage() {
             className="mt-8"
             src={demoVideoUrl}
             poster={demoPosterUrl}
-            captions={DEMO_CAPTIONS}
             title="Video demo di FamilyMed"
             transcript={DEMO_TRANSCRIPT}
           />

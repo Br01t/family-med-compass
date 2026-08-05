@@ -16,7 +16,6 @@ export function FaqVideoLibrary({ className }: { className?: string }) {
         id={active.id}
         src={active.src}
         poster={active.poster}
-        captions={active.captions}
         title={active.title}
         transcript={active.transcript}
         autoPlay={autoPlay}

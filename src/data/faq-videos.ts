@@ -32,7 +32,6 @@ export type FaqVideo = {
   icon: LucideIcon;
   src: string;
   poster: string;
-  captions: string;
   transcript: string[];
 };
 
@@ -46,7 +45,6 @@ export const FAQ_VIDEOS: FaqVideo[] = [
     icon: Pill,
     src: v_faq_crea_terapia,
     poster: p_faq_crea_terapia,
-    captions: "/faq/faq-crea-terapia.vtt",
     transcript: [
       "Come creare una terapia.",
       "Passaggio 1 — Apri «Terapie»: Dal menu laterale (o dalla barra in basso se sei paziente) scegli Terapie.",
@@ -66,7 +64,6 @@ export const FAQ_VIDEOS: FaqVideo[] = [
     icon: Users,
     src: v_faq_invita_caregiver,
     poster: p_faq_invita_caregiver,
-    captions: "/faq/faq-invita-caregiver.vtt",
     transcript: [
       "Come invitare un caregiver.",
       "Passaggio 1 — Apri la scheda del paziente: Dalla lista Pazienti tocca la persona per cui vuoi aggiungere qualcuno.",
@@ -86,7 +83,6 @@ export const FAQ_VIDEOS: FaqVideo[] = [
     icon: HeartPulse,
     src: v_faq_conferma_dose,
     poster: p_faq_conferma_dose,
-    captions: "/faq/faq-conferma-dose.vtt",
     transcript: [
       "Come confermare una dose.",
       "Passaggio 1 — Arriva il promemoria: All'orario stabilito il telefono suona e mostra il farmaco da prendere.",
@@ -105,7 +101,6 @@ export const FAQ_VIDEOS: FaqVideo[] = [
     icon: Activity,
     src: v_faq_parametri_vitali,
     poster: p_faq_parametri_vitali,
-    captions: "/faq/faq-parametri-vitali.vtt",
     transcript: [
       "Come registrare i parametri vitali.",
       "Passaggio 1 — Apri «Parametri vitali»: Pressione, glicemia, peso e saturazione in un unico diario.",
@@ -124,7 +119,6 @@ export const FAQ_VIDEOS: FaqVideo[] = [
     icon: FileText,
     src: v_faq_report_pdf,
     poster: p_faq_report_pdf,
-    captions: "/faq/faq-report-pdf.vtt",
     transcript: [
       "Come scaricare il report PDF.",
       "Passaggio 1 — Apri «Storico e report»: Tutte le dosi programmate, prese, saltate o dimenticate.",
@@ -143,7 +137,6 @@ export const FAQ_VIDEOS: FaqVideo[] = [
     icon: Package,
     src: v_faq_scorte,
     poster: p_faq_scorte,
-    captions: "/faq/faq-scorte.vtt",
     transcript: [
       "Come gestire le scorte di farmaci.",
       "Passaggio 1 — Apri «Scorte»: Ogni terapia ha il suo magazzino di pillole rimanenti.",
