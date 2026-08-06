@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, FileText, Volume2, Volume1, VolumeX } from "lucide-react";
+import { ChevronDown, FileText, Volume2, Volume1, VolumeX, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+type FullscreenVideo = HTMLVideoElement & {
+  webkitEnterFullscreen?: () => void;
+  webkitRequestFullscreen?: () => Promise<void> | void;
+};
 
 type Props = {
   src: string;
