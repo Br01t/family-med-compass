@@ -459,4 +459,80 @@ export const FAQ_VIDEOS: Record<string, TutorialProps> = {
       },
     ],
   },
+
+  "faq-installa-app": {
+    chip: "FAQ · Installazione",
+    title: "Come installare l'app",
+    titleAccent: "sul cellulare",
+    outro: "FamilyMed è sulla tua Home!",
+    steps: [
+      {
+        n: 1,
+        caption: "Apri FamilyMed nel browser",
+        detail: "Su iPhone usa Safari, su Android usa Chrome: vai su familymed.app e accedi.",
+        screen: {
+          header: "Browser",
+          sub: "familymed.app",
+          rows: [
+            { label: "Safari · iPhone", sub: "Il browser di Apple", tone: "sage", target: true },
+            { label: "Chrome · Android", sub: "Il browser di Google", tone: "sage" },
+          ],
+        },
+      },
+      {
+        n: 2,
+        caption: "iPhone: tocca «Condividi»",
+        detail: "È l'icona con la freccia verso l'alto, nella barra in basso di Safari.",
+        screen: {
+          header: "Safari",
+          sub: "Barra in basso",
+          rows: [
+            { label: "Condividi ↑", sub: "Tocca qui", tone: "sage", target: true },
+            { label: "Segnalibri", sub: "Non serve" },
+            { label: "Schede", sub: "Non serve" },
+          ],
+        },
+      },
+      {
+        n: 3,
+        caption: "iPhone: «Aggiungi alla schermata Home»",
+        detail: "Scorri il menu di condivisione, tocca la voce e conferma con «Aggiungi».",
+        screen: {
+          header: "Condividi",
+          rows: [
+            { label: "Aggiungi ai preferiti", sub: "Salva il sito" },
+            { label: "Aggiungi alla schermata Home", sub: "Installa FamilyMed", tone: "sage", target: true },
+          ],
+          cta: "Aggiungi",
+        },
+      },
+      {
+        n: 4,
+        caption: "Android: menu ⋮ → «Installa app»",
+        detail: "In Chrome tocca i tre puntini in alto a destra e scegli Installa app (o Aggiungi a schermata Home).",
+        screen: {
+          header: "Chrome ⋮",
+          rows: [
+            { label: "Nuova scheda", sub: "Non serve" },
+            { label: "Installa app", sub: "Aggiungi a schermata Home", tone: "sage", target: true },
+            { label: "Cronologia", sub: "Non serve" },
+          ],
+          cta: "Installa",
+          tapCta: true,
+        },
+      },
+      {
+        n: 5,
+        caption: "Trovi l'icona sulla Home",
+        detail: "FamilyMed si apre a schermo intero come una vera app, con i promemoria sempre pronti.",
+        screen: {
+          header: "Schermata Home",
+          rows: [
+            { label: "FamilyMed", sub: "App installata · apri", tone: "sage", target: true },
+            { label: "Promemoria attivi", sub: "Anche a schermo bloccato", tone: "clay" },
+          ],
+        },
+      },
+    ],
+  },
 };
