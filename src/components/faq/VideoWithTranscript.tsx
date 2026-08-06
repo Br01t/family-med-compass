@@ -188,7 +188,7 @@ export function VideoWithTranscript({
               setMuted(next === 0);
             }}
             aria-label="Volume musica di sottofondo"
-            className="h-1.5 w-24 cursor-pointer appearance-none rounded-full bg-border accent-primary sm:w-32"
+            className="h-1.5 w-16 cursor-pointer appearance-none rounded-full bg-border accent-primary sm:w-32"
           />
           <span className="w-8 text-right text-[10px] font-bold tabular-nums text-muted-foreground">
             {muted ? 0 : Math.round(volume * 100)}%
