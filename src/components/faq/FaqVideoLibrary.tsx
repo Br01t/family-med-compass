@@ -25,7 +25,7 @@ export function FaqVideoLibrary({ className }: { className?: string }) {
         Tutti i video tutorial
       </p>
 
-      <div className="mt-3 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-3 grid gap-3 grid-cols-2 sm:gap-4 lg:grid-cols-3">
         {FAQ_VIDEOS.map((v) => {
           const isActive = v.id === active.id;
           return (
