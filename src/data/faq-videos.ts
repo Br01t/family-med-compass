@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Pill, Users, HeartPulse, Activity, FileText, Package } from "lucide-react";
+import { Pill, Users, HeartPulse, Activity, FileText, Package, Smartphone } from "lucide-react";
 
 // I file mp4/jpg sono import reali di src/assets/faq/*, esattamente come il video
 // demo (src/assets/familymed-demo.mp4): Vite li tratta come asset con fingerprint
@@ -20,6 +20,8 @@ import v_faq_parametri_vitali from "@/assets/faq/faq-parametri-vitali.mp4";
 import p_faq_parametri_vitali from "@/assets/faq/faq-parametri-vitali.jpg";
 import v_faq_report_pdf from "@/assets/faq/faq-report-pdf.mp4";
 import p_faq_report_pdf from "@/assets/faq/faq-report-pdf.jpg";
+import v_faq_installa_app from "@/assets/faq/faq-installa-app.mp4";
+import p_faq_installa_app from "@/assets/faq/faq-installa-app.jpg";
 import v_faq_scorte from "@/assets/faq/faq-scorte.mp4";
 import p_faq_scorte from "@/assets/faq/faq-scorte.jpg";
 
@@ -36,6 +38,25 @@ export type FaqVideo = {
 };
 
 export const FAQ_VIDEOS: FaqVideo[] = [
+  {
+    id: "faq-installa-app",
+    title: "Come installare l'app sul telefono",
+    category: "Installazione",
+    short: "Aggiungi FamilyMed alla schermata Home da Safari (iPhone) o Chrome (Android).",
+    duration: 22,
+    icon: Smartphone,
+    src: v_faq_installa_app,
+    poster: p_faq_installa_app,
+    transcript: [
+      "Come installare l'app sul cellulare.",
+      "Passaggio 1 \u2014 Apri FamilyMed nel browser: su iPhone usa Safari, su Android usa Chrome, poi accedi al tuo account.",
+      "Passaggio 2 \u2014 iPhone, tocca «Condividi»: è l'icona con la freccia verso l'alto nella barra in basso di Safari.",
+      "Passaggio 3 \u2014 iPhone, «Aggiungi alla schermata Home»: scorri il menu di condivisione, tocca la voce e conferma con «Aggiungi».",
+      "Passaggio 4 \u2014 Android, menu tre puntini: in Chrome tocca ⋮ in alto a destra e scegli «Installa app» (o «Aggiungi a schermata Home»).",
+      "Passaggio 5 \u2014 Trovi l'icona sulla Home: FamilyMed si apre a schermo intero come una vera app, con i promemoria sempre pronti.",
+      "FamilyMed è sulla tua Home!",
+    ],
+  },
   {
     id: "faq-crea-terapia",
     title: "Come creare una terapia",
