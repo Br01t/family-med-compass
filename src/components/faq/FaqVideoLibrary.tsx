@@ -59,17 +59,18 @@ export function FaqVideoLibrary({ className }: { className?: string }) {
                 </span>
               </span>
 
-              <span className="flex min-w-0 flex-1 flex-col p-4">
-                <span className="flex items-center gap-2">
-                  <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
-                    <v.icon className="size-4" aria-hidden="true" />
+              <span className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary sm:size-7">
+                    <v.icon className="size-3.5 sm:size-4" aria-hidden="true" />
                   </span>
                   <span className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     {v.category}
                   </span>
                 </span>
-                <span className="mt-2 text-sm font-black tracking-tight">{v.title}</span>
-                <span className="mt-1 text-xs leading-relaxed text-muted-foreground">{v.short}</span>
+                <span className="mt-2 text-xs font-black tracking-tight sm:text-sm">{v.title}</span>
+                <span className="mt-1 hidden text-xs leading-relaxed text-muted-foreground sm:block">{v.short}</span>
+
               </span>
             </button>
           );
