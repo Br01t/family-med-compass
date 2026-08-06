@@ -94,6 +94,32 @@ export function VideoWithTranscript({
   }, [volume, muted, inView, src]);
 
 
+  // Avvia la riproduzione a schermo intero (con fallback iOS/Safari).
+  const handleFullscreen = async () => {
+    setInView(true);
+    // se il <video> non è ancora montato, aspetta il prossimo frame di render
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    const v = videoRef.current as FullscreenVideo | null;
+    if (!v) return;
+    try {
+      if (typeof v.requestFullscreen === "function") {
+        await v.requestFullscreen();
+      } else if (typeof v.webkitRequestFullscreen === "function") {
+        await v.webkitRequestFullscreen();
+      } else if (typeof v.webkitEnterFullscreen === "function") {
+        // iPhone: il fullscreen è supportato solo dall'elemento video nativo
+        v.webkitEnterFullscreen();
+      }
+    } catch {
+      /* fullscreen negato dal browser: il video resta inline */
+    }
+    try {
+      await v.play();
+    } catch {
+      /* autoplay bloccato: l'utente premerà play */
+    }
+  };
+
   return (
     <div className={cn("w-full min-w-0", className)} ref={wrapperRef}>
       <div className="overflow-hidden rounded-2xl sm:rounded-3xl border border-border/60 bg-card shadow-lift">
@@ -101,7 +127,7 @@ export function VideoWithTranscript({
           <video
             key={src}
             ref={videoRef}
-            className="block w-full aspect-video bg-surface-muted"
+            className="block w-full aspect-video max-h-[60svh] bg-surface-muted"
             src={src}
             poster={poster}
             controls
@@ -117,13 +143,22 @@ export function VideoWithTranscript({
             alt={`Anteprima del video: ${title}`}
             loading="lazy"
             decoding="async"
-            className="block w-full aspect-video object-cover bg-surface-muted"
+            className="block w-full aspect-video max-h-[60svh] object-cover bg-surface-muted"
           />
         )}
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <div className="inline-flex min-h-9 items-center gap-2 rounded-full border border-border/60 px-3 py-1">
+        <button
+          type="button"
+          onClick={handleFullscreen}
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1 text-[11px] font-bold text-foreground/80 transition-colors hover:bg-secondary"
+        >
+          <Maximize2 className="size-3.5" aria-hidden="true" />
+          Schermo intero
+        </button>
+
+        <div className="inline-flex min-h-9 items-center gap-2 rounded-full border border-border/60 px-2.5 py-1 sm:px-3">
           <button
             type="button"
             onClick={() => setMuted((m) => !m)}
@@ -131,6 +166,7 @@ export function VideoWithTranscript({
             aria-label={muted ? "Riattiva la musica di sottofondo" : "Silenzia la musica di sottofondo"}
             className="inline-flex items-center gap-1.5 text-[11px] font-bold text-foreground/80 transition-colors hover:text-primary"
           >
+
             {muted || volume === 0 ? (
               <VolumeX className="size-3.5" aria-hidden="true" />
             ) : volume < 0.5 ? (
