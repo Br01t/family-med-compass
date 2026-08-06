@@ -250,12 +250,13 @@ function LandingPage() {
 
           <VideoWithTranscript
             id="familymed-demo"
-            className="mt-8"
+            className="mt-8 mx-auto w-full max-w-4xl"
             src={demoVideoUrl}
             poster={demoPosterUrl}
             title="Video demo di FamilyMed"
             transcript={DEMO_TRANSCRIPT}
           />
+
         </div>
 
         {/* VIDEO FAQ */}
