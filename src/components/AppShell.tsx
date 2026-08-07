@@ -7,6 +7,7 @@ import {
   BookOpen,
   LayoutDashboard,
   LogOut,
+  NotebookPen,
   Package,
   PieChart,
   Pill,
@@ -41,6 +42,7 @@ const nav = [
   { title: "Dose da confermare", url: "/dose-da-confermare", icon: AlertTriangle },
   { title: "Storico & Report", url: "/storico-report", icon: PieChart },
   { title: "Parametri vitali", url: "/parametri", icon: Activity },
+  { title: "Diario benessere", url: "/diario", icon: NotebookPen },
   { title: "Scorte", url: "/scorte", icon: Package },
 
   { title: "Notifiche", url: "/notifiche", icon: Bell },
