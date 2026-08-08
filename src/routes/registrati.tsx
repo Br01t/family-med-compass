@@ -37,6 +37,13 @@ function RegisterPage() {
     }
   }, [loadingAuth, user, userProfile, navigate]);
 
+  // Validazione password: min 8 caratteri + almeno 1 numero
+  function validatePassword(pwd: string): string | null {
+    if (pwd.length < 8) return "La password deve essere di almeno 8 caratteri.";
+    if (!/\d/.test(pwd)) return "La password deve contenere almeno un numero.";
+    return null;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!consentTerms || !consentHealth) {
@@ -48,24 +55,52 @@ function RegisterPage() {
       setDialogOpen(true);
       return;
     }
+    const pwdError = validatePassword(password);
+    if (pwdError) {
+      setDialogVariant("error");
+      setDialogTitle("Password non valida");
+      setDialogDescription(pwdError);
+      setDialogOpen(true);
+      return;
+    }
     setSubmitting(true);
     try {
       await signUpUser({ email, password, name, role });
-      // Registra la prova dei consensi (GDPR art. 7.1) — best effort.
-      try {
-        const { supabase } = await import("@/lib/supabase");
-        const { data } = await supabase.auth.getUser();
-        const uid = data.user?.id;
-        if (uid) {
-          const ua = typeof navigator !== "undefined" ? navigator.userAgent : null;
-          await supabase.from("user_consents").insert([
-            { user_id: uid, kind: "terms_privacy", granted: true, user_agent: ua },
-            { user_id: uid, kind: "health_data",   granted: true, user_agent: ua },
-          ]);
+
+      // Registra la prova dei consensi (GDPR art. 7.1) — OBBLIGATORIO.
+      // Se fallisce, l'account viene creato ma la registrazione si blocca:
+      // l'utente verrà avvisato e potrà riprovare.
+      const { supabase } = await import("@/lib/supabase");
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+      if (uid) {
+        const ua = typeof navigator !== "undefined" ? navigator.userAgent : null;
+        const { error: consentError } = await supabase.from("user_consents").insert([
+          { user_id: uid, kind: "terms_privacy", granted: true, user_agent: ua },
+          { user_id: uid, kind: "health_data", granted: true, user_agent: ua },
+        ]);
+        if (consentError) {
+          // Errore non bloccante solo se la tabella non esiste ancora (setup incompleto).
+          // In tutti gli altri casi trattiamo l'errore come critico e avvisiamo l'utente.
+          if (
+            consentError.code !== "42P01" && // tabella non esiste
+            !consentError.message?.includes("does not exist")
+          ) {
+            console.error("[GDPR] Consensi non registrati:", consentError);
+            setDialogVariant("error");
+            setDialogTitle("Registrazione incompleta");
+            setDialogDescription(
+              "Il tuo account è stato creato ma non è stato possibile registrare il consenso GDPR. " +
+              "Accedi e verifica la sezione Privacy nelle impostazioni, oppure contattaci a giacomo.piccinini1@gmail.com.",
+            );
+            setDialogOpen(true);
+            return;
+          } else {
+            console.warn("[GDPR] Tabella user_consents non trovata (esegui MIGRATION_consensi_gdpr.sql).");
+          }
         }
-      } catch (consentErr) {
-        console.warn("Consensi non registrati (esegui MIGRATION_consensi_gdpr.sql):", consentErr);
       }
+
       setDialogVariant("success");
       setDialogTitle("Registrazione completata");
       setDialogDescription(
@@ -149,7 +184,8 @@ function RegisterPage() {
               onChange={(e) => setName(e.target.value)}
               required
               placeholder="Mario Rossi"
-              className="mt-1"
+              className="mt-1 text-base"
+              style={{ fontSize: "16px" }}
             />
           </div>
           <div>
@@ -162,7 +198,8 @@ function RegisterPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="nome@esempio.it"
-              className="mt-1"
+              className="mt-1 text-base"
+              style={{ fontSize: "16px" }}
             />
           </div>
           <div>
@@ -174,9 +211,10 @@ function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
-              placeholder="Almeno 6 caratteri"
-              className="mt-1"
+              minLength={8}
+              placeholder="Min. 8 caratteri con almeno 1 numero"
+              className="mt-1 text-base"
+              style={{ fontSize: "16px" }}
             />
           </div>
           <div className="space-y-3 rounded-2xl border border-border/60 bg-surface p-3">
@@ -218,7 +256,7 @@ function RegisterPage() {
 
           <Button
             type="submit"
-            className="w-full"
+            className="w-full touch-manipulation"
             disabled={submitting || !consentTerms || !consentHealth}
           >
             {submitting ? "Creazione in corso..." : "Registrati"}

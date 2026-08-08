@@ -18,6 +18,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { useFamilyMed } from "@/lib/store";
+import { useFeatureToggles } from "@/lib/feature-toggles";
 import {
   Sidebar,
   SidebarContent,
@@ -55,6 +56,7 @@ function AppSidebar() {
   const navigate = useNavigate();
   const path = useRouterState({ select: (r) => r.location.pathname });
   const { data, user, logout } = useFamilyMed();
+  const { toggles } = useFeatureToggles();
   const isActive = (url: string) =>
     url === "/caregiver" ? path === "/caregiver" : path.startsWith(url);
 
@@ -69,6 +71,15 @@ function AppSidebar() {
       navigate({ to: "/login", replace: true });
     }
   };
+
+  const filteredNav = nav.filter((item) => {
+    if (item.url === "/storico-report") return toggles.storico;
+    if (item.url === "/parametri") return toggles.parametri;
+    if (item.url === "/diario") return toggles.diario;
+    if (item.url === "/scorte") return toggles.scorte;
+    if (item.url === "/eccezioni") return toggles.eccezioni;
+    return true;
+  });
 
   return (
     <Sidebar collapsible="icon">
@@ -91,7 +102,7 @@ function AppSidebar() {
           <SidebarGroupLabel>Navigazione</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {nav.map((item) => {
+              {filteredNav.map((item) => {
                 const showBadge = item.url === "/notifiche" && unreadCount > 0;
                 return (
                   <SidebarMenuItem key={item.url}>

@@ -25,6 +25,8 @@ import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { adjustStockManually } from "@/lib/supabase-service";
 import { cn } from "@/lib/utils";
+import { useFeatureToggles } from "@/lib/feature-toggles";
+import { DisabledFeatureBanner } from "@/components/DisabledFeatureBanner";
 
 export const Route = createFileRoute("/eccezioni")({
   head: () => ({
@@ -218,6 +220,15 @@ function GuideCard({ guide }: { guide: Guide }) {
 
 function ExceptionsPage() {
   const { data, updateTherapy, isPrimaryCaregiverOf, isSecondaryCaregiverOf } = useFamilyMed();
+  const { toggles } = useFeatureToggles();
+
+  if (!toggles.eccezioni) {
+    return (
+      <AppShell title="Eccezioni & Imprevisti" subtitle="Guida operativa per situazioni fuori routine">
+        <DisabledFeatureBanner featureName="Eccezioni & Imprevisti" />
+      </AppShell>
+    );
+  }
 
   const patients = data.patients;
   const [selectedPatientId, setSelectedPatientId] = useState(patients[0]?.id ?? "");

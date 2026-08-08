@@ -19,6 +19,8 @@ import {
 
 import { downloadHistoryReportPdf } from "@/lib/therapy-report";
 import { cn } from "@/lib/utils";
+import { useFeatureToggles } from "@/lib/feature-toggles";
+import { DisabledFeatureBanner } from "@/components/DisabledFeatureBanner";
 
 
 export const Route = createFileRoute("/storico-report")({
@@ -66,6 +68,7 @@ function doseMatchesStatus(dose: ScheduledDose, statuses: Set<StatusFilterKey>):
 
 function HistoryReportPage() {
   const { data } = useFamilyMed();
+  const { toggles } = useFeatureToggles();
   const patients = data.patients;
   const [patientId, setPatientId] = useState<string | undefined>(patients[0]?.id);
   const [period, setPeriod] = useState<PeriodDays>(30);
@@ -73,6 +76,14 @@ function HistoryReportPage() {
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
   const [therapyFilter, setTherapyFilter] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<Set<StatusFilterKey>>(new Set());
+
+  if (!toggles.storico) {
+    return (
+      <AppShell title="Storico & Report" subtitle="Attività e aderenza">
+        <DisabledFeatureBanner featureName="Storico & Report" />
+      </AppShell>
+    );
+  }
 
   const now = new Date();
 

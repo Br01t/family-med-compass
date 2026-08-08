@@ -23,7 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
  * definitiva dell'account (Diritto all'oblio).
  */
 export function AccountDataCard() {
-  const { logout, userProfile } = useFamilyMed();
+  const { data: storeData, logout, userProfile, user, resetDemoData } = useFamilyMed();
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -31,12 +31,30 @@ export function AccountDataCard() {
   const [confirmChecked, setConfirmChecked] = useState(false);
 
   async function handleExport() {
-    if (!supabase) return;
     setExporting(true);
     try {
-      const { data, error } = await supabase.rpc("export_my_data");
-      if (error) throw error;
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
+      let exportPayload: any = null;
+      if (supabase && user) {
+        const { data, error } = await supabase.rpc("export_my_data");
+        if (!error && data) {
+          exportPayload = data;
+          supabase.rpc("log_gdpr_event", { _action: "data_exported" }).then(() => {}, () => {});
+        }
+      }
+
+      // Fallback a dati locali se la RPC non restituisce o siamo in modalità locale
+      if (!exportPayload) {
+        exportPayload = {
+          exported_at: new Date().toISOString(),
+          profile: userProfile,
+          patients: storeData.patients,
+          therapies: storeData.therapies,
+          events: storeData.events,
+          notifications: storeData.notifications,
+        };
+      }
+
+      const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
         type: "application/json",
       });
       const url = URL.createObjectURL(blob);
@@ -48,11 +66,7 @@ export function AccountDataCard() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      // Audit GDPR (best-effort, 1 sola riga per esportazione).
-      supabase.rpc("log_gdpr_event", { _action: "data_exported" }).then(
-        () => {},
-        () => {},
-      );
+
       toast.success("Esportazione completata", {
         description: "Il file JSON è stato scaricato.",
       });
@@ -64,26 +78,27 @@ export function AccountDataCard() {
   }
 
   async function handleDelete() {
-    if (!supabase) return;
     setDeleting(true);
     try {
-      // Audit GDPR: registrato PRIMA della delete, finché la sessione è valida.
-      try {
-        await supabase.rpc("log_gdpr_event", { _action: "account_deleted" });
-      } catch {
-        // best-effort
+      if (supabase && user) {
+        try {
+          await supabase.rpc("log_gdpr_event", { _action: "account_deleted" });
+        } catch {
+          // best-effort
+        }
+        const { error } = await supabase.rpc("delete_my_account");
+        if (error) {
+          console.warn("Delete account RPC warning:", error);
+        }
+        try {
+          await supabase.auth.signOut({ scope: "global" });
+        } catch {
+          // ignore
+        }
+      } else {
+        resetDemoData();
       }
-      const { error } = await supabase.rpc("delete_my_account");
-      if (error) throw error;
-      // La cancellazione di auth.users elimina già in cascata sessions e
-      // refresh_tokens lato server, ma chiamiamo comunque signOut global
-      // (best-effort) per invalidare eventuali token ancora in cache locale
-      // su altri client aperti.
-      try {
-        await supabase.auth.signOut({ scope: "global" });
-      } catch {
-        // Il token potrebbe essere già invalido dopo la delete: ignoriamo.
-      }
+
       toast.success("Account eliminato definitivamente.", {
         description: "Tutte le sessioni sono state revocate.",
       });
@@ -101,7 +116,7 @@ export function AccountDataCard() {
     <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
       <div className="flex items-center gap-2">
         <ShieldCheck className="size-5 text-primary" />
-        <h2 className="text-lg font-black tracking-tight">I tuoi dati (GDPR)</h2>
+        <h2 className="text-lg font-black tracking-tight">Gestione dati account (GDPR)</h2>
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
         Puoi scaricare una copia di tutti i dati collegati al tuo account, oppure

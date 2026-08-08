@@ -6,6 +6,8 @@ import { SecondaryCaregiverNotice } from "@/components/SecondaryCaregiverNotice"
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { useFeatureToggles } from "@/lib/feature-toggles";
+import { DisabledFeatureBanner } from "@/components/DisabledFeatureBanner";
 
 export const Route = createFileRoute("/scorte")({
   head: () => ({ meta: [{ title: "Scorte — FamilyMed" }] }),
@@ -14,6 +16,15 @@ export const Route = createFileRoute("/scorte")({
 
 function InventoryPage() {
   const { data, updateTherapy, isPrimaryCaregiverOf, isSecondaryCaregiverOf } = useFamilyMed();
+  const { toggles } = useFeatureToggles();
+
+  if (!toggles.scorte) {
+    return (
+      <AppShell title="Gestione scorte" subtitle="Confezioni e compresse residue">
+        <DisabledFeatureBanner featureName="Scorte farmaci" />
+      </AppShell>
+    );
+  }
 
   const grouped = data.patients.map((p) => ({
     patient: p,

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { BookOpen, ShieldCheck, FileText, Cookie, Mail, ChevronRight } from "lucide-react";
+import { BookOpen, ShieldCheck, FileText, Cookie, Mail, ChevronRight, Shield, Download, Trash2, AlertTriangle, PieChart, Activity, Package, NotebookPen, Wrench, Sliders } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { signUpUser } from "@/lib/auth-service";
 import { AppShell } from "@/components/AppShell";
@@ -12,8 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useFamilyMed } from "@/lib/store";
 import { type Role } from "@/lib/mock-data";
+import { useFeatureToggles, type FeatureKey } from "@/lib/feature-toggles";
 
 export const Route = createFileRoute("/impostazioni")({
   head: () => ({ meta: [{ title: "Impostazioni — FamilyMed" }] }),
@@ -87,6 +89,7 @@ function SettingsPage() {
             </div>
           </section>
           {myPatient && <FamilyInviteCard patientId={myPatient.id} />}
+          <GdprConsentCard userId={user?.id} />
           <InstallCard />
           <AccountDataCard />
           <InfoAssistenzaCard />
@@ -158,9 +161,13 @@ function SettingsPage() {
           )}
         </section>
 
+        <FeatureTogglesCard />
+
         <InstallCard />
 
-        {user && userProfile && <AccountDataCard />}
+        {user && userProfile && <GdprConsentCard userId={user.id} />}
+
+        <AccountDataCard />
 
         <InfoAssistenzaCard />
 
@@ -214,6 +221,90 @@ function SettingsPage() {
         </section>
       </div>
     </AppShell>
+  );
+}
+
+/* ---------------- Privacy & Consensi (GDPR) ---------------- */
+
+function GdprConsentCard({ userId }: { userId?: string }) {
+  const [consents, setConsents] = useState<{ kind: string; granted: boolean; updated_at: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) return;
+    async function loadConsents() {
+      try {
+        const { supabase } = await import("@/lib/supabase");
+        const { data, error } = await supabase
+          .from("user_consents")
+          .select("kind, granted, updated_at")
+          .eq("user_id", userId);
+        if (error) {
+          // Tabella potrebbe non esistere ancora prima delle migration
+          if (error.code !== "42P01") console.warn("Load consents:", error);
+          setConsents([]);
+        } else {
+          setConsents(data || []);
+        }
+      } catch (e) {
+        console.warn("Consents fetch exception:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadConsents();
+  }, [userId]);
+
+  const hasHealthConsent = consents.some((c) => c.kind === "health_data" && c.granted);
+  const hasTermsConsent = consents.some((c) => c.kind === "terms_privacy" && c.granted);
+  const healthConsentDate = consents.find((c) => c.kind === "health_data")?.updated_at;
+
+  return (
+    <section className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
+      <div className="flex items-center gap-2">
+        <ShieldCheck className="size-5 text-primary" />
+        <h2 className="text-lg font-black tracking-tight">Privacy & Consensi (GDPR)</h2>
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Stato dei consensi prestati ai sensi del Regolamento UE 2016/679.
+      </p>
+
+      {loading ? (
+        <p className="mt-4 text-xs text-muted-foreground">Caricamento consensi...</p>
+      ) : (
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between rounded-2xl border border-border/50 bg-surface p-3 text-xs">
+            <div>
+              <p className="font-bold text-foreground">Termini & Informativa Privacy</p>
+              <p className="text-muted-foreground">Accettati per la fruizione del servizio</p>
+            </div>
+            <span className={`font-semibold ${hasTermsConsent ? "text-success" : "text-muted-foreground"}`}>
+              {hasTermsConsent ? "✓ Accettati" : "Registrati alla creazione"}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-2xl border border-border/50 bg-surface p-3 text-xs">
+            <div>
+              <p className="font-bold text-foreground">Consenso Dati Sanitari (Art. 9.2.a)</p>
+              <p className="text-muted-foreground">
+                {healthConsentDate
+                  ? `Prestato il ${new Date(healthConsentDate).toLocaleDateString("it-IT")}`
+                  : "Trattamento limitato all'erogazione promemoria"}
+              </p>
+            </div>
+            <span className={`font-semibold ${hasHealthConsent ? "text-success" : "text-primary"}`}>
+              {hasHealthConsent ? "✓ Concesso" : "Attivo (Art. 9)"}
+            </span>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-primary/20 bg-primary-soft/30 p-3 text-xs text-muted-foreground">
+            <p>
+              Puoi esercitare in ogni momento il <strong>Diritto alla Portabilità (Art. 20)</strong> o il <strong>Diritto all'Oblio (Art. 17)</strong> dal pannello "Gestione dati account" qui sotto.
+            </p>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -333,5 +424,88 @@ function Field({ label, value, capitalize }: { label: string; value: string; cap
       <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
       <span className={`truncate text-right text-sm font-semibold ${capitalize ? "capitalize" : ""}`}>{value}</span>
     </div>
+  );
+}
+
+/* ---------------- Moduli & Funzionalità App ---------------- */
+
+function FeatureTogglesCard() {
+  const { toggles, toggleFeature } = useFeatureToggles();
+
+  const items: {
+    key: FeatureKey;
+    title: string;
+    description: string;
+    icon: typeof PieChart;
+  }[] = [
+    {
+      key: "storico",
+      title: "Storico & Report",
+      description: "Grafico aderenza, storico giornaliero e download report PDF per il medico.",
+      icon: PieChart,
+    },
+    {
+      key: "parametri",
+      title: "Parametri vitali",
+      description: "Monitoraggio e registrazione di pressione, glicemia, peso e saturazione.",
+      icon: Activity,
+    },
+    {
+      key: "scorte",
+      title: "Scorte farmaci",
+      description: "Conteggio pillole rimanenti, confezioni disponibili e avvisi di scorta bassa.",
+      icon: Package,
+    },
+    {
+      key: "diario",
+      title: "Diario benessere",
+      description: "Annotazioni e storico giornaliero su sintomatologia e stato generale.",
+      icon: NotebookPen,
+    },
+    {
+      key: "eccezioni",
+      title: "Eccezioni & Imprevisti",
+      description: "Gestione variazioni temporanee di orario e sospensioni straordinarie.",
+      icon: Wrench,
+    },
+  ];
+
+  return (
+    <section className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
+      <div className="flex items-center gap-2">
+        <Sliders className="size-5 text-primary" />
+        <h2 className="text-lg font-black tracking-tight">Moduli & Funzionalità App</h2>
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Attiva o disattiva i vari moduli dell'app in base alle esigenze della famiglia. I moduli disattivati verranno nascosti dal menu di navigazione.
+      </p>
+
+      <div className="mt-4 space-y-3">
+        {items.map(({ key, title, description, icon: Icon }) => (
+          <div
+            key={key}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-border/50 bg-surface p-3.5"
+          >
+            <div className="flex items-start gap-3 min-w-0 flex-1">
+              <div className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                <Icon className="size-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-foreground leading-tight">{title}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground leading-snug">{description}</p>
+              </div>
+            </div>
+            <Switch
+              checked={toggles[key]}
+              onCheckedChange={(val) => {
+                toggleFeature(key, val);
+                toast.success(val ? `Modulo "${title}" attivato` : `Modulo "${title}" disattivato`);
+              }}
+              aria-label={`Toggle ${title}`}
+            />
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

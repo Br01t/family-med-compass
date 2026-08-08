@@ -19,6 +19,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useFamilyMed } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { useFeatureToggles } from "@/lib/feature-toggles";
+import { DisabledFeatureBanner } from "@/components/DisabledFeatureBanner";
 
 export const Route = createFileRoute("/diario")({
   head: () => ({
@@ -113,7 +115,16 @@ function localInputNow() {
 
 function WellnessDiaryPage() {
   const { data, user, userProfile } = useFamilyMed();
+  const { toggles } = useFeatureToggles();
   const isPatient = userProfile?.role === "paziente";
+
+  if (!isPatient && !toggles.diario) {
+    return (
+      <AppShell title="Diario del benessere" subtitle="Note libere e sintomi del paziente">
+        <DisabledFeatureBanner featureName="Diario benessere" />
+      </AppShell>
+    );
+  }
 
   const defaultPatient =
     (user && data.patients.find((p) => p.userId === user.id)) ??

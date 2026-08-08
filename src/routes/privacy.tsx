@@ -105,12 +105,16 @@ function PrivacyPage() {
             Contractual Clauses approvate dalla Commissione Europea.
           </p>
 
-          <h2>7. Periodo di conservazione</h2>
+          <h2>7. Periodo di conservazione dei dati</h2>
+          <p>
+            Al fine di ridurre al minimo il trattamento e garantire la massima protezione del Free Tier, i dati vengono conservati secondo i seguenti tempi di retention automatica:
+          </p>
           <ul>
-            <li>Dati account: fino alla cancellazione dell'account.</li>
-            <li>Storico terapie e assunzioni: fino alla cancellazione richiesta dall'utente.</li>
-            <li>Notifiche: eliminate automaticamente dopo 90 giorni.</li>
-            <li>Log di sicurezza: massimo 12 mesi.</li>
+            <li><strong>Dati account e profilo:</strong> conservati fino alla cancellazione dell'account da parte dell'utente.</li>
+            <li><strong>Terapie e posologia attiva:</strong> conservate fino all'eliminazione manuale della terapia o dell'account.</li>
+            <li><strong>Notifiche e alert:</strong> eliminate automaticamente dal database dopo <strong>30 giorni</strong>.</li>
+            <li><strong>Log delle azioni familiari (Audit Log):</strong> eliminati automaticamente dopo <strong>90 giorni</strong>.</li>
+            <li><strong>Storico assunzioni/eventi dosi passate:</strong> eliminati automaticamente dal database dopo <strong>180 giorni</strong> (i report PDF scaricati rimangono in possesso del paziente/caregiver).</li>
           </ul>
 
           <h2>8. Diritti dell'interessato</h2>

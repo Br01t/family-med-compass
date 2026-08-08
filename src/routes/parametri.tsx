@@ -29,6 +29,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useFamilyMed } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { useFeatureToggles } from "@/lib/feature-toggles";
+import { DisabledFeatureBanner } from "@/components/DisabledFeatureBanner";
 import {
   downloadVitalSignsPdf,
   movingAverage,
@@ -121,7 +123,16 @@ const VITALS_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minuti
 
 function VitalSignsPage() {
   const { data, user, userProfile } = useFamilyMed();
+  const { toggles } = useFeatureToggles();
   const isPatient = userProfile?.role === "paziente";
+
+  if (!isPatient && !toggles.parametri) {
+    return (
+      <AppShell title="Parametri vitali" subtitle="Monitoraggio valori e trend">
+        <DisabledFeatureBanner featureName="Parametri vitali" />
+      </AppShell>
+    );
+  }
 
   const defaultPatient =
     (user && data.patients.find((p) => p.userId === user.id)) ??

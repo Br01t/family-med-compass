@@ -132,29 +132,52 @@ function mapTherapyRow(t: any): Therapy {
 ========================================================= */
 
 /**
- * Fetch one-shot dei pazienti visibili all'utente (in base al ruolo).
- * `patients` non è più nella publication `supabase_realtime` (cambia
- * raramente), quindi niente canale websocket: solo fetch on-demand.
+ * Fetch one-shot dei pazienti visibili all'utente usando la RPC get_my_patients().
+ * Sostituisce il pattern a 2 query (caregiver_patients + patients) con 1 sola chiamata.
+ * La RPC internamente fa un JOIN e rispetta la RLS tramite SECURITY DEFINER.
  */
 export async function fetchPatientsOnce(userId: string, role: string): Promise<Patient[]> {
   if (!supabase || !userId) return [];
   try {
-    let query = supabase.from("patients").select("id, name, birth_year, photo, user_id, owner_user_id, primary_caregiver_id");
+    const { data, error } = await supabase.rpc("get_my_patients");
+    if (error) {
+      // Fallback compatibile se la RPC non è ancora stata deployata
+      if (error.code === "PGRST202" || error.message?.includes("does not exist")) {
+        console.warn("[supabase-service] get_my_patients RPC non trovata, uso fallback 2-query.");
+        return fetchPatientsOnceFallback(userId, role);
+      }
+      throw error;
+    }
+    return (data || []).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      birthYear: p.birth_year,
+      photo: p.photo,
+      caregiverIds: [],
+      userId: p.user_id,
+      ownerUserId: p.owner_user_id ?? null,
+      primaryCaregiverId: p.primary_caregiver_id ?? null,
+    }));
+  } catch (err) {
+    console.error("Errore fetch pazienti:", err);
+    return [];
+  }
+}
+
+/** Fallback a 2 query separate — usato se la RPC non è ancora stata deployata. */
+async function fetchPatientsOnceFallback(userId: string, role: string): Promise<Patient[]> {
+  try {
+    let query = supabase!.from("patients").select("id, name, birth_year, photo, user_id, owner_user_id, primary_caregiver_id");
 
     if (role === "caregiver") {
-      const { data: relations, error } = await supabase
+      const { data: relations, error } = await supabase!
         .from("caregiver_patients")
         .select("patient_id")
         .eq("caregiver_id", userId);
 
-      if (error) {
-        console.error("caregiver relation error:", error);
-        return [];
-      }
-
+      if (error) { console.error("caregiver relation error:", error); return []; }
       const patientIds = relations?.map((r) => r.patient_id) || [];
       if (patientIds.length === 0) return [];
-
       query = query.in("id", patientIds);
     } else if (role === "paziente") {
       query = query.eq("user_id", userId);
@@ -162,7 +185,6 @@ export async function fetchPatientsOnce(userId: string, role: string): Promise<P
 
     const { data, error } = await query;
     if (error) throw error;
-
     return (data || []).map((p) => ({
       id: p.id,
       name: p.name,
@@ -174,7 +196,7 @@ export async function fetchPatientsOnce(userId: string, role: string): Promise<P
       primaryCaregiverId: (p as any).primary_caregiver_id ?? null,
     }));
   } catch (err) {
-    console.error("Errore fetch pazienti:", err);
+    console.error("Errore fetch pazienti (fallback):", err);
     return [];
   }
 }
@@ -201,38 +223,22 @@ export function subscribePatients(
 ========================================================= */
 
 /**
- * Fetch one-shot dei caregiver visibili all'utente. `caregivers` non è mai
- * stata aggiunta alla publication `supabase_realtime`, quindi il vecchio
- * canale realtime non riceveva mai eventi: solo fetch on-demand.
+ * Fetch one-shot dei caregiver visibili all'utente usando la RPC get_my_caregivers().
+ * Sostituisce il pattern a 2 query con 1 sola chiamata.
  */
 export async function fetchCaregiversOnce(userId: string, role: string): Promise<Caregiver[]> {
   if (!supabase || !userId) return [];
   try {
-    let query = supabase.from("caregivers").select("id, name, relation, photo, notify");
-
-    if (role === "paziente") {
-      const { data: relations, error } = await supabase
-        .from("caregiver_patients")
-        .select("caregiver_id")
-        .eq("patient_id", userId);
-
-      if (error) {
-        console.error(error);
-        return [];
+    const { data, error } = await supabase.rpc("get_my_caregivers");
+    if (error) {
+      // Fallback se la RPC non è ancora stata deployata
+      if (error.code === "PGRST202" || error.message?.includes("does not exist")) {
+        console.warn("[supabase-service] get_my_caregivers RPC non trovata, uso fallback 2-query.");
+        return fetchCaregiversOnceFallback(userId, role);
       }
-
-      const caregiverIds = relations?.map((r) => r.caregiver_id) || [];
-      if (caregiverIds.length === 0) return [];
-
-      query = query.in("id", caregiverIds);
-    } else if (role === "caregiver") {
-      query = query.eq("id", userId);
+      throw error;
     }
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    return (data || []).map((c) => ({
+    return (data || []).map((c: any) => ({
       id: c.id,
       name: c.name,
       relation: c.relation,
@@ -242,6 +248,40 @@ export async function fetchCaregiversOnce(userId: string, role: string): Promise
     }));
   } catch (err) {
     console.error("Errore fetch caregiver:", err);
+    return [];
+  }
+}
+
+/** Fallback a 2 query separate — usato se la RPC non è ancora stata deployata. */
+async function fetchCaregiversOnceFallback(userId: string, role: string): Promise<Caregiver[]> {
+  try {
+    let query = supabase!.from("caregivers").select("id, name, relation, photo, notify");
+
+    if (role === "paziente") {
+      const { data: relations, error } = await supabase!
+        .from("caregiver_patients")
+        .select("caregiver_id")
+        .eq("patient_id", userId);
+      if (error) { console.error(error); return []; }
+      const caregiverIds = relations?.map((r) => r.caregiver_id) || [];
+      if (caregiverIds.length === 0) return [];
+      query = query.in("id", caregiverIds);
+    } else if (role === "caregiver") {
+      query = query.eq("id", userId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      relation: c.relation,
+      photo: c.photo,
+      patientIds: [],
+      notify: c.notify,
+    }));
+  } catch (err) {
+    console.error("Errore fetch caregiver (fallback):", err);
     return [];
   }
 }
