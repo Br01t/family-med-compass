@@ -12,6 +12,7 @@ import {
   PieChart,
   Pill,
   Settings,
+  Sparkles,
   Users,
   Wrench,
 } from "lucide-react";
@@ -48,6 +49,7 @@ const nav = [
 
   { title: "Notifiche", url: "/notifiche", icon: Bell },
   { title: "Eccezioni & Imprevisti", url: "/eccezioni", icon: Wrench },
+  { title: "Piani e Abbonamenti", url: "/abbonamento", icon: Sparkles },
   { title: "Guida", url: "/guida", icon: BookOpen },
   { title: "Impostazioni", url: "/impostazioni", icon: Settings },
 ];

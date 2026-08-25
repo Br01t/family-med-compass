@@ -31,6 +31,7 @@ import { useFamilyMed } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useFeatureToggles } from "@/lib/feature-toggles";
 import { DisabledFeatureBanner } from "@/components/DisabledFeatureBanner";
+import { PlanGate } from "@/components/PlanGate";
 import {
   downloadVitalSignsPdf,
   movingAverage,
@@ -746,13 +747,23 @@ function VitalSignsPage() {
     </div>
   );
 
+  const gatedBody = (
+    <PlanGate
+      feature="vitalParameters"
+      title="Parametri vitali"
+      description="Il monitoraggio e i grafici dei parametri vitali (pressione, glicemia, peso, saturazione) sono riservati ai piani Pro e Max."
+    >
+      {body}
+    </PlanGate>
+  );
+
   if (isPatient) {
     return (
       <PatientShell
         title="Parametri vitali"
         subtitle={currentPatient ? `Diario di ${currentPatient.name}` : "Diario della salute"}
       >
-        {body}
+        {gatedBody}
       </PatientShell>
     );
   }
@@ -766,7 +777,7 @@ function VitalSignsPage() {
           : "Registra e monitora i parametri dei pazienti"
       }
     >
-      {body}
+      {gatedBody}
     </AppShell>
   );
 }

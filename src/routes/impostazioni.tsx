@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { BookOpen, ShieldCheck, FileText, Cookie, Mail, ChevronRight, Shield, Download, Trash2, AlertTriangle, PieChart, Activity, Package, NotebookPen, Wrench, Sliders } from "lucide-react";
+import { BookOpen, ShieldCheck, FileText, Cookie, Mail, ChevronRight, Shield, Download, Trash2, AlertTriangle, PieChart, Activity, Package, NotebookPen, Wrench, Sliders, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { signUpUser } from "@/lib/auth-service";
 import { AppShell } from "@/components/AppShell";
@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { useFamilyMed } from "@/lib/store";
 import { type Role } from "@/lib/mock-data";
 import { useFeatureToggles, type FeatureKey } from "@/lib/feature-toggles";
+import { PLAN_LIMITS } from "@/lib/subscription";
 
 export const Route = createFileRoute("/impostazioni")({
   head: () => ({ meta: [{ title: "Impostazioni — FamilyMed" }] }),
@@ -160,6 +161,8 @@ function SettingsPage() {
             </div>
           )}
         </section>
+
+        <SubscriptionCard />
 
         <FeatureTogglesCard />
 
@@ -505,6 +508,36 @@ function FeatureTogglesCard() {
             />
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+function SubscriptionCard() {
+  const { subscriptionPlan } = useFamilyMed();
+  const plan = PLAN_LIMITS[subscriptionPlan];
+
+  return (
+    <section className="rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-5 text-primary" />
+          <h2 className="text-lg font-black tracking-tight">Piano & Abbonamento</h2>
+        </div>
+        <span className="font-extrabold text-xs text-primary px-3 py-1 bg-primary/10 rounded-full border border-primary/20">
+          Piano {plan.name}
+        </span>
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Gestisci fino a <strong className="text-foreground">{plan.maxPatients} {plan.maxPatients === 1 ? "paziente" : "pazienti"}</strong> e fino a <strong className="text-foreground">{plan.maxCaregiversPerPatient} {plan.maxCaregiversPerPatient === 1 ? "persona" : "persone"}</strong> per paziente.
+      </p>
+      <div className="mt-4">
+        <Button asChild className="w-full font-bold rounded-xl gap-2">
+          <Link to={"/abbonamento" as any}>
+            <span>Gestisci o Cambia Piano</span>
+            <ChevronRight className="size-4" />
+          </Link>
+        </Button>
       </div>
     </section>
   );

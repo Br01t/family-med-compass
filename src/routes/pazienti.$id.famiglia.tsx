@@ -45,6 +45,10 @@ import {
   type PatientCaregiver,
 } from "@/lib/supabase-service";
 
+import { getPlanLimits } from "@/lib/subscription";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { PlanGate } from "@/components/PlanGate";
+
 export const Route = createFileRoute("/pazienti/$id/famiglia")({
   head: ({ params }) => ({
     meta: [{ title: `Gruppo di cura · ${params.id} — FamilyMed` }],
@@ -91,8 +95,11 @@ function actionTone(action: string): { label: string; className: string } {
 
 function FamilyPage() {
   const { id } = Route.useParams();
-  const { data, user } = useFamilyMed();
+  const { data, user, subscriptionPlan } = useFamilyMed();
   const patient = data.patients.find((p) => p.id === id);
+
+  const limits = getPlanLimits(subscriptionPlan);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
   const [members, setMembers] = useState<PatientCaregiver[]>([]);
   const [invites, setInvites] = useState<FamilyInvite[]>([]);
@@ -291,12 +298,27 @@ function FamilyPage() {
           />
         )}
 
-        <AuditLogCard
-          logs={logs}
-          loading={loading}
-          hasMore={logsHasMore}
-          loadingMore={loadingMore}
-          onLoadMore={loadMoreLogs}
+        <PlanGate
+          feature="auditLog"
+          requiredPlan="max"
+          title="Registro attività del gruppo"
+          description="La cronologia dettagliata di tutte le azioni svolte dai familiari è una funzionalità riservata al piano Max."
+        >
+          <AuditLogCard
+            logs={logs}
+            loading={loading}
+            hasMore={logsHasMore}
+            loadingMore={loadingMore}
+            onLoadMore={loadMoreLogs}
+          />
+        </PlanGate>
+
+        <UpgradeModal
+          open={upgradeModalOpen}
+          onOpenChange={setUpgradeModalOpen}
+          requiredPlan="pro"
+          featureTitle="Limite Caregiver Raggiunto"
+          featureDescription={`Il piano ${limits.name} ti permette di avere fino a ${limits.maxCaregiversPerPatient} ${limits.maxCaregiversPerPatient === 1 ? 'persona' : 'persone'} per paziente. Passa a Pro o Max per invitare altri membri della famiglia.`}
         />
       </div>
 

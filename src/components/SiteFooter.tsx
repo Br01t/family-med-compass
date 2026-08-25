@@ -34,6 +34,11 @@ export function SiteFooter() {
             </p>
             <ul className="mt-4 space-y-2.5 text-sm">
               <li>
+                <Link to={"/prezzi" as any} className="text-foreground/80 hover:text-primary transition-colors">
+                  Prezzi e Piani
+                </Link>
+              </li>
+              <li>
                 <Link to="/guida-pubblica" className="text-foreground/80 hover:text-primary transition-colors">
                   Guida all'app
                 </Link>

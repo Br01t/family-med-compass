@@ -55,11 +55,15 @@ import {
 // client per evitare duplicati (chiavi `dose_key` diverse fra client e trigger).
 
 
+import { type SubscriptionPlan, getPlanLimits, PLAN_LIMITS } from "./subscription";
+
 type Ctx = {
   data: FamilyMedData;
   user: User | null;
   userProfile: UserProfile | null;
+  subscriptionPlan: SubscriptionPlan;
   loadingAuth: boolean;
+  updateSubscriptionPlan: (plan: SubscriptionPlan) => Promise<void>;
   redeemInvite: (code: string) => Promise<string>;
   createInvite: (patientId: string, ttlMinutes?: number, maxUses?: number) => Promise<FamilyInvite>;
   unfollowPatient: (patientId: string) => Promise<void>;
@@ -995,12 +999,36 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     [user, userProfile, data.patients, isPrimaryCaregiverOf],
   );
 
+  const updateSubscriptionPlan = useCallback(
+    async (newPlan: SubscriptionPlan) => {
+      if (userProfile) {
+        setUserProfile((prev) => (prev ? { ...prev, subscriptionPlan: newPlan } : null));
+        invalidateUserProfileCache(userProfile.uid);
+      }
+      if (user && supabase) {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ subscription_plan: newPlan })
+          .eq("id", user.id);
+        if (error) {
+          console.error("Errore nell'aggiornamento del piano di abbonamento:", error.message);
+          throw error;
+        }
+      }
+    },
+    [user, userProfile]
+  );
+
+  const subscriptionPlan = userProfile?.subscriptionPlan ?? "free";
+
   const value = useMemo<Ctx>(
     () => ({
       data,
       user,
       userProfile,
+      subscriptionPlan,
       loadingAuth,
+      updateSubscriptionPlan,
       redeemInvite,
       createInvite,
       unfollowPatient,
@@ -1027,7 +1055,9 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       data,
       user,
       userProfile,
+      subscriptionPlan,
       loadingAuth,
+      updateSubscriptionPlan,
       redeemInvite,
       createInvite,
       unfollowPatient,

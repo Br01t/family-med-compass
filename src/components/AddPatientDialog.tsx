@@ -23,6 +23,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFamilyMed } from "@/lib/store";
+import { getPlanLimits } from "@/lib/subscription";
+import { UpgradeModal } from "@/components/UpgradeModal";
 
 const currentYear = new Date().getFullYear();
 
@@ -36,7 +38,6 @@ const schema = z.object({
   assignToAllCaregivers: z.boolean(),
 });
 
-
 type FormValues = z.infer<typeof schema>;
 
 interface AddPatientDialogProps {
@@ -46,7 +47,11 @@ interface AddPatientDialogProps {
 
 export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
   const [open, setOpen] = useState(false);
-  const { data, addPatient } = useFamilyMed();
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const { data, addPatient, subscriptionPlan } = useFamilyMed();
+  const limits = getPlanLimits(subscriptionPlan);
+
+  const isLimitReached = data.patients.length >= limits.maxPatients;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -57,9 +62,21 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
     },
   });
 
+  function handleTriggerClick(e: React.MouseEvent) {
+    if (isLimitReached) {
+      e.preventDefault();
+      setUpgradeModalOpen(true);
+    }
+  }
+
   async function onSubmit(values: FormValues) {
+    if (isLimitReached) {
+      setOpen(false);
+      setUpgradeModalOpen(true);
+      return;
+    }
+
     try {
-      // UUID invece di timestamp: evita ID prevedibili/enumerabili (GDPR - minimizzazione rischio IDOR)
       const id = `p_${crypto.randomUUID()}`;
       const caregiverIds: string[] = data.currentCaregiverId
         ? [data.currentCaregiverId]
@@ -70,7 +87,6 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
         name: values.name.trim(),
         birthYear: values.birthYear,
         caregiverIds,
-        // Il paziente creato dal caregiver NON ha un userId (nessun account paziente collegato).
         userId: undefined,
       };
 
@@ -90,24 +106,30 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
     }
   }
 
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button size="sm" id="add-patient-btn">
-            <UserPlus className="mr-2 size-4" />
-            Aggiungi paziente
-          </Button>
-        )}
-      </DialogTrigger>
+    <>
+      <Dialog open={open} onOpenChange={(v) => {
+        if (v && isLimitReached) {
+          setUpgradeModalOpen(true);
+          return;
+        }
+        setOpen(v);
+      }}>
+        <DialogTrigger asChild onClick={handleTriggerClick}>
+          {trigger ?? (
+            <Button size="sm" id="add-patient-btn">
+              <UserPlus className="mr-2 size-4" />
+              Aggiungi paziente
+            </Button>
+          )}
+        </DialogTrigger>
 
-      <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-black tracking-tight">
-            Nuovo paziente
-          </DialogTitle>
-        </DialogHeader>
+        <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black tracking-tight">
+              Nuovo paziente
+            </DialogTitle>
+          </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="mt-2 space-y-5">
@@ -180,5 +202,14 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
         </Form>
       </DialogContent>
     </Dialog>
+
+    <UpgradeModal
+      open={upgradeModalOpen}
+      onOpenChange={setUpgradeModalOpen}
+      requiredPlan="pro"
+      featureTitle="Limite Pazienti Raggiunto"
+      featureDescription={`Il tuo piano attuale (${limits.name}) ti permette di gestire fino a ${limits.maxPatients} ${limits.maxPatients === 1 ? 'paziente' : 'pazienti'}. Passa a Pro o Max per gestirne di più.`}
+    />
+    </>
   );
 }

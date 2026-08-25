@@ -21,6 +21,7 @@ import { downloadHistoryReportPdf } from "@/lib/therapy-report";
 import { cn } from "@/lib/utils";
 import { useFeatureToggles } from "@/lib/feature-toggles";
 import { DisabledFeatureBanner } from "@/components/DisabledFeatureBanner";
+import { UpgradeModal } from "@/components/UpgradeModal";
 
 
 export const Route = createFileRoute("/storico-report")({
@@ -67,8 +68,9 @@ function doseMatchesStatus(dose: ScheduledDose, statuses: Set<StatusFilterKey>):
 }
 
 function HistoryReportPage() {
-  const { data } = useFamilyMed();
+  const { data, subscriptionPlan } = useFamilyMed();
   const { toggles } = useFeatureToggles();
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const patients = data.patients;
   const [patientId, setPatientId] = useState<string | undefined>(patients[0]?.id);
   const [period, setPeriod] = useState<PeriodDays>(30);
@@ -344,9 +346,13 @@ function HistoryReportPage() {
         <Button
           variant="outline"
           size="sm"
-          className="w-full sm:w-auto"
+          className="w-full sm:w-auto font-bold"
           disabled={!patientId || loadingExtra || stats.scheduled === 0}
           onClick={() => {
+            if (subscriptionPlan === "free") {
+              setUpgradeModalOpen(true);
+              return;
+            }
             const p = patients.find((x) => x.id === patientId);
             if (!p) return;
             downloadHistoryReportPdf(filteredData, p, period, new Date(), statusFilter);
@@ -356,7 +362,6 @@ function HistoryReportPage() {
           <FileDown className="mr-1.5 size-4" />
           Scarica PDF {period}gg
         </Button>
-
       </div>
 
       {/* Filtri terapie e stati (applicati a schermata + PDF) */}
@@ -724,6 +729,14 @@ function HistoryReportPage() {
           </div>
         </div>
       )}
+
+      <UpgradeModal
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+        requiredPlan="pro"
+        featureTitle="Esportazione PDF Riservata"
+        featureDescription="La generazione ed esportazione di report PDF in formato medico per il medico curante o la famiglia è disponibile nei piani Pro e Max."
+      />
     </AppShell>
   );
 }

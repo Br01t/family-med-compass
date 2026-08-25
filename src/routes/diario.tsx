@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { NotebookPen, Plus, Trash2, Pill, AlertTriangle, RefreshCw } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { NotebookPen, Plus, Trash2, Pill, AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/AppShell";
@@ -21,6 +21,7 @@ import { useFamilyMed } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useFeatureToggles } from "@/lib/feature-toggles";
 import { DisabledFeatureBanner } from "@/components/DisabledFeatureBanner";
+import { getPlanLimits } from "@/lib/subscription";
 
 export const Route = createFileRoute("/diario")({
   head: () => ({
@@ -266,6 +267,9 @@ function WellnessDiaryPage() {
     toast.success("Nota eliminata");
   };
 
+  const { subscriptionPlan } = useFamilyMed();
+  const limits = getPlanLimits(subscriptionPlan);
+
   const fromTime = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - parseInt(period, 10) + 1);
@@ -273,10 +277,14 @@ function WellnessDiaryPage() {
     return d.getTime();
   }, [period]);
 
-  const visible = useMemo(
-    () => rows.filter((r) => new Date(r.occurred_at).getTime() >= fromTime),
-    [rows, fromTime],
-  );
+  const visible = useMemo(() => {
+    let minTime = fromTime;
+    if (limits.historyDaysLimit !== Infinity) {
+      const maxHistoryStart = Date.now() - limits.historyDaysLimit * 86400 * 1000;
+      minTime = Math.max(minTime, maxHistoryStart);
+    }
+    return rows.filter((r) => new Date(r.occurred_at).getTime() >= minTime);
+  }, [rows, fromTime, limits.historyDaysLimit]);
 
   // Dosi assunte nelle 6 ore precedenti alla nota (dati già in memoria).
   const dosesBefore = (iso: string) => {
@@ -297,6 +305,18 @@ function WellnessDiaryPage() {
 
   const body = (
     <div className="space-y-6">
+      {subscriptionPlan === "free" && (
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-4 text-primary shrink-0" />
+            <span>Stai visualizzando gli ultimi 7 giorni (Piano Free). Passa a Pro o Max per vedere oltre 7 giorni.</span>
+          </div>
+          <Button size="sm" asChild className="rounded-xl shrink-0 font-bold">
+            <Link to={"/abbonamento" as any}>Passa a Pro o Max</Link>
+          </Button>
+        </div>
+      )}
+
       {!isPatient && data.patients.length > 0 && (
         <div className="rounded-2xl border bg-card p-4">
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">

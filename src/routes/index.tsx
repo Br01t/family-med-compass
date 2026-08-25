@@ -141,12 +141,12 @@ function LandingPage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <a
-            href="#prezzi"
+          <Link
+            to={"/prezzi" as any}
             className="hidden sm:inline-flex text-sm font-semibold text-foreground/80 hover:text-primary transition-colors px-2"
           >
-            Prezzi
-          </a>
+            Prezzi & Piani
+          </Link>
           {!user ? (
             <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2.5 sm:px-3" asChild>
               <Link to="/login">Accedi</Link>

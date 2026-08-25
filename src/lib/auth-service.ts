@@ -3,11 +3,14 @@ import { supabase } from "./supabase";
 import { type Role } from "./mock-data";
 import { addPatientDoc } from "./supabase-service";
 
+import { type SubscriptionPlan } from "./subscription";
+
 export interface UserProfile {
   uid: string;
   email: string;
   name: string;
   role: Role;
+  subscriptionPlan: SubscriptionPlan;
   createdAt: string;
 }
 
@@ -27,6 +30,7 @@ function getFallbackProfile(user: Partial<User> | null | undefined): UserProfile
     email: (user?.email as string | undefined) ?? "",
     name: (metadata.name as string | undefined) ?? user?.email ?? "",
     role,
+    subscriptionPlan: ((metadata.subscriptionPlan ?? metadata.subscription_plan ?? "free") as SubscriptionPlan),
     createdAt: new Date().toISOString(),
   };
 }
@@ -54,14 +58,14 @@ export async function getUserProfile(
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const { data, error } = await supabase.from("profiles").select("id, email, name, role, created_at").eq("id", uid).maybeSingle();
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, email, name, role, subscription_plan, created_at")
+        .eq("id", uid)
+        .maybeSingle();
 
       if (error) {
-        // Errore di rete/RLS momentaneo (tipico quando l'app torna in
-        // foreground dopo essere stata chiusa/in background e la connessione
-        // non è ancora pronta): riprova prima di arrenderti. Altrimenti
-        // l'utente verrebbe sloggato pur avendo una sessione Supabase
-        // ancora perfettamente valida.
+        // Errore di rete/RLS momentaneo: riprova prima di arrenderti.
         console.warn(`Profilo non disponibile (tentativo ${attempt + 1}/${retries + 1}):`, error.message);
         if (attempt < retries) {
           await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
@@ -81,6 +85,7 @@ export async function getUserProfile(
         email: data.email ?? fallback?.email ?? "",
         name: data.name ?? fallback?.name ?? "",
         role: (data.role as Role) ?? fallback?.role ?? "caregiver",
+        subscriptionPlan: ((data.subscription_plan ?? fallback?.subscriptionPlan ?? "free") as SubscriptionPlan),
         createdAt: data.created_at ?? fallback?.createdAt ?? new Date().toISOString(),
       };
 
@@ -176,6 +181,7 @@ export async function signUpUser(params: {
     email: params.email,
     name: params.name,
     role: params.role,
+    subscriptionPlan: "free",
     createdAt: new Date().toISOString(),
   };
 }

@@ -17,6 +17,7 @@ import { Route as ScorteRouteImport } from './routes/scorte'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegistratiRouteImport } from './routes/registrati'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PrezziRouteImport } from './routes/prezzi'
 import { Route as PazienteRouteImport } from './routes/paziente'
 import { Route as ParametriRouteImport } from './routes/parametri'
 import { Route as NotificheRouteImport } from './routes/notifiche'
@@ -30,6 +31,7 @@ import { Route as DoseDaConfermareRouteImport } from './routes/dose-da-confermar
 import { Route as DiarioRouteImport } from './routes/diario'
 import { Route as CookieRouteImport } from './routes/cookie'
 import { Route as CaregiverRouteImport } from './routes/caregiver'
+import { Route as AbbonamentoRouteImport } from './routes/abbonamento'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PazientiIndexRouteImport } from './routes/pazienti.index'
 import { Route as PazientiIdRouteImport } from './routes/pazienti.$id'
@@ -74,6 +76,11 @@ const RegistratiRoute = RegistratiRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrezziRoute = PrezziRouteImport.update({
+  id: '/prezzi',
+  path: '/prezzi',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PazienteRoute = PazienteRouteImport.update({
@@ -141,6 +148,11 @@ const CaregiverRoute = CaregiverRouteImport.update({
   path: '/caregiver',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AbbonamentoRoute = AbbonamentoRouteImport.update({
+  id: '/abbonamento',
+  path: '/abbonamento',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -169,6 +181,7 @@ const PazientiIdFamigliaRoute = PazientiIdFamigliaRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/abbonamento': typeof AbbonamentoRoute
   '/caregiver': typeof CaregiverRoute
   '/cookie': typeof CookieRoute
   '/diario': typeof DiarioRoute
@@ -182,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/notifiche': typeof NotificheRoute
   '/parametri': typeof ParametriRoute
   '/paziente': typeof PazienteRoute
+  '/prezzi': typeof PrezziRoute
   '/privacy': typeof PrivacyRoute
   '/registrati': typeof RegistratiRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -197,6 +211,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/abbonamento': typeof AbbonamentoRoute
   '/caregiver': typeof CaregiverRoute
   '/cookie': typeof CookieRoute
   '/diario': typeof DiarioRoute
@@ -210,6 +225,7 @@ export interface FileRoutesByTo {
   '/notifiche': typeof NotificheRoute
   '/parametri': typeof ParametriRoute
   '/paziente': typeof PazienteRoute
+  '/prezzi': typeof PrezziRoute
   '/privacy': typeof PrivacyRoute
   '/registrati': typeof RegistratiRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -225,6 +241,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/abbonamento': typeof AbbonamentoRoute
   '/caregiver': typeof CaregiverRoute
   '/cookie': typeof CookieRoute
   '/diario': typeof DiarioRoute
@@ -238,6 +255,7 @@ export interface FileRoutesById {
   '/notifiche': typeof NotificheRoute
   '/parametri': typeof ParametriRoute
   '/paziente': typeof PazienteRoute
+  '/prezzi': typeof PrezziRoute
   '/privacy': typeof PrivacyRoute
   '/registrati': typeof RegistratiRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -255,6 +273,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/abbonamento'
     | '/caregiver'
     | '/cookie'
     | '/diario'
@@ -268,6 +287,7 @@ export interface FileRouteTypes {
     | '/notifiche'
     | '/parametri'
     | '/paziente'
+    | '/prezzi'
     | '/privacy'
     | '/registrati'
     | '/reset-password'
@@ -283,6 +303,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/abbonamento'
     | '/caregiver'
     | '/cookie'
     | '/diario'
@@ -296,6 +317,7 @@ export interface FileRouteTypes {
     | '/notifiche'
     | '/parametri'
     | '/paziente'
+    | '/prezzi'
     | '/privacy'
     | '/registrati'
     | '/reset-password'
@@ -310,6 +332,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/abbonamento'
     | '/caregiver'
     | '/cookie'
     | '/diario'
@@ -323,6 +346,7 @@ export interface FileRouteTypes {
     | '/notifiche'
     | '/parametri'
     | '/paziente'
+    | '/prezzi'
     | '/privacy'
     | '/registrati'
     | '/reset-password'
@@ -339,6 +363,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AbbonamentoRoute: typeof AbbonamentoRoute
   CaregiverRoute: typeof CaregiverRoute
   CookieRoute: typeof CookieRoute
   DiarioRoute: typeof DiarioRoute
@@ -352,6 +377,7 @@ export interface RootRouteChildren {
   NotificheRoute: typeof NotificheRoute
   ParametriRoute: typeof ParametriRoute
   PazienteRoute: typeof PazienteRoute
+  PrezziRoute: typeof PrezziRoute
   PrivacyRoute: typeof PrivacyRoute
   RegistratiRoute: typeof RegistratiRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -420,6 +446,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prezzi': {
+      id: '/prezzi'
+      path: '/prezzi'
+      fullPath: '/prezzi'
+      preLoaderRoute: typeof PrezziRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/paziente': {
@@ -513,6 +546,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CaregiverRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/abbonamento': {
+      id: '/abbonamento'
+      path: '/abbonamento'
+      fullPath: '/abbonamento'
+      preLoaderRoute: typeof AbbonamentoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -567,6 +607,7 @@ const PazientiIdRouteWithChildren = PazientiIdRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AbbonamentoRoute: AbbonamentoRoute,
   CaregiverRoute: CaregiverRoute,
   CookieRoute: CookieRoute,
   DiarioRoute: DiarioRoute,
@@ -580,6 +621,7 @@ const rootRouteChildren: RootRouteChildren = {
   NotificheRoute: NotificheRoute,
   ParametriRoute: ParametriRoute,
   PazienteRoute: PazienteRoute,
+  PrezziRoute: PrezziRoute,
   PrivacyRoute: PrivacyRoute,
   RegistratiRoute: RegistratiRoute,
   ResetPasswordRoute: ResetPasswordRoute,

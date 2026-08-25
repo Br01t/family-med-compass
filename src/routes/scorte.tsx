@@ -8,6 +8,7 @@ import { useFamilyMed } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useFeatureToggles } from "@/lib/feature-toggles";
 import { DisabledFeatureBanner } from "@/components/DisabledFeatureBanner";
+import { PlanGate } from "@/components/PlanGate";
 
 export const Route = createFileRoute("/scorte")({
   head: () => ({ meta: [{ title: "Scorte — FamilyMed" }] }),
@@ -242,6 +243,25 @@ function InventoryPage() {
             </div>
           </section>
         ))}
+
+        {/* Sezione Previsione & Storico Movimenti (Pro / Max) */}
+        <PlanGate
+          feature="stockDepletionPrediction"
+          title="Storico movimenti & Previsione avanzata esaurimento"
+          description="L'analisi predittiva con data stimata di esaurimento scorte e la tracciabilità di ogni movimentazione di confezioni sono disponibili con i piani Pro e Max."
+        >
+          <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-2">
+              <Package className="size-5 text-primary" />
+              <h3 className="font-bold text-lg tracking-tight text-foreground">
+                Previsioni di consumo e riordino automatico
+              </h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Con i piani Pro e Max, FamilyMed calcola automaticamente la data esatta in cui il paziente rimarrà sprovvisto di ciascun farmaco in base alle assunzioni reali dei giorni precedenti, inviando un promemoria di riordino prima della chiusura della farmacia.
+            </p>
+          </div>
+        </PlanGate>
 
         {/* Box informativo inferiore corretto e fluido */}
         <div className="rounded-2xl border border-primary/20 bg-primary-soft p-4 sm:p-6 shadow-card block w-full">

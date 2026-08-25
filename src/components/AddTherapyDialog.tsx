@@ -35,6 +35,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useFamilyMed } from "@/lib/store";
 import type { Therapy } from "@/lib/mock-data";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getPlanLimits } from "@/lib/subscription";
+import { UpgradeModal } from "@/components/UpgradeModal";
 
 const CATEGORIES = [
   "Cardiologia",
@@ -90,7 +92,10 @@ function todayIso() {
 
 export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClose }: AddTherapyDialogProps) {
   const [open, setOpen] = useState(false);
-  const { data, addTherapy, updateTherapy } = useFamilyMed();
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState<{ title: string; desc: string }>({ title: "", desc: "" });
+  const { data, addTherapy, updateTherapy, subscriptionPlan } = useFamilyMed();
+  const limits = getPlanLimits(subscriptionPlan);
   const isEdit = Boolean(editTherapy);
   const [photoDrug, setPhotoDrug] = useState<string | undefined>(editTherapy?.photoDrug);
   const [photoPackage, setPhotoPackage] = useState<string | undefined>(editTherapy?.photoPackage);
@@ -170,7 +175,23 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
       return;
     }
 
-    if (!photoDrug || !photoPackage) {
+    // Verifica limite terapie attive per il piano Free (max 3 per paziente)
+    if (!isEdit) {
+      const activeCount = data.therapies.filter(
+        (t) => t.patientId === values.patientId && t.active
+      ).length;
+      if (activeCount >= limits.maxActiveTherapiesPerPatient) {
+        setUpgradeReason({
+          title: "Limite Terapie Attive Raggiunto",
+          desc: `Il piano Free permette un massimo di 3 terapie attive per paziente. Passa a Pro o Max per inserire terapie illimitate.`,
+        });
+        setUpgradeModalOpen(true);
+        return;
+      }
+    }
+
+    // Se il piano richiede foto obbligatorie e siamo su Pro/Max
+    if (limits.medicationPhoto && (!photoDrug || !photoPackage)) {
       toast.error("Foto terapia mancanti", {
         description: "Carica la foto del farmaco e della confezione.",
       });
@@ -273,7 +294,8 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger ?? (
           <Button size="sm" id="add-therapy-btn">
@@ -745,6 +767,15 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
         </div>
       </DialogContent>
     </Dialog>
+
+    <UpgradeModal
+      open={upgradeModalOpen}
+      onOpenChange={setUpgradeModalOpen}
+      requiredPlan="pro"
+      featureTitle={upgradeReason.title}
+      featureDescription={upgradeReason.desc}
+    />
+    </>
   );
 }
 
