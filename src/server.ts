@@ -35,18 +35,20 @@ function applySecurityHeaders(response: Response): Response {
   // - img-src: 'self' + blob (foto upload) + data (icone base64) + https (avatar remoti)
   // - frame-ancestors 'none': impedisce embedding in iframe (anti-clickjacking)
   const supabaseSrc = "https://*.supabase.co wss://*.supabase.co";
+  const turnstileSrc = "https://challenges.cloudflare.com";
   headers.set(
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      `script-src 'self' 'unsafe-inline' ${turnstileSrc}`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
-      `connect-src 'self' ${supabaseSrc} https://api.lovable.dev`,
+      `connect-src 'self' ${supabaseSrc} https://api.lovable.dev ${turnstileSrc}`,
       "img-src 'self' blob: data: https:",
       "media-src 'self' blob:",
       "worker-src 'self'",
       "manifest-src 'self'",
+      `frame-src ${turnstileSrc}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { LEGAL_CONTACT } from "@/lib/legal-contact";
 
 export const Route = createFileRoute("/privacy")({
   head: () => ({
@@ -29,15 +30,29 @@ function PrivacyPage() {
         <article className="prose prose-sm max-w-none rounded-3xl border border-border/60 bg-card p-8 shadow-card">
           <h1 className="text-2xl font-black">Informativa sulla Privacy</h1>
           <p className="text-xs text-muted-foreground">
-            Ultimo aggiornamento: 20 luglio 2026 — Ai sensi degli artt. 13-14 del Regolamento
+            Ultimo aggiornamento: 31 agosto 2026 — Ai sensi degli artt. 13-14 del Regolamento
             UE 2016/679 (GDPR) e del D.lgs. 196/2003.
           </p>
 
           <h2>1. Titolare del trattamento</h2>
           <p>
-            Il Titolare del trattamento è <strong>Family Med</strong>,
-            contattabile all'indirizzo email <strong>giacomo.piccinini1@gmail.com</strong>. Per esercitare i
-            diritti previsti dal GDPR è possibile scrivere allo stesso indirizzo.
+            Il Titolare del trattamento è <strong>[NOME COGNOME / RAGIONE SOCIALE]</strong>,
+            {" "}<strong>[Ditta individuale / Libero professionista]</strong> con Partita IVA{" "}
+            <strong>[P.IVA]</strong>, con sede in <strong>[CITTÀ, PROVINCIA]</strong>.
+          </p>
+          <p>
+            Per esercitare i diritti previsti dal GDPR o per qualsiasi domanda sul trattamento dei
+            dati è possibile scrivere a <strong>{LEGAL_CONTACT.privacyEmail}</strong>
+            {" "}o, per comunicazioni con valore legale, a <strong>[PEC — vedi nota sotto]</strong>.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            <em>
+              Nota per chi compila: sostituire i placeholder con i dati reali prima della
+              pubblicazione. Se non si dispone ancora di una PEC, verificarne l'obbligo attuale per
+              i titolari di Partita IVA (l'iscrizione è ormai richiesta per la generalità delle
+              attività con P.IVA, incluse le ditte individuali) — il commercialista/Fiscozen può
+              indicare la procedura più rapida per attivarne una a basso costo.
+            </em>
           </p>
 
           <h2>2. Categorie di dati trattati</h2>
@@ -73,12 +88,46 @@ function PrivacyPage() {
             </li>
           </ul>
           <p>
-            Il consenso al trattamento dei dati sanitari è <strong>facoltativo ma necessario</strong>
-            per utilizzare l'app; senza tale consenso non è possibile registrare o monitorare
-            terapie. Il consenso è revocabile in ogni momento dalle impostazioni dell'account.
+            Il trattamento dei dati sanitari (nome dei farmaci, posologia, orari, storico
+            assunzioni) è il cuore stesso del servizio richiesto: senza registrare questi dati,
+            l'app non può funzionare. Per questo il consenso esplicito al trattamento dei dati
+            sanitari è <strong>un prerequisito necessario per usare le funzioni di gestione
+            terapie</strong> — non è possibile attivarle senza prestarlo, così come non è
+            possibile creare un account senza accettare Termini e Privacy.
+          </p>
+          <p>
+            L'utente può <strong>revocare il consenso in qualsiasi momento</strong> dalle
+            impostazioni dell'account. La revoca non è retroattiva (non incide sulla liceità del
+            trattamento già effettuato) ma comporta la disattivazione delle funzioni di gestione
+            terapie, poiché quel trattamento non può più avvenire senza la relativa base
+            giuridica; l'utente può comunque richiedere in qualsiasi momento l'esportazione o la
+            cancellazione dei propri dati come descritto alla sezione 9.
           </p>
 
-          <h2>4. Modalità del trattamento</h2>
+          <h2>4. Dati inseriti da un caregiver per conto di un'altra persona</h2>
+          <p>
+            In molti casi chi inserisce i dati sanitari di un paziente (nome dei farmaci,
+            posologia, storico assunzioni) non è la persona a cui quei dati si riferiscono, ma un
+            familiare o un caregiver che se ne prende cura — ad esempio un figlio che gestisce le
+            terapie di un genitore anziano non autonomo nell'uso dell'app.
+          </p>
+          <p>
+            In questi casi, al momento di aggiungere un nuovo paziente il caregiver deve
+            dichiarare esplicitamente di avere titolo per farlo, in quanto genitore, tutore legale,
+            amministratore di sostegno, oppure su indicazione diretta della persona interessata.
+            Questa dichiarazione viene registrata con data, ora e riferimento al paziente per cui è
+            stata resa, secondo lo stesso principio di responsabilizzazione (<em>accountability</em>)
+            già applicato al consenso di registrazione (art. 7.1 GDPR).
+          </p>
+          <p>
+            Il Titolare del trattamento non verifica autonomamente la veridicità di tale
+            dichiarazione, che resta nella responsabilità di chi la rende. Un paziente maggiorenne
+            e capace di intendere e di volere può in qualsiasi momento richiedere l'accesso, la
+            rettifica o la cancellazione dei propri dati inseriti da un caregiver, oppure revocare
+            l'autorizzazione, scrivendo agli indirizzi indicati alla sezione 1.
+          </p>
+
+          <h2>5. Modalità del trattamento</h2>
           <p>
             I dati sono trattati con strumenti elettronici, protetti da autenticazione JWT,
             Row-Level Security a livello di database e crittografia in transito (TLS). L'accesso ai
@@ -86,7 +135,7 @@ function PrivacyPage() {
             autorizzati tramite codice invito familiare.
           </p>
 
-          <h2>5. Destinatari e responsabili esterni</h2>
+          <h2>6. Destinatari e responsabili esterni</h2>
           <ul>
             <li>
               <strong>Supabase (Supabase Inc., USA/UE):</strong> hosting database, autenticazione e
@@ -99,13 +148,13 @@ function PrivacyPage() {
             <li>Familiari autorizzati dal paziente tramite codice invito.</li>
           </ul>
 
-          <h2>6. Trasferimenti extra-UE</h2>
+          <h2>7. Trasferimenti extra-UE</h2>
           <p>
             Eventuali trasferimenti verso paesi terzi avvengono sulla base delle Standard
             Contractual Clauses approvate dalla Commissione Europea.
           </p>
 
-          <h2>7. Periodo di conservazione dei dati</h2>
+          <h2>8. Periodo di conservazione dei dati</h2>
           <p>
             Al fine di ridurre al minimo il trattamento e garantire la massima protezione del Free Tier, i dati vengono conservati secondo i seguenti tempi di retention automatica:
           </p>
@@ -117,7 +166,7 @@ function PrivacyPage() {
             <li><strong>Storico assunzioni/eventi dosi passate:</strong> eliminati automaticamente dal database dopo <strong>180 giorni</strong> (i report PDF scaricati rimangono in possesso del paziente/caregiver).</li>
           </ul>
 
-          <h2>8. Diritti dell'interessato</h2>
+          <h2>9. Diritti dell'interessato</h2>
           <p>
             L'utente può in ogni momento esercitare i diritti di accesso, rettifica, cancellazione,
             limitazione, opposizione e portabilità (artt. 15-22 GDPR), oltre al diritto di revocare
@@ -125,13 +174,13 @@ function PrivacyPage() {
             personali</strong> (www.garanteprivacy.it).
           </p>
 
-          <h2>9. Minori</h2>
+          <h2>10. Minori</h2>
           <p>
             Il servizio non è destinato a minori di 16 anni. Per pazienti minori l'account deve
             essere gestito da un genitore o tutore legale.
           </p>
 
-          <h2>10. Modifiche</h2>
+          <h2>11. Modifiche</h2>
           <p>
             La presente informativa può essere aggiornata; le modifiche sostanziali saranno
             notificate all'interno dell'app.

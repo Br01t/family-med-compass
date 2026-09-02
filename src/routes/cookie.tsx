@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { LEGAL_CONTACT } from "@/lib/legal-contact";
 
 export const Route = createFileRoute("/cookie")({
   head: () => ({
@@ -27,7 +28,7 @@ function CookiePage() {
 
         <article className="prose prose-sm max-w-none rounded-3xl border border-border/60 bg-card p-8 shadow-card">
           <h1 className="text-2xl font-black">Cookie Policy</h1>
-          <p className="text-xs text-muted-foreground">Ultimo aggiornamento: 20 luglio 2026</p>
+          <p className="text-xs text-muted-foreground">Ultimo aggiornamento: 31 agosto 2026</p>
 
           <h2>1. Cosa sono i cookie</h2>
           <p>
@@ -69,7 +70,7 @@ function CookiePage() {
 
           <h2>5. Contatti</h2>
           <p>
-            Per domande sulla presente Cookie Policy scrivere a <strong>giacomo.piccinini1@gmail.com</strong>.
+            Per domande sulla presente Cookie Policy scrivere a <strong>{LEGAL_CONTACT.privacyEmail}</strong>.
           </p>
         </article>
 

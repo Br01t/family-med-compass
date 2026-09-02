@@ -114,6 +114,7 @@ export async function signUpUser(params: {
   password: string;
   name: string;
   role: Role;
+  captchaToken?: string;
 }): Promise<UserProfile> {
   if (!supabase) throw new Error("Supabase non inizializzato");
 
@@ -125,6 +126,7 @@ export async function signUpUser(params: {
         name: params.name,
         role: params.role,
       },
+      captchaToken: params.captchaToken,
     },
   });
 
@@ -209,11 +211,13 @@ export function formatAuthError(error: unknown): string {
 export async function signInUser(params: {
   email: string;
   password: string;
+  captchaToken?: string;
 }): Promise<User | null> {
   if (!supabase) throw new Error("Supabase non inizializzato");
   const { data, error } = await supabase.auth.signInWithPassword({
     email: params.email,
     password: params.password,
+    options: params.captchaToken ? { captchaToken: params.captchaToken } : undefined,
   });
   if (error) throw error;
   return data.user;

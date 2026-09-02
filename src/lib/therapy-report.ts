@@ -54,8 +54,16 @@ export function downloadTherapyReportPdf(
     year: "numeric",
   });
   doc.text(`Generato il ${generatedLabel} alle ${formatTime(now)}`, MARGIN_X, cursorY);
+  cursorY += 14;
+  doc.setFontSize(8);
+  doc.setTextColor(140);
+  doc.text(
+    "Dati auto-riportati dal paziente o dal caregiver tramite l'app. Non sostituisce la valutazione di un professionista sanitario.",
+    MARGIN_X,
+    cursorY,
+  );
   doc.setTextColor(0);
-  cursorY += 28;
+  cursorY += 24;
 
   // --- Sezione 1: elenco terapie --------------------------------------
   doc.setFont("helvetica", "bold");
@@ -253,8 +261,16 @@ export function downloadHistoryReportPdf(
     MARGIN_X,
     cursorY,
   );
+  cursorY += 14;
+  doc.setFontSize(8);
+  doc.setTextColor(140);
+  doc.text(
+    "Dati auto-riportati dal paziente o dal caregiver tramite l'app. Non sostituisce la valutazione di un professionista sanitario.",
+    MARGIN_X,
+    cursorY,
+  );
   doc.setTextColor(0);
-  cursorY += 28;
+  cursorY += 24;
 
   // --- KPI ----------------------------------------------------------
   autoTable(doc, {

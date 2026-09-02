@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useFamilyMed } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 import { getUserProfile, signInUser, formatAuthError } from "@/lib/auth-service";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
 
 export const Route = createFileRoute("/login")({
@@ -39,6 +41,11 @@ function LoginPage() {
   const lockedUntil = useRef<number | null>(null);
   const [lockoutSecondsLeft, setLockoutSecondsLeft] = useState(0);
   const [backoffSecondsLeft, setBackoffSecondsLeft] = useState(0);
+  const [captchaToken, setCaptchaToken] = useState<string | undefined>(undefined);
+  const [mfaChallenge, setMfaChallenge] = useState<{ factorId: string; challengeId: string } | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaSubmitting, setMfaSubmitting] = useState(false);
+  const [pendingUser, setPendingUser] = useState<{ id: string; user_metadata?: unknown } | null>(null);
   const lockoutTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // --- Reset password rate limit ---
@@ -74,6 +81,71 @@ function LoginPage() {
     return `${s} sec`;
   }
 
+  const completeLoginRedirect = async (signedInUser: { id: string; user_metadata?: unknown }) => {
+    const fallbackRole =
+      typeof signedInUser.user_metadata === "object" && signedInUser.user_metadata !== null
+        ? (signedInUser.user_metadata as Record<string, unknown>).role
+        : undefined;
+
+    const profile = await getUserProfile(signedInUser.id);
+    const role =
+      profile?.role === "paziente" || profile?.role === "caregiver"
+        ? profile.role
+        : fallbackRole === "paziente" || fallbackRole === "caregiver"
+          ? fallbackRole
+          : undefined;
+
+    setDialogVariant("success");
+    setDialogTitle("Accesso effettuato");
+    setDialogDescription("Bentornato! Stiamo aprendo la tua area personale.");
+    setDialogOpen(true);
+
+    if (role === "paziente" || role === "caregiver") {
+      navigate({
+        to: role === "paziente" ? "/paziente" : "/caregiver",
+        replace: true,
+      });
+      return;
+    }
+
+    setDialogDescription(
+      "Accesso riuscito, ma non è stato possibile determinare il ruolo. Contatta l'assistenza.",
+    );
+    setDialogVariant("error");
+    setDialogOpen(true);
+  };
+
+  const handleMfaVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase || !mfaChallenge || !pendingUser) return;
+    if (mfaCode.length !== 6) return;
+    setMfaSubmitting(true);
+    try {
+      const { error } = await supabase.auth.mfa.verify({
+        factorId: mfaChallenge.factorId,
+        challengeId: mfaChallenge.challengeId,
+        code: mfaCode,
+      });
+      if (error) throw error;
+
+      failedAttempts.current = 0;
+      lockedUntil.current = null;
+      const userToRedirect = pendingUser;
+      setMfaChallenge(null);
+      setMfaCode("");
+      setPendingUser(null);
+      await completeLoginRedirect(userToRedirect);
+    } catch (error) {
+      setMfaCode("");
+      setDialogVariant("error");
+      setDialogTitle("Codice non valido");
+      setDialogDescription("Controlla l'ora del telefono e riprova con il codice più recente.");
+      setDialogOpen(true);
+    } finally {
+      setMfaSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -90,7 +162,8 @@ function LoginPage() {
     setSubmitting(true);
 
     try {
-      const user = await signInUser({ email, password });
+      const user = await signInUser({ email, password, captchaToken });
+      setCaptchaToken(undefined); // il token è monouso, va rigenerato a ogni tentativo
 
       if (!user) {
         setDialogVariant("error");
@@ -106,38 +179,32 @@ function LoginPage() {
       failedAttempts.current = 0;
       lockedUntil.current = null;
 
-      const fallbackRole =
-        typeof user.user_metadata === "object" && user.user_metadata !== null
-          ? (user.user_metadata as Record<string, unknown>).role
-          : undefined;
-
-      const profile = await getUserProfile(user.id);
-      const role =
-        profile?.role === "paziente" || profile?.role === "caregiver"
-          ? profile.role
-          : fallbackRole === "paziente" || fallbackRole === "caregiver"
-            ? fallbackRole
-            : undefined;
-
-      setDialogVariant("success");
-      setDialogTitle("Accesso effettuato");
-      setDialogDescription("Bentornato! Stiamo aprendo la tua area personale.");
-      setDialogOpen(true);
-
-      if (role === "paziente" || role === "caregiver") {
-        navigate({
-          to: role === "paziente" ? "/paziente" : "/caregiver",
-          replace: true,
-        });
-        return;
+      // Se l'utente ha attivato l'autenticazione a due fattori, Supabase
+      // segnala che serve un secondo passaggio (aal1 → aal2) prima che la
+      // sessione sia pienamente autorizzata: mettiamo in pausa il redirect
+      // e chiediamo il codice a 6 cifre.
+      if (supabase) {
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal && aal.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
+          const { data: factorsData } = await supabase.auth.mfa.listFactors();
+          const factor = factorsData?.totp?.[0];
+          if (factor) {
+            const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+              factorId: factor.id,
+            });
+            if (challengeError) throw challengeError;
+            setMfaChallenge({ factorId: factor.id, challengeId: challenge.id });
+            setPendingUser({ id: user.id, user_metadata: user.user_metadata });
+            setSubmitting(false);
+            return;
+          }
+        }
       }
 
-      setDialogDescription(
-        "Accesso riuscito, ma non è stato possibile determinare il ruolo. Contatta l'assistenza.",
-      );
-      setDialogVariant("error");
-      setDialogOpen(true);
+      await completeLoginRedirect({ id: user.id, user_metadata: user.user_metadata });
+      return;
     } catch (error: unknown) {
+      setCaptchaToken(undefined); // token consumato/scaduto: il widget ne genera uno nuovo
       // Incrementa contatore tentativi falliti
       failedAttempts.current += 1;
       const attempts = failedAttempts.current;
@@ -204,6 +271,47 @@ function LoginPage() {
           </div>
         )}
 
+        {mfaChallenge ? (
+          <form
+            onSubmit={handleMfaVerify}
+            className="space-y-4 rounded-3xl border border-border/60 bg-card p-6 shadow-card"
+          >
+            <div className="text-center">
+              <p className="text-sm font-semibold text-foreground">Verifica in due passaggi</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Inserisci il codice a 6 cifre dalla tua app di autenticazione.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="mfa-login-code">Codice</Label>
+              <Input
+                id="mfa-login-code"
+                inputMode="numeric"
+                maxLength={6}
+                autoFocus
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                placeholder="123456"
+                className="mt-1 text-center text-lg tracking-[0.5em]"
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={mfaSubmitting || mfaCode.length !== 6}>
+              {mfaSubmitting ? "Verifica in corso..." : "Conferma"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setMfaChallenge(null);
+                setPendingUser(null);
+                setMfaCode("");
+              }}
+            >
+              Torna al login
+            </Button>
+          </form>
+        ) : (
         <form
           onSubmit={handleSubmit}
           className="space-y-4 rounded-3xl border border-border/60 bg-card p-6 shadow-card"
@@ -239,10 +347,12 @@ function LoginPage() {
             />
           </div>
 
+          <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(undefined)} />
+
           <Button
             type="submit"
             className="w-full touch-manipulation"
-            disabled={submitting || isBlocked || isThrottled}
+            disabled={submitting || isBlocked || isThrottled || (!!import.meta.env.VITE_TURNSTILE_SITE_KEY && !captchaToken)}
           >
             {isBlocked
               ? `Bloccato (${formatSeconds(lockoutSecondsLeft)})`
@@ -303,6 +413,7 @@ function LoginPage() {
             Password dimenticata?
           </button>
         </form>
+        )}
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Non hai un account?{" "}

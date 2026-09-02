@@ -651,6 +651,67 @@ export async function fetchNotificationsPage(
    WRITE OPS (UNCHANGED BUT SAFE)
 ========================================================= */
 
+/**
+ * Registra la dichiarazione con cui un caregiver afferma di avere titolo
+ * (genitore, tutore legale, o indicazione diretta dell'interessato) per
+ * inserire e trattare i dati sanitari del paziente appena creato.
+ *
+ * Richiede MIGRATION_consenso_autorizzazione_caregiver.sql applicata.
+ * Non blocca la creazione del paziente se fallisce: chi la invoca
+ * dovrebbe già gestire l'errore senza interrompere il flusso (vedi
+ * AddPatientDialog).
+ */
+export async function recordCaregiverAuthorization(patientId: string): Promise<void> {
+  if (!supabase) throw new Error("Supabase non configurato");
+
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw userError ?? new Error("Utente non autenticato");
+
+  const { error } = await supabase.from("user_consents").insert({
+    user_id: userData.user.id,
+    patient_id: patientId,
+    kind: "caregiver_authorization",
+    granted: true,
+    user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+  });
+
+  if (error) throw error;
+}
+
+/**
+ * Storico di aderenza mensile permanente per un paziente (punto 10 audit,
+ * Opzione B): righe calcolate dal cron `adherence-monthly-rollup` prima
+ * che il dettaglio giornaliero in `events` venga cancellato a 180gg.
+ * A differenza di fetchEventsForPatientRange, questi dati non scadono mai.
+ *
+ * Richiede MIGRATION_adherence_monthly_rollup.sql applicata.
+ */
+export type MonthlyAdherence = {
+  therapy_id: string;
+  therapy_name: string;
+  year: number;
+  month: number;
+  doses_scheduled: number;
+  doses_taken: number;
+  doses_missed: number;
+  doses_skipped: number;
+  adherence_pct: number | null;
+};
+
+export async function fetchPatientAdherenceHistory(
+  patientId: string,
+): Promise<MonthlyAdherence[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("adherence_monthly")
+    .select("therapy_id, therapy_name, year, month, doses_scheduled, doses_taken, doses_missed, doses_skipped, adherence_pct")
+    .eq("patient_id", patientId)
+    .order("year", { ascending: false })
+    .order("month", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as MonthlyAdherence[];
+}
+
 export async function addPatientDoc(patient: Patient): Promise<void> {
   if (!supabase) throw new Error("Supabase non configurato");
 

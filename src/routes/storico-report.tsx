@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
-import { fetchEventsForPatientRange } from "@/lib/supabase-service";
+import { fetchEventsForPatientRange, fetchPatientAdherenceHistory, type MonthlyAdherence } from "@/lib/supabase-service";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { MedicationEvent } from "@/lib/mock-data";
 import {
   doseDelayMinutes,
@@ -98,6 +99,63 @@ function HistoryReportPage() {
   // (periodo 7gg copre quanto già disponibile globalmente).
   const [extraEvents, setExtraEvents] = useState<MedicationEvent[]>([]);
   const [loadingExtra, setLoadingExtra] = useState(false);
+
+  // Andamento aderenza a lungo termine (Opzione B, punto 10 audit): a
+  // differenza di `events`, questi aggregati mensili non vengono mai
+  // cancellati dal cron di retention a 180gg — coprono l'intera storia del
+  // paziente, non solo gli ultimi 7/30/90 giorni selezionabili sopra.
+  const [monthlyHistory, setMonthlyHistory] = useState<MonthlyAdherence[]>([]);
+  const [loadingMonthly, setLoadingMonthly] = useState(false);
+
+  useEffect(() => {
+    if (!patientId) {
+      setMonthlyHistory([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingMonthly(true);
+    fetchPatientAdherenceHistory(patientId)
+      .then((rows) => {
+        if (!cancelled) setMonthlyHistory(rows);
+      })
+      .catch((err) => {
+        console.error("[storico-report] Errore fetch aderenza mensile:", err);
+        if (!cancelled) setMonthlyHistory([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingMonthly(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [patientId]);
+
+  // Aggrega per mese su tutte le terapie del paziente (media pesata sulle
+  // dosi, non media semplice delle percentuali) e prepara le label per il
+  // grafico, in ordine cronologico crescente.
+  const monthlyChartData = useMemo(() => {
+    const byMonth = new Map<string, { label: string; scheduled: number; taken: number }>();
+    for (const row of monthlyHistory) {
+      const key = `${row.year}-${String(row.month).padStart(2, "0")}`;
+      const entry = byMonth.get(key) ?? {
+        label: new Date(row.year, row.month - 1, 1).toLocaleDateString("it-IT", {
+          month: "short",
+          year: "2-digit",
+        }),
+        scheduled: 0,
+        taken: 0,
+      };
+      entry.scheduled += row.doses_scheduled;
+      entry.taken += row.doses_taken;
+      byMonth.set(key, entry);
+    }
+    return Array.from(byMonth.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, v]) => ({
+        label: v.label,
+        aderenza: v.scheduled > 0 ? Math.round((v.taken / v.scheduled) * 100) : 0,
+      }));
+  }, [monthlyHistory]);
 
   useEffect(() => {
     if (!patientId || period <= 7) {
@@ -728,6 +786,33 @@ function HistoryReportPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Andamento aderenza a lungo termine — dati permanenti, non soggetti
+          alla cancellazione a 180gg del dettaglio giornaliero. */}
+      {monthlyChartData.length > 0 && (
+        <div className="mt-6 rounded-3xl border border-border/60 bg-card p-4 sm:p-6 shadow-card">
+          <h3 className="text-base sm:text-lg font-black tracking-tight">
+            Andamento aderenza nel tempo
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Riepilogo mensile su tutta la storia disponibile — non si perde dopo 180 giorni.
+          </p>
+          <div className="mt-4 h-56 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthlyChartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border/50" />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} />
+                <Tooltip formatter={(value: number) => [`${value}%`, "Aderenza"]} />
+                <Bar dataKey="aderenza" radius={[6, 6, 0, 0]} className="fill-primary" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+      {loadingMonthly && monthlyChartData.length === 0 && (
+        <p className="mt-4 text-xs text-muted-foreground">Caricamento andamento storico…</p>
       )}
 
       <UpgradeModal

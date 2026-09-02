@@ -1,2 +1,20 @@
 User-agent: *
 Allow: /
+# Route autenticate: nessun contenuto pubblico da indicizzare, solo un
+# redirect a /login per chi non ha sessione. Il Disallow evita che Google
+# le scansioni inutilmente (e che compaiano come risultati vuoti/rotti).
+Disallow: /caregiver
+Disallow: /paziente
+Disallow: /pazienti
+Disallow: /terapie
+Disallow: /le-mie-terapie
+Disallow: /scorte
+Disallow: /diario
+Disallow: /parametri
+Disallow: /storico-report
+Disallow: /notifiche
+Disallow: /impostazioni
+Disallow: /eccezioni
+Disallow: /dose-da-confermare
+Disallow: /abbonamento
+Disallow: /guida

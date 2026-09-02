@@ -119,8 +119,16 @@ export function downloadVitalSignsPdf(
     MARGIN_X,
     y,
   );
+  y += 13;
+  doc.setFontSize(8);
+  doc.setTextColor(140);
+  doc.text(
+    "Dati auto-riportati dal paziente o dal caregiver tramite l'app. Non sostituisce la valutazione di un professionista sanitario.",
+    MARGIN_X,
+    y,
+  );
   doc.setTextColor(0);
-  y += 24;
+  y += 22;
 
   // Filtra per periodo + kinds
   const fromMs = opts.from.getTime();

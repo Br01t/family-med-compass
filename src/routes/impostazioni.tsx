@@ -8,6 +8,7 @@ import { AppShell } from "@/components/AppShell";
 import { PatientShell } from "@/components/PatientShell";
 import { FamilyInviteCard } from "@/components/FamilyInviteCard";
 import { AccountDataCard } from "@/components/AccountDataCard";
+import { MfaSecurityCard } from "@/components/MfaSecurityCard";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ import { useFamilyMed } from "@/lib/store";
 import { type Role } from "@/lib/mock-data";
 import { useFeatureToggles, type FeatureKey } from "@/lib/feature-toggles";
 import { PLAN_LIMITS } from "@/lib/subscription";
+import { LEGAL_CONTACT } from "@/lib/legal-contact";
 
 export const Route = createFileRoute("/impostazioni")({
   head: () => ({ meta: [{ title: "Impostazioni — FamilyMed" }] }),
@@ -93,6 +95,7 @@ function SettingsPage() {
           <GdprConsentCard userId={user?.id} />
           <InstallCard />
           <AccountDataCard />
+          <MfaSecurityCard />
           <InfoAssistenzaCard />
         </div>
       </PatientShell>
@@ -171,6 +174,8 @@ function SettingsPage() {
         {user && userProfile && <GdprConsentCard userId={user.id} />}
 
         <AccountDataCard />
+
+        <MfaSecurityCard />
 
         <InfoAssistenzaCard />
 
@@ -342,7 +347,7 @@ function InfoAssistenzaCard() {
         ))}
         <li>
           <a
-            href="mailto:giacomo.piccinini1@gmail.com"
+            href={`mailto:${LEGAL_CONTACT.privacyEmail}`}
             className="flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-muted/50 transition-colors"
           >
             <Mail className="size-4 shrink-0 text-muted-foreground" />

@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signUpUser, formatAuthError } from "@/lib/auth-service";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 import { useFamilyMed } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { type Role } from "@/lib/mock-data";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
+import { LEGAL_CONTACT } from "@/lib/legal-contact";
 
 export const Route = createFileRoute("/registrati")({
   head: () => ({ meta: [{ title: "Registrati — FamilyMed" }] }),
@@ -25,6 +27,8 @@ function RegisterPage() {
   const [role, setRole] = useState<Role>("caregiver");
   const [consentTerms, setConsentTerms] = useState(false);
   const [consentHealth, setConsentHealth] = useState(false);
+  const [ageDeclared, setAgeDeclared] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
@@ -37,20 +41,21 @@ function RegisterPage() {
     }
   }, [loadingAuth, user, userProfile, navigate]);
 
-  // Validazione password: min 8 caratteri + almeno 1 numero
+  // Validazione password: min 8 caratteri + almeno 1 numero + almeno 1 lettera
   function validatePassword(pwd: string): string | null {
     if (pwd.length < 8) return "La password deve essere di almeno 8 caratteri.";
     if (!/\d/.test(pwd)) return "La password deve contenere almeno un numero.";
+    if (!/[a-zA-Z]/.test(pwd)) return "La password deve contenere almeno una lettera.";
     return null;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!consentTerms || !consentHealth) {
+    if (!consentTerms || !consentHealth || !ageDeclared) {
       setDialogVariant("error");
       setDialogTitle("Consensi obbligatori");
       setDialogDescription(
-        "Per procedere devi accettare i Termini di Servizio e la Privacy, e prestare il consenso esplicito al trattamento dei dati sanitari.",
+        "Per procedere devi confermare di avere almeno 18 anni, accettare i Termini di Servizio e la Privacy, e prestare il consenso esplicito al trattamento dei dati sanitari.",
       );
       setDialogOpen(true);
       return;
@@ -65,7 +70,8 @@ function RegisterPage() {
     }
     setSubmitting(true);
     try {
-      await signUpUser({ email, password, name, role });
+      await signUpUser({ email, password, name, role, captchaToken });
+      setCaptchaToken(undefined); // token monouso
 
       // Registra la prova dei consensi (GDPR art. 7.1) — OBBLIGATORIO.
       // Se fallisce, l'account viene creato ma la registrazione si blocca:
@@ -78,6 +84,7 @@ function RegisterPage() {
         const { error: consentError } = await supabase.from("user_consents").insert([
           { user_id: uid, kind: "terms_privacy", granted: true, user_agent: ua },
           { user_id: uid, kind: "health_data", granted: true, user_agent: ua },
+          { user_id: uid, kind: "age_declaration", granted: true, user_agent: ua },
         ]);
         if (consentError) {
           // Errore non bloccante solo se la tabella non esiste ancora (setup incompleto).
@@ -91,7 +98,7 @@ function RegisterPage() {
             setDialogTitle("Registrazione incompleta");
             setDialogDescription(
               "Il tuo account è stato creato ma non è stato possibile registrare il consenso GDPR. " +
-              "Accedi e verifica la sezione Privacy nelle impostazioni, oppure contattaci a giacomo.piccinini1@gmail.com.",
+              `Accedi e verifica la sezione Privacy nelle impostazioni, oppure contattaci a ${LEGAL_CONTACT.privacyEmail}.`,
             );
             setDialogOpen(true);
             return;
@@ -111,6 +118,7 @@ function RegisterPage() {
       setPassword("");
       setName("");
     } catch (error: unknown) {
+      setCaptchaToken(undefined); // token consumato/scaduto: il widget ne genera uno nuovo
       setDialogVariant("error");
       setDialogTitle("Errore durante la registrazione");
       setDialogDescription(formatAuthError(error));
@@ -221,6 +229,20 @@ function RegisterPage() {
             <label className="flex cursor-pointer items-start gap-2 text-xs leading-snug text-foreground">
               <input
                 type="checkbox"
+                checked={ageDeclared}
+                onChange={(e) => setAgeDeclared(e.target.checked)}
+                required
+                className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
+              />
+              <span>
+                Dichiaro di avere <strong>almeno 18 anni</strong>. Se creerò profili per persone
+                minorenni o non autosufficienti, dichiaro di esserne genitore, tutore legale o
+                comunque autorizzato a gestirne i dati sanitari.
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-2 text-xs leading-snug text-foreground">
+              <input
+                type="checkbox"
                 checked={consentTerms}
                 onChange={(e) => setConsentTerms(e.target.checked)}
                 required
@@ -254,10 +276,18 @@ function RegisterPage() {
             </label>
           </div>
 
+          <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(undefined)} />
+
           <Button
             type="submit"
             className="w-full touch-manipulation"
-            disabled={submitting || !consentTerms || !consentHealth}
+            disabled={
+              submitting ||
+              !consentTerms ||
+              !consentHealth ||
+              !ageDeclared ||
+              (!!import.meta.env.VITE_TURNSTILE_SITE_KEY && !captchaToken)
+            }
           >
             {submitting ? "Creazione in corso..." : "Registrati"}
           </Button>

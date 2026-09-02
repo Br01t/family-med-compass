@@ -25,6 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useFamilyMed } from "@/lib/store";
 import { getPlanLimits } from "@/lib/subscription";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { recordCaregiverAuthorization } from "@/lib/supabase-service";
 
 const currentYear = new Date().getFullYear();
 
@@ -36,6 +37,9 @@ const schema = z.object({
     .min(1900, "Anno non valido")
     .max(currentYear - 1, "Anno non valido"),
   assignToAllCaregivers: z.boolean(),
+  authorizationDeclared: z.boolean().refine((v) => v === true, {
+    message: "Devi confermare di avere titolo per inserire questi dati.",
+  }),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -59,6 +63,7 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
       name: "",
       birthYear: undefined,
       assignToAllCaregivers: false,
+      authorizationDeclared: false,
     },
   });
 
@@ -91,6 +96,20 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
       };
 
       await addPatient(patientData);
+
+      // Traccia la dichiarazione di autorizzazione (art. 7.1 GDPR — il
+      // caregiver dichiara di avere titolo per trattare i dati sanitari
+      // di questo specifico paziente). Non blocca il salvataggio del
+      // paziente se fallisce: il paziente è già stato creato, l'utente
+      // viene solo avvisato che la dichiarazione andrà registrata di nuovo.
+      try {
+        await recordCaregiverAuthorization(id);
+      } catch (consentError) {
+        console.error("[AddPatientDialog] Dichiarazione non registrata:", consentError);
+        toast.warning("Paziente salvato, ma la dichiarazione non è stata registrata", {
+          description: "Riprova dalle impostazioni del paziente, sezione Privacy.",
+        });
+      }
 
       toast.success("Paziente aggiunto", {
         description: `${values.name} è stato aggiunto ai tuoi pazienti.`,
@@ -181,6 +200,33 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
               terapie e scorte anche senza un account paziente separato.
             </div>
 
+            {/* Dichiarazione di autorizzazione (art. 7.1 GDPR) — obbligatoria
+                perché il caregiver sta per inserire dati sanitari (art. 9
+                GDPR) di una persona diversa da sé stesso. */}
+            <FormField
+              control={form.control}
+              name="authorizationDeclared"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start gap-3 rounded-xl border border-border/60 p-3">
+                  <FormControl>
+                    <Checkbox
+                      id="patient-authorization-checkbox"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-snug">
+                    <FormLabel htmlFor="patient-authorization-checkbox" className="text-xs font-normal text-foreground">
+                      Dichiaro di essere autorizzato — in quanto genitore, tutore
+                      legale o su indicazione diretta dell'interessato — a
+                      inserire e gestire in questa app i dati relativi alla
+                      salute di <strong>{form.watch("name") || "questa persona"}</strong>.
+                    </FormLabel>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
+            />
 
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <Button
