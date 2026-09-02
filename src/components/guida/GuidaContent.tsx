@@ -101,7 +101,7 @@ export function GuidaContent() {
           icon={PlayCircle}
           color="primary"
           title="Video tutorial"
-          description="Mini-video da 20 secondi che mostrano passo passo le azioni principali. Ogni video ha sottotitoli in italiano e una trascrizione testuale completa."
+          description="Mini-video brevi che mostrano passo passo le azioni principali, con i controlli integrati nel player (volume e schermo intero)."
         />
         <FaqVideoLibrary />
       </TabsContent>
