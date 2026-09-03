@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { LEGAL_CONTACT } from "@/lib/legal-contact";
+import { PublicPageShell } from "@/components/public/PublicPageShell";
 
 export const Route = createFileRoute("/privacy")({
   head: () => ({
@@ -18,18 +19,18 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-background px-4 py-10">
-      <div className="mx-auto max-w-3xl">
+    <PublicPageShell currentPath="/privacy">
+      <div className="py-6 sm:py-8 max-w-3xl mx-auto">
         <Link
           to="/"
-          className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"
+          className="mb-6 inline-flex items-center gap-2 text-sm text-ocean-200 hover:text-ocean-300 transition-colors font-medium"
         >
           <ArrowLeft className="size-4" /> Torna alla home
         </Link>
 
-        <article className="prose prose-sm max-w-none rounded-3xl border border-border/60 bg-card p-8 shadow-card">
-          <h1 className="text-2xl font-black">Informativa sulla Privacy</h1>
-          <p className="text-xs text-muted-foreground">
+        <article className="prose prose-invert max-w-none rounded-3xl border border-ocean-600/30 bg-ocean-800/40 p-6 sm:p-12 shadow-ocean backdrop-blur-sm">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold text-white italic">Informativa sulla Privacy</h1>
+          <p className="text-xs sm:text-sm text-ocean-200 font-normal">
             Ultimo aggiornamento: 31 agosto 2026 — Ai sensi degli artt. 13-14 del Regolamento
             UE 2016/679 (GDPR) e del D.lgs. 196/2003.
           </p>
@@ -187,12 +188,12 @@ function PrivacyPage() {
           </p>
         </article>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          <Link to="/termini" className="hover:underline">Termini di Servizio</Link>
+        <p className="mt-8 text-center text-sm text-ocean-200">
+          <Link to="/termini" className="hover:text-ocean-300 underline transition-colors">Termini di Servizio</Link>
           {" · "}
-          <Link to="/cookie" className="hover:underline">Cookie Policy</Link>
+          <Link to="/cookie" className="hover:text-ocean-300 underline transition-colors">Cookie Policy</Link>
         </p>
       </div>
-    </div>
+    </PublicPageShell>
   );
 }

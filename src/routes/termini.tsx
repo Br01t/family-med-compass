@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { PublicPageShell } from "@/components/public/PublicPageShell";
 
 export const Route = createFileRoute("/termini")({
   head: () => ({
@@ -17,18 +18,18 @@ export const Route = createFileRoute("/termini")({
 
 function TermsPage() {
   return (
-    <div className="min-h-screen bg-background px-4 py-10">
-      <div className="mx-auto max-w-3xl">
+    <PublicPageShell currentPath="/termini">
+      <div className="py-6 sm:py-8 max-w-3xl mx-auto">
         <Link
           to="/"
-          className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"
+          className="mb-6 inline-flex items-center gap-2 text-sm text-ocean-200 hover:text-ocean-300 transition-colors font-medium"
         >
           <ArrowLeft className="size-4" /> Torna alla home
         </Link>
 
-        <article className="prose prose-sm max-w-none rounded-3xl border border-border/60 bg-card p-8 shadow-card">
-          <h1 className="text-2xl font-black">Termini di Servizio</h1>
-          <p className="text-xs text-muted-foreground">Ultimo aggiornamento: 20 luglio 2026</p>
+        <article className="prose prose-invert max-w-none rounded-3xl border border-ocean-600/30 bg-ocean-800/40 p-6 sm:p-12 shadow-ocean backdrop-blur-sm">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold text-white italic">Termini di Servizio</h1>
+          <p className="text-xs sm:text-sm text-ocean-200 font-normal">Ultimo aggiornamento: 20 luglio 2026</p>
 
           <h2>1. Oggetto</h2>
           <p>
@@ -38,11 +39,11 @@ function TermsPage() {
             integralmente i presenti Termini.
           </p>
 
-          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
-            <p className="m-0 text-sm font-semibold">
+          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 sm:p-5 text-amber-200 my-6">
+            <p className="m-0 text-sm sm:text-base font-bold text-amber-300">
               ⚠️ Avvertenza medica importante
             </p>
-            <p className="m-0 mt-1 text-sm">
+            <p className="m-0 mt-1.5 text-sm sm:text-base text-amber-100 leading-relaxed">
               FamilyMed <strong>non è un dispositivo medico</strong>, non fornisce diagnosi né
               consigli terapeutici e non sostituisce in alcun modo il parere di un medico o di un
               farmacista. In caso di emergenza chiamare il <strong>112</strong>. Non modificare mai
@@ -123,12 +124,12 @@ function TermsPage() {
           </p>
         </article>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          <Link to="/privacy" className="hover:underline">Informativa Privacy</Link>
+        <p className="mt-8 text-center text-sm text-ocean-200">
+          <Link to="/privacy" className="hover:text-ocean-300 underline transition-colors">Informativa Privacy</Link>
           {" · "}
-          <Link to="/cookie" className="hover:underline">Cookie Policy</Link>
+          <Link to="/cookie" className="hover:text-ocean-300 underline transition-colors">Cookie Policy</Link>
         </p>
       </div>
-    </div>
+    </PublicPageShell>
   );
 }

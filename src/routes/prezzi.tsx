@@ -5,21 +5,13 @@ import {
   X,
   Sparkles,
   ShieldCheck,
-  Users,
-  Pill,
-  HelpCircle,
   ArrowRight,
   ChevronDown,
-  FileText,
-  Activity,
-  Package,
-  Heart,
-  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SiteFooter } from "@/components/SiteFooter";
-import { PLAN_LIMITS, formatPrice, type SubscriptionPlan } from "@/lib/subscription";
+import { formatPrice } from "@/lib/subscription";
+import { PublicPageShell } from "@/components/public/PublicPageShell";
 
 export const Route = createFileRoute("/prezzi")({
   head: () => ({
@@ -50,69 +42,43 @@ function PublicPricingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background w-full overflow-x-hidden text-left">
-      {/* HEADER PUBBLICO */}
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 sm:py-6 w-full border-b border-border/40">
-        <Link to="/" className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div className="grid size-9 sm:size-10 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lift">
-            <Pill className="size-4.5 sm:size-5" />
-          </div>
-          <p className="text-base sm:text-lg font-black tracking-tight leading-none truncate">
-            FamilyMed
-          </p>
-        </Link>
-
-        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          <Link
-            to="/guida-pubblica"
-            className="hidden sm:inline-flex text-sm font-semibold text-foreground/80 hover:text-primary transition-colors"
-          >
-            Guida
-          </Link>
-          <Button variant="ghost" size="sm" asChild className="text-xs sm:text-sm">
-            <Link to="/login">Accedi</Link>
-          </Button>
-          <Button size="sm" asChild className="text-xs sm:text-sm font-bold shadow-sm">
-            <Link to="/registrati">Inizia gratis</Link>
-          </Button>
-        </div>
-      </header>
-
+    <PublicPageShell currentPath="/prezzi">
       {/* HERO SECTION */}
-      <section className="mx-auto max-w-4xl px-4 pt-12 pb-8 text-center space-y-4">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
-          <Sparkles className="size-4" />
+      <section className="mx-auto max-w-4xl pt-8 pb-8 text-center space-y-4 md:pt-12">
+        <div className="inline-flex items-center gap-2 rounded-full border border-ocean-300/40 bg-ocean-800/60 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-ocean-300">
+          <Sparkles className="size-3.5" />
           <span>Trasparenza Totale</span>
         </div>
-        <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-foreground leading-[1.15]">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-white italic sm:text-5xl md:text-[3.3rem] leading-[1.12]">
           Scegli la tranquillità per la tua famiglia
         </h1>
-        <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+        <p className="mx-auto max-w-2xl text-base sm:text-lg text-ocean-100 leading-relaxed font-normal">
           Nessun costo nascosto, nessun vincolo. Puoi iniziare gratuitamente e passare a un piano superiore quando la famiglia ha bisogno di collaborare.
         </p>
 
         {/* Annual / Monthly Billing Switcher */}
         <div className="pt-6 flex justify-center items-center gap-3">
-          <span className={`text-sm font-semibold ${!isAnnual ? "text-foreground" : "text-muted-foreground"}`}>
+          <span className={`text-sm sm:text-base font-semibold transition-colors ${!isAnnual ? "text-white" : "text-ocean-200"}`}>
             Fatturazione Mensile
           </span>
           <button
+            type="button"
             onClick={() => setIsAnnual(!isAnnual)}
-            className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors ${
-              isAnnual ? "bg-primary" : "bg-muted"
+            className={`relative inline-flex h-8 w-15 items-center rounded-full border border-ocean-600/40 transition-colors p-1 ${
+              isAnnual ? "bg-ocean-300" : "bg-ocean-800/80"
             }`}
           >
             <span
-              className={`inline-block size-5 transform rounded-full bg-white transition-transform ${
-                isAnnual ? "translate-x-8" : "translate-x-1"
+              className={`inline-block size-6 transform rounded-full transition-transform shadow-md ${
+                isAnnual ? "translate-x-7 bg-ocean-950" : "translate-x-0 bg-white"
               }`}
             />
           </button>
-          <div className="flex items-center gap-1.5">
-            <span className={`text-sm font-semibold ${isAnnual ? "text-foreground" : "text-muted-foreground"}`}>
+          <div className="flex items-center gap-2">
+            <span className={`text-sm sm:text-base font-semibold transition-colors ${isAnnual ? "text-white" : "text-ocean-200"}`}>
               Fatturazione Annuale
             </span>
-            <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border-emerald-500/20 text-[10px]">
+            <Badge className="bg-ocean-300/20 text-ocean-300 font-bold border-ocean-300/40 text-xs px-2.5 py-0.5">
               -33% sconto
             </Badge>
           </div>
@@ -120,7 +86,7 @@ function PublicPricingPage() {
       </section>
 
       {/* 3 PRICING CARDS */}
-      <section className="mx-auto max-w-6xl px-4 py-8">
+      <section className="mx-auto max-w-6xl py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
           {/* FREE CARD */}
           <PricingCard
@@ -145,7 +111,7 @@ function PublicPricingPage() {
           <PricingCard
             name="Pro"
             price={isAnnual ? 39.99 / 12 : 4.99}
-            periodLabel={isAnnual ? "4,99 € / mese (39,99 €/anno)" : "4,99 € / mese"}
+            periodLabel={isAnnual ? "3,33 € / mese (39,99 €/anno)" : "4,99 € / mese"}
             badge="Più scelto dalle famiglie"
             tagline="Per fratelli, famiglie e badanti che vogliono coordinarsi."
             ctaText="Prova il piano Pro"
@@ -169,7 +135,7 @@ function PublicPricingPage() {
           <PricingCard
             name="Max"
             price={isAnnual ? 79.99 / 12 : 9.99}
-            periodLabel={isAnnual ? "9,99 € / mese (79,99 €/anno)" : "9,99 € / mese"}
+            periodLabel={isAnnual ? "6,66 € / mese (79,99 €/anno)" : "9,99 € / mese"}
             badge="Per famiglie estese e gruppi di cura"
             tagline="Per chi gestisce più anziani o necessita di permessi avanzati."
             ctaText="Attiva il piano Max"
@@ -178,46 +144,46 @@ function PublicPricingPage() {
             features={[
               { text: "Fino a 10 Pazienti contemporaneamente", highlight: true },
               { text: "Fino a 10 Caregiver per paziente (Titolare + 9)", highlight: true },
-              { text: "Tutto del piano Pro incluso", highlight: true },
-              { text: "Report PDF aggregato multi-paziente", highlight: true },
-              { text: "Ruoli e permessi granulari (es. sola lettura)", highlight: true },
-              { text: "Audit Log (Registro completo attività)", highlight: true },
-              { text: "Supporto prioritario via email", highlight: true },
+              { text: "Tutte le funzioni del piano Pro incluse", highlight: true },
+              { text: "Registro attività completo (Audit Log)", highlight: true },
+              { text: "Gestione avanzata delle deleghe e badanti", highlight: true },
+              { text: "Report clinico aggregato per medico o struttura", highlight: true },
+              { text: "Assistenza via email prioritaria entro 12 ore", highlight: true },
             ]}
           />
         </div>
       </section>
 
-      {/* DETAILED COMPARISON TABLE */}
-      <section className="mx-auto max-w-6xl px-4 py-12">
+      {/* COMPARISON TABLE */}
+      <section className="mx-auto max-w-6xl py-12">
         <div className="text-center mb-8">
-          <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+          <h2 className="font-display text-2xl sm:text-4xl font-bold text-white italic tracking-tight">
             Confronto dettagliato delle funzionalità
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Confronta i piani nel dettaglio per trovare la soluzione perfetta per te.
+          <p className="text-base text-ocean-100 mt-2 max-w-xl mx-auto">
+            Ogni dettaglio pensato per garantire la massima aderenza alle cure e la serenità della tua famiglia.
           </p>
         </div>
 
-        <div className="overflow-x-auto rounded-3xl border border-border/60 bg-card shadow-sm">
+        <div className="overflow-x-auto rounded-3xl border border-ocean-600/30 bg-ocean-800/35 shadow-ocean">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="border-b border-border/60 bg-secondary/40">
-                <th className="p-4 sm:p-5 font-bold text-base text-foreground min-w-[220px]">
+              <tr className="border-b border-ocean-600/30 bg-ocean-800/80">
+                <th className="p-4 sm:p-5 font-bold text-base text-white min-w-[220px]">
                   Funzionalità & Limiti
                 </th>
-                <th className="p-4 sm:p-5 font-bold text-center text-foreground w-[160px]">
+                <th className="p-4 sm:p-5 font-bold text-center text-white w-[160px]">
                   Free (0€)
                 </th>
-                <th className="p-4 sm:p-5 font-bold text-center text-primary bg-primary/5 w-[180px]">
+                <th className="p-4 sm:p-5 font-bold text-center text-ocean-300 bg-ocean-300/10 w-[180px]">
                   Pro (4,99€/m)
                 </th>
-                <th className="p-4 sm:p-5 font-bold text-center text-foreground w-[180px]">
+                <th className="p-4 sm:p-5 font-bold text-center text-white w-[180px]">
                   Max (9,99€/m)
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/40">
+            <tbody className="divide-y divide-ocean-600/20">
               {/* Category: Capacità */}
               <TableCategoryHeader title="Capacità & Condivisione" />
               <TableRow label="Pazienti gestibili" free="1" pro="Fino a 2" max="Fino a 10" />
@@ -245,29 +211,29 @@ function PublicPricingPage() {
       </section>
 
       {/* GDPR & GUARANTEE CARD */}
-      <section className="mx-auto max-w-4xl px-4 py-8">
-        <div className="rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6">
-          <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+      <section className="mx-auto max-w-4xl py-6">
+        <div className="rounded-3xl border border-ocean-300/30 bg-ocean-800/40 p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 backdrop-blur-sm">
+          <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-ocean-300/20 text-ocean-300">
             <ShieldCheck className="size-8" />
           </div>
           <div className="space-y-2 text-center sm:text-left">
-            <h3 className="text-xl font-bold text-foreground tracking-tight">
+            <h3 className="font-display text-xl font-bold text-white italic tracking-tight">
               Privacy e Dati Sanitari Protetti al 100% (GDPR)
             </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              La salute dei tuoi cari è preziosa. I dati inseriti su FamilyMed sono protetti da crittografia di livello bancario e non verranno mai venduti a terzi. Il tuo diritto di esportare o eliminare tutti i dati personali è garantito gratuitamente su tutti i piani.
+            <p className="text-base text-ocean-100 leading-relaxed font-normal">
+              La salute dei tuoi cari è preziosa. I dati inseriti su FamilyMed sono protetti da crittografia end-to-end e non verranno mai venduti o condivisi con terzi. Il diritto di esportare o cancellare tutti i dati personali è garantito gratuitamente su tutti i piani.
             </p>
           </div>
         </div>
       </section>
 
       {/* FAQ ACCORDION SECTION */}
-      <section className="mx-auto max-w-3xl px-4 py-12">
+      <section className="mx-auto max-w-3xl py-12">
         <div className="text-center mb-8">
-          <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-white italic tracking-tight">
             Domande frequenti sui piani
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-base text-ocean-100 mt-2">
             Risposte chiare alle domande più comuni sul funzionamento dei piani.
           </p>
         </div>
@@ -278,17 +244,22 @@ function PublicPricingPage() {
             return (
               <div
                 key={idx}
-                className="rounded-2xl border border-border/60 bg-card overflow-hidden transition-all"
+                className="rounded-2xl border border-ocean-600/30 bg-ocean-800/40 overflow-hidden transition-all"
               >
                 <button
+                  type="button"
                   onClick={() => toggleFaq(idx)}
-                  className="w-full p-4 sm:p-5 flex items-center justify-between text-left font-bold text-sm sm:text-base text-foreground hover:bg-secondary/40 transition-colors"
+                  className="w-full p-4 sm:p-5 flex items-center justify-between text-left font-bold text-base sm:text-lg text-white hover:bg-ocean-800/70 transition-colors"
                 >
                   <span>{faq.q}</span>
-                  <ChevronDown className={`size-5 text-muted-foreground transition-transform ${isOpen ? "rotate-180 text-primary" : ""}`} />
+                  <ChevronDown
+                    className={`size-5 text-ocean-300 transition-transform ${
+                      isOpen ? "rotate-180 text-white" : ""
+                    }`}
+                  />
                 </button>
                 {isOpen && (
-                  <div className="px-4 pb-4 sm:px-5 sm:pb-5 text-xs sm:text-sm text-muted-foreground leading-relaxed border-t border-border/40 pt-3">
+                  <div className="px-4 pb-4 sm:px-5 sm:pb-5 text-base text-ocean-100 leading-relaxed border-t border-ocean-600/25 pt-3 font-normal">
                     {faq.a}
                   </div>
                 )}
@@ -299,20 +270,21 @@ function PublicPricingPage() {
       </section>
 
       {/* FINAL CTA BANNER */}
-      <section className="mx-auto max-w-6xl px-4 pb-16">
-        <div className="rounded-3xl bg-primary text-primary-foreground p-8 sm:p-12 text-center space-y-6 shadow-xl relative overflow-hidden">
+      <section className="mx-auto max-w-6xl pb-12">
+        <div className="rounded-3xl border border-ocean-600/30 bg-gradient-to-br from-ocean-800 to-ocean-950 p-8 sm:p-12 text-center space-y-6 shadow-ocean relative overflow-hidden">
+          <div className="pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full bg-ocean-300/10 blur-3xl" />
           <div className="relative z-10 max-w-2xl mx-auto space-y-4">
-            <h2 className="text-2xl sm:text-4xl font-black tracking-tight">
+            <h2 className="font-display text-2xl sm:text-4xl font-bold text-white italic tracking-tight">
               Inizia subito a prenderti cura dei tuoi cari
             </h2>
-            <p className="text-primary-foreground/80 text-sm sm:text-base">
+            <p className="text-base sm:text-lg text-ocean-100 leading-relaxed">
               Crea il tuo account gratuito in 30 secondi. Puoi passare a un piano superiore quando lo desideri.
             </p>
             <div className="pt-2 flex justify-center">
               <Button
                 size="lg"
                 asChild
-                className="bg-white text-primary hover:bg-white/90 font-bold rounded-xl px-8 py-3 text-base shadow-md"
+                className="bg-ocean-300 text-ocean-950 hover:bg-ocean-200 font-extrabold rounded-2xl px-8 py-3.5 text-base shadow-ocean transition-all"
               >
                 <Link to="/registrati">
                   <span>Crea Account Gratuito</span>
@@ -323,9 +295,7 @@ function PublicPricingPage() {
           </div>
         </div>
       </section>
-
-      <SiteFooter />
-    </div>
+    </PublicPageShell>
   );
 }
 
@@ -352,50 +322,50 @@ function PricingCard({
 }) {
   return (
     <div
-      className={`relative flex flex-col justify-between rounded-3xl p-6 sm:p-7 transition-all ${
+      className={`relative flex flex-col justify-between rounded-3xl p-6 sm:p-7 transition-all backdrop-blur-sm ${
         highlighted
-          ? "bg-card border-2 border-primary shadow-xl ring-4 ring-primary/10"
-          : "bg-card border border-border/60 shadow-sm"
+          ? "bg-gradient-to-b from-ocean-800 to-ocean-900 border-2 border-ocean-300/60 shadow-ocean ring-1 ring-ocean-300/30 md:-mt-3 md:pb-9"
+          : "bg-ocean-800/40 border border-ocean-600/30 shadow-sm"
       }`}
     >
       {highlighted && (
-        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-xs font-bold text-primary-foreground shadow-sm">
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-ocean-300 px-4 py-1 text-xs font-extrabold uppercase tracking-widest text-ocean-950 shadow-ocean">
           Più Popolare
         </div>
       )}
 
       <div>
         <div className="flex items-center justify-between">
-          <h3 className="text-2xl font-black text-foreground">{name}</h3>
-          <span className="text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+          <h3 className="font-display text-2xl sm:text-3xl font-bold text-white italic">{name}</h3>
+          <span className="text-[10px] sm:text-xs uppercase font-bold tracking-wider px-3 py-1 rounded-full bg-ocean-300/15 text-ocean-300 border border-ocean-300/30">
             {badge}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground mt-2 min-h-[32px]">{tagline}</p>
+        <p className="text-sm text-ocean-200 font-medium mt-2 min-h-[32px]">{tagline}</p>
 
         <div className="mt-5 mb-6">
           {price === 0 ? (
-            <div className="text-4xl font-black text-foreground">0 €</div>
+            <div className="font-display text-4xl sm:text-5xl font-bold text-white">0 €</div>
           ) : (
             <div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black text-foreground">
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-display text-4xl sm:text-5xl font-bold text-white">
                   {formatPrice(price)}
                 </span>
-                <span className="text-xs text-muted-foreground font-medium">/mese</span>
+                <span className="text-sm text-ocean-200 font-medium">/mese</span>
               </div>
               {periodLabel && (
-                <p className="text-[11px] text-muted-foreground mt-1">{periodLabel}</p>
+                <p className="text-xs sm:text-sm text-ocean-200 mt-1 font-medium">{periodLabel}</p>
               )}
             </div>
           )}
         </div>
 
-        <div className="space-y-2.5 border-t border-border/40 pt-5">
+        <div className="space-y-3 border-t border-ocean-600/30 pt-5">
           {features.map((f, i) => (
-            <div key={i} className="flex items-start gap-2.5 text-xs">
-              <Check className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-              <span className={f.highlight ? "font-semibold text-foreground" : "text-muted-foreground"}>
+            <div key={i} className="flex items-start gap-2.5 text-sm sm:text-base">
+              <Check className="size-4.5 text-ocean-300 shrink-0 mt-0.5" />
+              <span className={f.highlight ? "font-semibold text-white" : "text-ocean-100"}>
                 {f.text}
               </span>
             </div>
@@ -403,13 +373,13 @@ function PricingCard({
         </div>
       </div>
 
-      <div className="mt-8 pt-4 border-t border-border/40">
+      <div className="mt-8 pt-4 border-t border-ocean-600/30">
         <Button
           asChild
-          className={`w-full font-bold rounded-xl py-3 ${
+          className={`w-full font-extrabold rounded-2xl py-3.5 text-base transition-all ${
             highlighted
-              ? "bg-primary text-primary-foreground shadow-md hover:bg-primary/90"
-              : "bg-secondary text-foreground hover:bg-secondary/80"
+              ? "bg-ocean-300 text-ocean-950 shadow-ocean hover:bg-ocean-200"
+              : "border border-ocean-600/40 text-white hover:border-ocean-300/60 hover:bg-ocean-800/50"
           }`}
         >
           <Link to={ctaLink as any}>{ctaText}</Link>
@@ -421,8 +391,8 @@ function PricingCard({
 
 function TableCategoryHeader({ title }: { title: string }) {
   return (
-    <tr className="bg-secondary/30">
-      <td colSpan={4} className="p-3 px-4 font-bold text-xs uppercase tracking-widest text-primary">
+    <tr className="bg-ocean-900/80">
+      <td colSpan={4} className="p-3.5 px-4 font-bold text-xs uppercase tracking-widest text-ocean-300">
         {title}
       </td>
     </tr>
@@ -441,10 +411,10 @@ function TableRow({
   max: boolean | string;
 }) {
   return (
-    <tr className="hover:bg-muted/20 transition-colors">
-      <td className="p-4 font-medium text-foreground text-xs sm:text-sm">{label}</td>
+    <tr className="hover:bg-ocean-800/50 transition-colors">
+      <td className="p-4 font-medium text-white text-sm sm:text-base">{label}</td>
       <td className="p-4 text-center">{renderCell(free)}</td>
-      <td className="p-4 text-center bg-primary/5">{renderCell(pro)}</td>
+      <td className="p-4 text-center bg-ocean-300/5">{renderCell(pro)}</td>
       <td className="p-4 text-center">{renderCell(max)}</td>
     </tr>
   );
@@ -453,12 +423,12 @@ function TableRow({
 function renderCell(val: boolean | string) {
   if (typeof val === "boolean") {
     return val ? (
-      <Check className="size-5 text-emerald-600 dark:text-emerald-400 mx-auto" />
+      <Check className="size-5 text-ocean-300 mx-auto" />
     ) : (
-      <X className="size-5 text-muted-foreground/30 mx-auto" />
+      <X className="size-5 text-ocean-600/50 mx-auto" />
     );
   }
-  return <span className="font-semibold text-xs sm:text-sm text-foreground">{val}</span>;
+  return <span className="font-semibold text-sm sm:text-base text-white">{val}</span>;
 }
 
 const FAQS = [

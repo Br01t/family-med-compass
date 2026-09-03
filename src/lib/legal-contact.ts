@@ -7,6 +7,8 @@
 // sociale / P.IVA / sede che restano testo libero nel documento legale.
 
 export const LEGAL_CONTACT = {
-  /** Email operativa per richieste privacy/supporto — usata nei link "mailto:" dell'app. */
+  /** Email operativa per richieste privacy — usata nei link "mailto:" dell'app. */
   privacyEmail: "privacy@tuodominio.it", // TODO: sostituire con la tua email reale
+  /** Email per supporto tecnico e informazioni famiglie. */
+  supportEmail: "giacomo.piccinini1@gmail.com",
 } as const;

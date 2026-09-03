@@ -75,21 +75,21 @@ export function InstallBanner() {
   // iOS guide banner
   if (showIosGuide) {
     return (
-      <div className="fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-4 duration-300 md:left-auto md:right-6 md:w-96">
-        <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-lift ring-1 ring-primary/20">
+      <div className="landing-ocean fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-4 duration-300 md:left-auto md:right-6 md:w-[26rem]">
+        <div className="rounded-3xl border border-ocean-300/40 bg-ocean-950/90 p-4.5 text-white shadow-ocean backdrop-blur-md ring-1 ring-ocean-300/30">
           <div className="flex items-start gap-3">
-            <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-              <Smartphone className="size-5" />
+            <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ocean-300/20 text-ocean-300">
+              <Smartphone className="size-5.5" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold">Installa FamilyMed su iPhone</p>
-              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+              <p className="text-base font-bold text-white tracking-tight">Installa FamilyMed su iPhone</p>
+              <p className="mt-1 text-xs sm:text-sm text-ocean-100 leading-relaxed font-normal">
                 Tocca{" "}
-                <span className="inline-flex items-center gap-0.5 font-semibold text-foreground">
+                <span className="inline-flex items-center gap-0.5 font-bold text-ocean-300">
                   Condividi ↑
                 </span>{" "}
                 in Safari, poi scegli{" "}
-                <span className="font-semibold text-foreground">
+                <span className="font-bold text-white">
                   "Aggiungi alla schermata Home"
                 </span>
                 .
@@ -97,10 +97,10 @@ export function InstallBanner() {
             </div>
             <button
               onClick={handleDismiss}
-              className="shrink-0 rounded-lg p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition"
+              className="shrink-0 rounded-xl p-1.5 text-ocean-200 hover:bg-ocean-800/60 hover:text-white transition"
               aria-label="Chiudi"
             >
-              <X className="size-4" />
+              <X className="size-4.5" />
             </button>
           </div>
         </div>
@@ -112,34 +112,38 @@ export function InstallBanner() {
   if (!deferredPrompt) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-4 duration-300 md:left-auto md:right-6 md:w-96">
-      <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-lift ring-1 ring-primary/20">
+    <div className="landing-ocean fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-4 duration-300 md:left-auto md:right-6 md:w-[26rem]">
+      <div className="rounded-3xl border border-ocean-300/40 bg-ocean-950/90 p-4.5 text-white shadow-ocean backdrop-blur-md ring-1 ring-ocean-300/30">
         <div className="flex items-start gap-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-            <Download className="size-5" />
+          <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ocean-300/20 text-ocean-300">
+            <Download className="size-5.5" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold">Installa FamilyMed</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Accesso rapido, funziona anche offline.
+            <p className="text-base font-bold text-white tracking-tight">Installa FamilyMed</p>
+            <p className="mt-0.5 text-xs sm:text-sm text-ocean-100 font-normal">
+              Accesso rapido con un tap, funziona anche offline.
             </p>
           </div>
           <button
             onClick={handleDismiss}
-            className="shrink-0 rounded-lg p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition"
+            className="shrink-0 rounded-xl p-1.5 text-ocean-200 hover:bg-ocean-800/60 hover:text-white transition"
             aria-label="Chiudi"
           >
-            <X className="size-4" />
+            <X className="size-4.5" />
           </button>
         </div>
-        <div className="mt-3 flex gap-2">
-          <Button size="sm" className="flex-1 h-9 text-xs font-bold" onClick={handleInstall}>
-            <Download className="mr-1.5 size-3.5" /> Aggiungi a Home
+        <div className="mt-4 flex gap-2.5">
+          <Button
+            size="sm"
+            className="flex-1 h-10 text-xs sm:text-sm font-extrabold bg-ocean-300 text-ocean-950 hover:bg-ocean-200 rounded-xl shadow-ocean transition-all"
+            onClick={handleInstall}
+          >
+            <Download className="mr-1.5 size-4" /> Aggiungi a Home
           </Button>
           <Button
             size="sm"
             variant="ghost"
-            className="h-9 text-xs text-muted-foreground"
+            className="h-10 text-xs sm:text-sm font-semibold text-ocean-200 hover:text-white hover:bg-ocean-800/60 rounded-xl"
             onClick={handleDismiss}
           >
             Non ora

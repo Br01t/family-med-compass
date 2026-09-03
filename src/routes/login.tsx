@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Pill, AlertTriangle, Clock } from "lucide-react";
+import { Pill, AlertTriangle, Clock, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -244,26 +244,39 @@ function LoginPage() {
   const isThrottled = backoffSecondsLeft > 0;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm">
+    <div className="landing-ocean min-h-screen w-full flex flex-col items-center justify-center bg-ocean-950 px-4 py-10 text-white selection:bg-ocean-300 selection:text-ocean-950 relative overflow-hidden">
+      {/* Glow d'atmosfera */}
+      <div className="pointer-events-none absolute -top-32 left-1/2 size-96 -translate-x-1/2 rounded-full bg-ocean-300/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 right-1/4 size-80 rounded-full bg-ocean-600/15 blur-3xl" />
+
+      <div className="w-full max-w-sm relative z-10">
+        <Link
+          to="/"
+          className="mb-6 inline-flex items-center gap-2 text-sm text-ocean-200 hover:text-ocean-300 transition-colors font-medium"
+        >
+          <ArrowLeft className="size-4" /> Torna alla home
+        </Link>
+
         <div className="mb-8 flex flex-col items-center text-center">
           <Link
             to="/"
-            className="mb-4 grid size-14 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lift"
+            className="mb-4 grid size-14 place-items-center rounded-2xl bg-ocean-300 text-ocean-950 shadow-ocean hover:bg-ocean-200 transition-all"
           >
-            <Pill className="size-6" />
+            <Pill className="size-6.5" />
           </Link>
 
-          <h1 className="text-2xl font-black tracking-tight">Bentornato su FamilyMed</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-white italic">
+            Bentornato su FamilyMed
+          </h1>
 
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-2 text-base text-ocean-100 font-normal">
             Accedi con le tue credenziali per continuare.
           </p>
         </div>
 
         {isBlocked && (
-          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-            <Clock className="mt-0.5 size-4 shrink-0" />
+          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200">
+            <Clock className="mt-0.5 size-4 shrink-0 text-rose-300" />
             <p>
               <strong>Accesso bloccato.</strong> Troppi tentativi falliti.{" "}
               Riprova tra <strong>{formatSeconds(lockoutSecondsLeft)}</strong>.
@@ -274,16 +287,16 @@ function LoginPage() {
         {mfaChallenge ? (
           <form
             onSubmit={handleMfaVerify}
-            className="space-y-4 rounded-3xl border border-border/60 bg-card p-6 shadow-card"
+            className="space-y-4 rounded-3xl border border-ocean-600/30 bg-ocean-800/40 p-6 sm:p-7 shadow-ocean backdrop-blur-sm"
           >
             <div className="text-center">
-              <p className="text-sm font-semibold text-foreground">Verifica in due passaggi</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="text-base font-bold text-white">Verifica in due passaggi</p>
+              <p className="mt-1 text-sm text-ocean-100">
                 Inserisci il codice a 6 cifre dalla tua app di autenticazione.
               </p>
             </div>
             <div>
-              <Label htmlFor="mfa-login-code">Codice</Label>
+              <Label htmlFor="mfa-login-code" className="text-sm font-semibold text-ocean-100">Codice</Label>
               <Input
                 id="mfa-login-code"
                 inputMode="numeric"
@@ -292,16 +305,20 @@ function LoginPage() {
                 value={mfaCode}
                 onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
                 placeholder="123456"
-                className="mt-1 text-center text-lg tracking-[0.5em]"
+                className="mt-1 text-center text-lg tracking-[0.5em] bg-ocean-900/60 border-ocean-600/40 text-white placeholder:text-ocean-200/40 rounded-xl"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={mfaSubmitting || mfaCode.length !== 6}>
+            <Button
+              type="submit"
+              className="w-full bg-ocean-300 text-ocean-950 font-extrabold hover:bg-ocean-200 rounded-2xl py-3.5 text-base shadow-ocean transition-all"
+              disabled={mfaSubmitting || mfaCode.length !== 6}
+            >
               {mfaSubmitting ? "Verifica in corso..." : "Conferma"}
             </Button>
             <Button
               type="button"
               variant="ghost"
-              className="w-full"
+              className="w-full text-sm font-semibold text-ocean-200 hover:text-white hover:bg-ocean-800/60 rounded-xl"
               onClick={() => {
                 setMfaChallenge(null);
                 setPendingUser(null);
@@ -312,112 +329,112 @@ function LoginPage() {
             </Button>
           </form>
         ) : (
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4 rounded-3xl border border-border/60 bg-card p-6 shadow-card"
-        >
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="nome@esempio.it"
-              className="mt-1 text-base"
-              style={{ fontSize: "16px" }}
-              disabled={isBlocked}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="mt-1 text-base"
-              style={{ fontSize: "16px" }}
-              disabled={isBlocked}
-            />
-          </div>
-
-          <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(undefined)} />
-
-          <Button
-            type="submit"
-            className="w-full touch-manipulation"
-            disabled={submitting || isBlocked || isThrottled || (!!import.meta.env.VITE_TURNSTILE_SITE_KEY && !captchaToken)}
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4 rounded-3xl border border-ocean-600/30 bg-ocean-800/40 p-6 sm:p-7 shadow-ocean backdrop-blur-sm"
           >
-            {isBlocked
-              ? `Bloccato (${formatSeconds(lockoutSecondsLeft)})`
-              : isThrottled
-                ? `Attendi ${formatSeconds(backoffSecondsLeft)}…`
-                : submitting
-                  ? "Accesso in corso..."
-                  : "Accedi"}
-          </Button>
+            <div>
+              <Label htmlFor="email" className="text-sm font-semibold text-ocean-100">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="nome@esempio.it"
+                className="mt-1 text-base bg-ocean-900/60 border-ocean-600/40 text-white placeholder:text-ocean-200/40 rounded-xl focus:border-ocean-300 focus:ring-ocean-300/30"
+                style={{ fontSize: "16px" }}
+                disabled={isBlocked}
+              />
+            </div>
 
-          <button
-            type="button"
-            onClick={async () => {
-              if (!email) {
-                setDialogVariant("info");
-                setDialogTitle("Serve la tua email");
-                setDialogDescription("Inserisci l'email qui sopra, poi clicca di nuovo su 'Password dimenticata'.");
-                setDialogOpen(true);
-                return;
-              }
+            <div>
+              <Label htmlFor="password" className="text-sm font-semibold text-ocean-100">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="mt-1 text-base bg-ocean-900/60 border-ocean-600/40 text-white placeholder:text-ocean-200/40 rounded-xl focus:border-ocean-300 focus:ring-ocean-300/30"
+                style={{ fontSize: "16px" }}
+                disabled={isBlocked}
+              />
+            </div>
 
-              // Rate limit: max 1 richiesta per email ogni RESET_COOLDOWN_S secondi
-              const now = Date.now();
-              const lastRequest = lastResetRequest.current[email] ?? 0;
-              const elapsed = (now - lastRequest) / 1000;
-              if (elapsed < RESET_COOLDOWN_S) {
-                const wait = Math.ceil(RESET_COOLDOWN_S - elapsed);
-                setDialogVariant("info");
-                setDialogTitle("Richiesta già inviata");
-                setDialogDescription(
-                  `Hai già richiesto un link di recupero per questa email. Attendi ancora ${formatSeconds(wait)} prima di riprovare.`,
-                );
-                setDialogOpen(true);
-                return;
-              }
+            <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(undefined)} />
 
-              try {
-                const { supabase } = await import("@/lib/supabase");
-                const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                  redirectTo: `${window.location.origin}/reset-password`,
-                });
-                if (error) throw error;
-                lastResetRequest.current[email] = now;
-                setDialogVariant("success");
-                setDialogTitle("Email inviata");
-                setDialogDescription("Controlla la posta e clicca sul link per reimpostare la password.");
-                setDialogOpen(true);
-              } catch (err) {
-                setDialogVariant("error");
-                setDialogTitle("Impossibile inviare l'email");
-                setDialogDescription(formatAuthError(err));
-                setDialogOpen(true);
-              }
-            }}
-            className="w-full touch-manipulation text-center text-xs font-semibold text-muted-foreground hover:text-primary hover:underline disabled:opacity-40"
-            disabled={isBlocked}
-          >
-            Password dimenticata?
-          </button>
-        </form>
+            <Button
+              type="submit"
+              className="w-full touch-manipulation bg-ocean-300 text-ocean-950 font-extrabold hover:bg-ocean-200 rounded-2xl py-3.5 text-base shadow-ocean transition-all"
+              disabled={submitting || isBlocked || isThrottled || (!!import.meta.env.VITE_TURNSTILE_SITE_KEY && !captchaToken)}
+            >
+              {isBlocked
+                ? `Bloccato (${formatSeconds(lockoutSecondsLeft)})`
+                : isThrottled
+                  ? `Attendi ${formatSeconds(backoffSecondsLeft)}…`
+                  : submitting
+                    ? "Accesso in corso..."
+                    : "Accedi"}
+            </Button>
+
+            <button
+              type="button"
+              onClick={async () => {
+                if (!email) {
+                  setDialogVariant("info");
+                  setDialogTitle("Serve la tua email");
+                  setDialogDescription("Inserisci l'email qui sopra, poi clicca di nuovo su 'Password dimenticata'.");
+                  setDialogOpen(true);
+                  return;
+                }
+
+                // Rate limit: max 1 richiesta per email ogni RESET_COOLDOWN_S secondi
+                const now = Date.now();
+                const lastRequest = lastResetRequest.current[email] ?? 0;
+                const elapsed = (now - lastRequest) / 1000;
+                if (elapsed < RESET_COOLDOWN_S) {
+                  const wait = Math.ceil(RESET_COOLDOWN_S - elapsed);
+                  setDialogVariant("info");
+                  setDialogTitle("Richiesta già inviata");
+                  setDialogDescription(
+                    `Hai già richiesto un link di recupero per questa email. Attendi ancora ${formatSeconds(wait)} prima di riprovare.`,
+                  );
+                  setDialogOpen(true);
+                  return;
+                }
+
+                try {
+                  const { supabase } = await import("@/lib/supabase");
+                  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}/reset-password`,
+                  });
+                  if (error) throw error;
+                  lastResetRequest.current[email] = now;
+                  setDialogVariant("success");
+                  setDialogTitle("Email inviata");
+                  setDialogDescription("Controlla la posta e clicca sul link per reimpostare la password.");
+                  setDialogOpen(true);
+                } catch (err) {
+                  setDialogVariant("error");
+                  setDialogTitle("Impossibile inviare l'email");
+                  setDialogDescription(formatAuthError(err));
+                  setDialogOpen(true);
+                }
+              }}
+              className="w-full touch-manipulation text-center text-sm font-semibold text-ocean-200 hover:text-ocean-300 hover:underline disabled:opacity-40"
+              disabled={isBlocked}
+            >
+              Password dimenticata?
+            </button>
+          </form>
         )}
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        <p className="mt-6 text-center text-sm text-ocean-100">
           Non hai un account?{" "}
-          <Link to="/registrati" className="font-semibold text-primary hover:underline">
+          <Link to="/registrati" className="font-bold text-ocean-300 hover:text-white underline">
             Registrati
           </Link>
         </p>

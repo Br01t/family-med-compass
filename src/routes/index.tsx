@@ -17,6 +17,8 @@ import demoVideoUrl from "@/assets/familymed-demo.mp4";
 import demoPosterUrl from "@/assets/familymed-demo-poster.jpg";
 import { VideoPlayer } from "@/components/faq/VideoPlayer";
 import { FAQ_VIDEOS } from "@/data/faq-videos";
+import { PublicHeader } from "@/components/public/PublicHeader";
+import { PublicFooter } from "@/components/public/PublicFooter";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -148,8 +150,8 @@ const PLANS = [
 
 function Eyebrow({ children }: { children: string }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-ocean-300/30 bg-ocean-800/40 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-ocean-300 sm:text-xs">
-      <span className="size-1.5 shrink-0 rounded-full bg-ocean-300" />
+    <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-ocean-300/40 bg-ocean-800/60 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-ocean-300 sm:text-xs">
+      <span className="size-2 shrink-0 rounded-full bg-ocean-300 shadow-[0_0_8px_rgba(115,200,200,0.6)]" />
       <span className="truncate">{children}</span>
     </span>
   );
@@ -165,13 +167,13 @@ function SectionHeading({
   body?: string;
 }) {
   return (
-    <div className="mx-auto max-w-2xl text-center">
+    <div className="mx-auto max-w-3xl text-center">
       <Eyebrow>{eyebrow}</Eyebrow>
-      <h2 className="mt-5 font-display text-3xl leading-tight tracking-tight text-white italic sm:text-4xl md:text-[2.6rem]">
+      <h2 className="mt-5 font-display text-3xl leading-tight tracking-tight text-white italic sm:text-4xl md:text-[2.85rem]">
         {title}
       </h2>
       {body && (
-        <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-ocean-300/70 sm:text-base">
+        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-ocean-100 sm:text-lg">
           {body}
         </p>
       )}
@@ -212,52 +214,22 @@ function LandingPage() {
   };
 
   return (
-    <div className="landing-ocean min-h-screen w-full max-w-full overflow-x-hidden bg-ocean-950 text-left text-white">
-      {/* HEADER */}
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-5 sm:px-6 sm:py-7">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <div className="grid size-9 shrink-0 place-items-center rounded-2xl bg-ocean-300 text-ocean-950 shadow-ocean sm:size-10">
-            <Users className="size-4.5 sm:size-5" />
-          </div>
-          <p className="truncate font-display text-lg leading-none tracking-tight text-white italic sm:text-xl">
-            FamilyMed
-          </p>
-        </div>
-
-        <nav className="flex shrink-0 items-center gap-1 sm:gap-2">
-          <Link
-            to={"/prezzi" as any}
-            className="hidden rounded-full px-3 py-2 text-sm font-semibold text-white/70 transition-colors hover:text-ocean-300 sm:inline-flex"
-          >
-            Prezzi
-          </Link>
-          <Link
-            to="/guida-pubblica"
-            className="hidden rounded-full px-3 py-2 text-sm font-semibold text-white/70 transition-colors hover:text-ocean-300 sm:inline-flex"
-          >
-            Guida
-          </Link>
-          <Link
-            to={user ? "/impostazioni" : "/login"}
-            className="rounded-full border border-ocean-600/40 px-4 py-2 text-xs font-bold text-white transition-colors hover:border-ocean-300/60 hover:text-ocean-300 sm:text-sm"
-          >
-            {user ? "Impostazioni" : "Accedi"}
-          </Link>
-        </nav>
-      </header>
+    <div className="landing-ocean min-h-screen w-full max-w-full overflow-x-hidden bg-ocean-950 text-left text-white selection:bg-ocean-300 selection:text-ocean-950">
+      {/* HEADER PUBBLICO */}
+      <PublicHeader currentPath="/" />
 
       <main className="mx-auto w-full min-w-0 max-w-6xl px-4 pb-20 sm:px-6">
         {/* HERO */}
         <section className="pt-6 text-center md:pt-14">
           <Eyebrow>Family care coordination</Eyebrow>
 
-          <h1 className="mx-auto mt-6 max-w-3xl font-display text-[2rem] leading-[1.15] tracking-tight text-white italic sm:text-5xl md:text-[3.4rem]">
+          <h1 className="mx-auto mt-6 max-w-4xl font-display text-[2.25rem] leading-[1.14] tracking-tight text-white italic sm:text-5xl md:text-[3.5rem]">
             Tutti sanno cosa è stato fatto,{" "}
             <span className="text-ocean-300">cosa deve essere fatto</span> e chi se ne sta
             occupando.
           </h1>
 
-          <p className="mx-auto mt-6 max-w-xl text-sm leading-relaxed text-ocean-300/80 sm:text-base md:text-lg">
+          <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-ocean-100 sm:text-lg md:text-xl font-normal">
             FamilyMed è lo spazio condiviso dove una famiglia coordina la cura quotidiana di una
             persona: terapie, eventi, turni e storico, sempre allineati per tutti.
           </p>
@@ -266,7 +238,7 @@ function LandingPage() {
             <button
               type="button"
               onClick={handleEnter}
-              className="inline-flex h-13 w-full items-center justify-center rounded-2xl bg-ocean-300 px-7 text-sm font-extrabold text-ocean-950 shadow-ocean transition-all hover:bg-ocean-600 hover:text-white active:scale-[0.98] sm:w-auto sm:text-base"
+              className="inline-flex h-13 w-full items-center justify-center rounded-2xl bg-ocean-300 px-7 text-sm font-extrabold text-ocean-950 shadow-ocean transition-all hover:bg-ocean-200 active:scale-[0.98] sm:w-auto sm:text-base"
             >
               {user ? "Entra" : "Inizia gratis"}
               <ArrowRight className="ml-2 size-4 shrink-0 sm:size-5" />
@@ -280,7 +252,7 @@ function LandingPage() {
             </a>
           </div>
 
-          <p className="mt-5 text-xs text-white/40">
+          <p className="mt-5 text-sm font-medium text-ocean-200">
             Nessuna carta richiesta · Dati sanitari cifrati e conformi GDPR
           </p>
         </section>
@@ -289,13 +261,13 @@ function LandingPage() {
         <section id="demo" className="mt-12 scroll-mt-24 sm:mt-16">
           <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-12">
             {/* Demo video — tile principale */}
-            <div className="relative overflow-hidden rounded-3xl border border-ocean-600/25 bg-gradient-to-br from-ocean-800 to-ocean-950 p-5 sm:p-8 md:col-span-8">
+            <div className="relative overflow-hidden rounded-3xl border border-ocean-600/30 bg-gradient-to-br from-ocean-800 to-ocean-950 p-5 sm:p-8 md:col-span-8">
               <div className="pointer-events-none absolute -right-20 -bottom-20 size-64 rounded-full bg-ocean-300/10 blur-3xl" />
               <div className="relative z-10">
                 <h3 className="font-display text-2xl text-white italic sm:text-3xl">
                   La cura, semplificata.
                 </h3>
-                <p className="mt-2 max-w-sm text-sm text-ocean-300/80">
+                <p className="mt-2 max-w-md text-base leading-relaxed text-ocean-100 font-normal">
                   Trenta secondi per vedere come il gruppo resta allineato, dal promemoria alla
                   conferma.
                 </p>
@@ -315,13 +287,13 @@ function LandingPage() {
               {STEPS.map((s) => (
                 <div
                   key={s.n}
-                  className="flex flex-col justify-center rounded-3xl border border-ocean-600/25 bg-ocean-800/40 p-5 backdrop-blur-sm sm:p-6"
+                  className="flex flex-col justify-center rounded-3xl border border-ocean-600/30 bg-ocean-800/40 p-5 backdrop-blur-sm sm:p-6"
                 >
-                  <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-ocean-300/15 font-display text-base text-ocean-300 italic">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ocean-300/20 font-display text-base font-bold text-ocean-300 italic">
                     {s.n}
                   </span>
-                  <p className="mt-3 font-display text-lg text-white italic">{s.title}</p>
-                  <p className="mt-1 text-sm leading-relaxed text-white/50">{s.body}</p>
+                  <p className="mt-3 font-display text-lg font-bold text-white italic sm:text-xl">{s.title}</p>
+                  <p className="mt-1.5 text-base leading-relaxed text-ocean-100">{s.body}</p>
                 </div>
               ))}
             </div>
@@ -340,16 +312,16 @@ function LandingPage() {
               <div
                 key={f.title}
                 className={cn(
-                  "group rounded-3xl border border-ocean-600/20 p-6 transition-colors sm:p-7",
-                  "bg-ocean-800/30 hover:border-ocean-300/40 hover:bg-ocean-800/50",
+                  "group rounded-3xl border border-ocean-600/30 p-6 transition-all sm:p-7",
+                  "bg-ocean-800/35 hover:border-ocean-300/50 hover:bg-ocean-800/60",
                   f.span,
                 )}
               >
-                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-ocean-300/15 text-ocean-300 sm:size-11">
-                  <f.icon className="size-4.5 sm:size-5" />
+                <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-ocean-300/20 text-ocean-300 sm:size-12">
+                  <f.icon className="size-5 sm:size-6" />
                 </div>
-                <p className="mt-4 font-display text-xl text-white italic">{f.title}</p>
-                <p className="mt-2 text-sm leading-relaxed text-white/50">{f.body}</p>
+                <p className="mt-4 font-display text-xl font-bold text-white italic sm:text-2xl">{f.title}</p>
+                <p className="mt-2 text-base leading-relaxed text-ocean-100 font-normal">{f.body}</p>
               </div>
             ))}
           </div>
@@ -363,24 +335,24 @@ function LandingPage() {
             body="Brevi tutorial per iniziare: creare una terapia, invitare un caregiver, confermare una dose e altro."
           />
 
-          <ul className="mx-auto mt-10 max-w-3xl divide-y divide-ocean-600/20 overflow-hidden rounded-3xl border border-ocean-600/25 bg-ocean-800/30">
+          <ul className="mx-auto mt-10 max-w-3xl divide-y divide-ocean-600/25 overflow-hidden rounded-3xl border border-ocean-600/30 bg-ocean-800/40">
             {FAQ_VIDEOS.map((v, i) => (
               <li key={v.id}>
                 <Link
                   to="/guida-pubblica"
                   hash="faq-video"
-                  className="group flex w-full min-w-0 items-center gap-3 px-4 py-4 transition-colors hover:bg-ocean-800/60 sm:gap-4 sm:px-6"
+                  className="group flex w-full min-w-0 items-center gap-3 px-4 py-4.5 transition-colors hover:bg-ocean-800/70 sm:gap-4 sm:px-6"
                 >
-                  <span className="shrink-0 font-display text-lg text-ocean-300/60 italic tabular-nums transition-colors group-hover:text-ocean-300 sm:text-xl">
+                  <span className="shrink-0 font-display text-xl font-bold text-ocean-300 italic tabular-nums transition-colors group-hover:text-white sm:text-2xl">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm font-bold tracking-tight text-white sm:text-base">
+                    <span className="truncate text-base font-bold tracking-tight text-white sm:text-lg">
                       {v.title}
                     </span>
-                    <span className="truncate text-xs text-white/40 sm:text-sm">{v.short}</span>
+                    <span className="truncate text-sm text-ocean-100 font-normal">{v.short}</span>
                   </span>
-                  <span className="shrink-0 rounded-full border border-ocean-600/30 px-2.5 py-1 text-[10px] font-bold tabular-nums text-ocean-300/80">
+                  <span className="shrink-0 rounded-full border border-ocean-600/40 bg-ocean-900/60 px-3 py-1 text-xs font-bold tabular-nums text-ocean-200">
                     {v.duration}s
                   </span>
                 </Link>
@@ -392,7 +364,7 @@ function LandingPage() {
             <Link
               to="/guida-pubblica"
               hash="faq-video"
-              className="inline-flex h-12 items-center justify-center rounded-2xl border border-ocean-600/40 px-6 text-sm font-bold text-white transition-colors hover:border-ocean-300/60 hover:bg-ocean-800/40"
+              className="inline-flex h-12 items-center justify-center rounded-2xl border border-ocean-600/40 px-6 text-sm font-bold text-white transition-colors hover:border-ocean-300/60 hover:bg-ocean-800/50"
             >
               <Play className="mr-2 size-4 fill-current" />
               Guarda tutti i video
@@ -415,31 +387,31 @@ function LandingPage() {
                 className={cn(
                   "relative flex h-full flex-col rounded-3xl border p-6 sm:p-7",
                   plan.highlight
-                    ? "border-ocean-300/50 bg-gradient-to-b from-ocean-800 to-ocean-900 shadow-ocean md:-mt-3 md:pb-9"
-                    : "border-ocean-600/20 bg-ocean-800/30",
+                    ? "border-ocean-300/60 bg-gradient-to-b from-ocean-800 to-ocean-900 shadow-ocean md:-mt-3 md:pb-9"
+                    : "border-ocean-600/30 bg-ocean-800/40",
                 )}
               >
                 {plan.highlight && (
-                  <span className="absolute -top-3 left-6 rounded-full bg-ocean-300 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-ocean-950 shadow-ocean">
+                  <span className="absolute -top-3 left-6 rounded-full bg-ocean-300 px-3 py-1 text-xs font-extrabold uppercase tracking-widest text-ocean-950 shadow-ocean">
                     Più scelto
                   </span>
                 )}
 
-                <p className="font-display text-2xl text-white italic">{plan.name}</p>
-                <p className="mt-1.5 text-xs text-white/40">{plan.tagline}</p>
+                <p className="font-display text-2xl font-bold text-white italic sm:text-3xl">{plan.name}</p>
+                <p className="mt-1.5 text-sm text-ocean-200 font-medium">{plan.tagline}</p>
 
-                <div className="mt-6 flex items-end gap-1.5">
-                  <span className="font-display text-5xl tracking-tight text-white">
+                <div className="mt-6 flex items-end gap-2">
+                  <span className="font-display text-5xl font-bold tracking-tight text-white">
                     {plan.price}
                   </span>
-                  <span className="pb-1.5 text-xs text-white/40">{plan.period}</span>
+                  <span className="pb-1.5 text-sm text-ocean-200 font-medium">{plan.period}</span>
                 </div>
 
-                <ul className="mt-7 space-y-3 text-sm">
+                <ul className="mt-7 space-y-3.5 text-base">
                   {plan.features.map((feat) => (
                     <li key={feat} className="flex items-start gap-2.5">
-                      <Check className="mt-0.5 size-4 shrink-0 text-ocean-300" />
-                      <span className="leading-snug text-white/70">{feat}</span>
+                      <Check className="mt-1 size-4.5 shrink-0 text-ocean-300" />
+                      <span className="leading-snug text-white font-normal">{feat}</span>
                     </li>
                   ))}
                 </ul>
@@ -448,9 +420,9 @@ function LandingPage() {
                   type="button"
                   onClick={handleEnter}
                   className={cn(
-                    "mt-8 inline-flex h-12 w-full items-center justify-center rounded-2xl text-sm font-extrabold transition-all active:scale-[0.98]",
+                    "mt-8 inline-flex h-12 w-full items-center justify-center rounded-2xl text-base font-extrabold transition-all active:scale-[0.98]",
                     plan.highlight
-                      ? "bg-ocean-300 text-ocean-950 shadow-ocean hover:bg-ocean-600 hover:text-white"
+                      ? "bg-ocean-300 text-ocean-950 shadow-ocean hover:bg-ocean-200"
                       : "border border-ocean-600/40 text-white hover:border-ocean-300/60 hover:bg-ocean-800/50",
                   )}
                 >
@@ -460,33 +432,33 @@ function LandingPage() {
             ))}
           </div>
 
-          <p className="mt-8 text-center text-xs text-white/30">
+          <p className="mt-8 text-center text-sm text-ocean-200">
             FamilyMed non sostituisce il parere medico: segui sempre le indicazioni del medico
             curante.
           </p>
         </section>
 
         {/* CTA FINALE */}
-        <section className="relative mt-16 overflow-hidden rounded-3xl border border-ocean-600/25 bg-gradient-to-br from-ocean-800 to-ocean-950 p-8 text-center sm:mt-24 sm:p-12">
+        <section className="relative mt-16 overflow-hidden rounded-3xl border border-ocean-600/30 bg-gradient-to-br from-ocean-800 to-ocean-950 p-8 text-center sm:mt-24 sm:p-12">
           <div className="pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full bg-ocean-300/10 blur-3xl" />
-          <p className="relative z-10 font-display text-2xl tracking-tight text-white italic sm:text-3xl">
+          <p className="relative z-10 font-display text-2xl font-bold tracking-tight text-white italic sm:text-3xl md:text-4xl">
             Smettete di chiedervi «l'ha presa?»
           </p>
-          <p className="relative z-10 mx-auto mt-3 max-w-md text-sm text-ocean-300/80">
+          <p className="relative z-10 mx-auto mt-3 max-w-lg text-base leading-relaxed text-ocean-100 sm:text-lg">
             Bastano due minuti per creare il gruppo di cura e la prima terapia.
           </p>
           <div className="relative z-10 mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <button
               type="button"
               onClick={handleEnter}
-              className="inline-flex h-13 w-full items-center justify-center rounded-2xl bg-ocean-300 px-7 text-sm font-extrabold text-ocean-950 shadow-ocean transition-all hover:bg-ocean-600 hover:text-white active:scale-[0.98] sm:w-auto sm:text-base"
+              className="inline-flex h-13 w-full items-center justify-center rounded-2xl bg-ocean-300 px-7 text-base font-extrabold text-ocean-950 shadow-ocean transition-all hover:bg-ocean-200 active:scale-[0.98] sm:w-auto"
             >
               Inizia gratis
-              <ArrowRight className="ml-2 size-4 shrink-0 sm:size-5" />
+              <ArrowRight className="ml-2 size-5 shrink-0" />
             </button>
             <Link
               to="/guida-pubblica"
-              className="inline-flex h-13 w-full items-center justify-center rounded-2xl border border-ocean-600/40 px-7 text-sm font-bold text-white transition-colors hover:border-ocean-300/60 hover:bg-ocean-800/40 sm:w-auto sm:text-base"
+              className="inline-flex h-13 w-full items-center justify-center rounded-2xl border border-ocean-600/40 px-7 text-base font-bold text-white transition-colors hover:border-ocean-300/60 hover:bg-ocean-800/40 sm:w-auto"
             >
               Guarda la guida
             </Link>
@@ -494,33 +466,8 @@ function LandingPage() {
         </section>
       </main>
 
-      {/* FOOTER */}
-      {!loadingAuth && !user && (
-        <footer className="border-t border-ocean-600/20">
-          <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 sm:flex-row sm:px-6">
-            <div className="flex items-center gap-2.5">
-              <div className="grid size-7 place-items-center rounded-xl bg-ocean-300/15 text-ocean-300">
-                <Users className="size-3.5" />
-              </div>
-              <p className="font-display text-sm text-white italic">FamilyMed</p>
-            </div>
-            <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-white/40">
-              <Link to="/privacy" className="transition-colors hover:text-ocean-300">
-                Privacy
-              </Link>
-              <Link to="/termini" className="transition-colors hover:text-ocean-300">
-                Termini
-              </Link>
-              <Link to="/cookie" className="transition-colors hover:text-ocean-300">
-                Cookie
-              </Link>
-              <Link to="/guida-pubblica" className="transition-colors hover:text-ocean-300">
-                Guida
-              </Link>
-            </nav>
-          </div>
-        </footer>
-      )}
+      {/* FOOTER PUBBLICO */}
+      <PublicFooter />
     </div>
   );
 }

@@ -78,6 +78,9 @@
   --color-ocean-800: oklch(0.37 0.07 240);
   --color-ocean-600: oklch(0.56 0.08 220);
   --color-ocean-300: oklch(0.73 0.08 195);
+  --color-ocean-200: oklch(0.85 0.05 195);
+  --color-ocean-100: oklch(0.93 0.03 205);
+  --color-ocean-50: oklch(0.97 0.015 205);
 
   --shadow-card: 0 1px 2px oklch(0.2 0.02 60 / 0.04),
     0 8px 24px -12px oklch(0.2 0.02 60 / 0.08);
@@ -216,11 +219,71 @@
   animation: fm-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Landing pubblica "Ocean Deep" */
+/* Pagine pubbliche "Ocean Deep" */
 .landing-ocean {
   font-family: "Nunito Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  color-scheme: dark;
+  --background: oklch(0.24 0.055 255);
+  --foreground: oklch(0.98 0.01 200);
+  --surface: oklch(0.3 0.06 248);
+  --surface-muted: oklch(0.28 0.06 250);
+  --card: oklch(0.32 0.06 245 / 0.7);
+  --card-foreground: oklch(0.98 0.01 200);
+  --popover: oklch(0.3 0.06 248);
+  --popover-foreground: oklch(0.98 0.01 200);
+  --primary: oklch(0.73 0.08 195);
+  --primary-foreground: oklch(0.24 0.055 255);
+  --primary-soft: oklch(0.37 0.07 240 / 0.5);
+  --secondary: oklch(0.37 0.07 240 / 0.6);
+  --secondary-foreground: oklch(0.98 0.01 200);
+  --muted: oklch(0.37 0.07 240 / 0.5);
+  --muted-foreground: oklch(0.86 0.04 200);
+  --border: oklch(0.56 0.08 220 / 0.25);
+  --input: oklch(0.56 0.08 220 / 0.3);
+  --ring: oklch(0.73 0.08 195 / 0.5);
 }
+
 .landing-ocean ::selection {
   background: var(--color-ocean-300);
   color: var(--color-ocean-950);
+}
+
+.landing-ocean .prose {
+  color: oklch(0.93 0.03 205);
+  font-family: "Nunito Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.75;
+}
+.landing-ocean .prose h1,
+.landing-ocean .prose h2,
+.landing-ocean .prose h3,
+.landing-ocean .prose h4 {
+  color: #ffffff;
+  font-family: "Lora", Georgia, serif;
+  font-style: italic;
+  letter-spacing: -0.02em;
+}
+.landing-ocean .prose p,
+.landing-ocean .prose li {
+  color: oklch(0.9 0.03 205);
+}
+.landing-ocean .prose strong {
+  color: #ffffff;
+}
+.landing-ocean .prose a {
+  color: var(--color-ocean-300);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.landing-ocean .prose a:hover {
+  color: #ffffff;
+}
+.landing-ocean .prose hr {
+  border-color: oklch(0.56 0.08 220 / 0.25);
+}
+.landing-ocean .prose code {
+  color: var(--color-ocean-300);
+  background-color: oklch(0.37 0.07 240 / 0.4);
+  padding: 0.2em 0.4em;
+  border-radius: 0.375rem;
 }

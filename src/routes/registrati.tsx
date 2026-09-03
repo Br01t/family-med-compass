@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { HeartPulse, Pill, Users } from "lucide-react";
+import { HeartPulse, Pill, Users, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -144,60 +144,75 @@ function RegisterPage() {
   ];
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
-      <div className="w-full max-w-sm">
+    <div className="landing-ocean min-h-screen w-full flex flex-col items-center justify-center bg-ocean-950 px-4 py-10 text-white selection:bg-ocean-300 selection:text-ocean-950 relative overflow-hidden">
+      {/* Glow d'atmosfera */}
+      <div className="pointer-events-none absolute -top-32 left-1/2 size-96 -translate-x-1/2 rounded-full bg-ocean-300/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 left-1/4 size-80 rounded-full bg-ocean-600/15 blur-3xl" />
+
+      <div className="w-full max-w-md relative z-10">
+        <Link
+          to="/"
+          className="mb-6 inline-flex items-center gap-2 text-sm text-ocean-200 hover:text-ocean-300 transition-colors font-medium"
+        >
+          <ArrowLeft className="size-4" /> Torna alla home
+        </Link>
+
         <div className="mb-8 flex flex-col items-center text-center">
           <Link
             to="/"
-            className="mb-4 grid size-14 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lift"
+            className="mb-4 grid size-14 place-items-center rounded-2xl bg-ocean-300 text-ocean-950 shadow-ocean hover:bg-ocean-200 transition-all"
           >
-            <Pill className="size-6" />
+            <Pill className="size-6.5" />
           </Link>
-          <h1 className="text-2xl font-black tracking-tight">Crea il tuo account</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Scegli come vuoi usare FamilyMed.</p>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-white italic">
+            Crea il tuo account
+          </h1>
+          <p className="mt-2 text-base text-ocean-100 font-normal">
+            Scegli come vuoi usare FamilyMed per coordinare la cura.
+          </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-3xl border border-border/60 bg-card p-6 shadow-card"
+          className="space-y-4 rounded-3xl border border-ocean-600/30 bg-ocean-800/40 p-6 sm:p-7 shadow-ocean backdrop-blur-sm"
         >
           <div>
-            <Label>Ti registri come</Label>
-            <div className="mt-2 grid grid-cols-2 gap-2">
+            <Label className="text-sm font-semibold text-ocean-100">Ti registri come</Label>
+            <div className="mt-2 grid grid-cols-2 gap-2.5">
               {roleOptions.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
                   onClick={() => setRole(opt.value)}
                   className={cn(
-                    "flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-center transition-colors",
+                    "flex flex-col items-center gap-1.5 rounded-2xl border p-3.5 text-center transition-all",
                     role === opt.value
-                      ? "border-primary bg-primary-soft text-primary"
-                      : "border-border/60 bg-surface text-muted-foreground hover:bg-secondary",
+                      ? "border-ocean-300 bg-ocean-300/20 text-white shadow-ocean"
+                      : "border-ocean-600/30 bg-ocean-900/50 text-ocean-200 hover:bg-ocean-800/60 hover:text-white",
                   )}
                 >
-                  <opt.icon className="size-5" />
+                  <opt.icon className={cn("size-5", role === opt.value ? "text-ocean-300" : "text-ocean-200")} />
                   <span className="text-sm font-bold">{opt.label}</span>
-                  <span className="text-[11px] leading-tight">{opt.hint}</span>
+                  <span className="text-xs leading-tight text-ocean-100/90">{opt.hint}</span>
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <Label htmlFor="name">Nome completo</Label>
+            <Label htmlFor="name" className="text-sm font-semibold text-ocean-100">Nome completo</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
               placeholder="Mario Rossi"
-              className="mt-1 text-base"
+              className="mt-1 text-base bg-ocean-900/60 border-ocean-600/40 text-white placeholder:text-ocean-200/40 rounded-xl focus:border-ocean-300 focus:ring-ocean-300/30"
               style={{ fontSize: "16px" }}
             />
           </div>
           <div>
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-sm font-semibold text-ocean-100">Email</Label>
             <Input
               id="email"
               type="email"
@@ -206,12 +221,12 @@ function RegisterPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="nome@esempio.it"
-              className="mt-1 text-base"
+              className="mt-1 text-base bg-ocean-900/60 border-ocean-600/40 text-white placeholder:text-ocean-200/40 rounded-xl focus:border-ocean-300 focus:ring-ocean-300/30"
               style={{ fontSize: "16px" }}
             />
           </div>
           <div>
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-sm font-semibold text-ocean-100">Password</Label>
             <Input
               id="password"
               type="password"
@@ -221,18 +236,18 @@ function RegisterPage() {
               required
               minLength={8}
               placeholder="Min. 8 caratteri con almeno 1 numero"
-              className="mt-1 text-base"
+              className="mt-1 text-base bg-ocean-900/60 border-ocean-600/40 text-white placeholder:text-ocean-200/40 rounded-xl focus:border-ocean-300 focus:ring-ocean-300/30"
               style={{ fontSize: "16px" }}
             />
           </div>
-          <div className="space-y-3 rounded-2xl border border-border/60 bg-surface p-3">
-            <label className="flex cursor-pointer items-start gap-2 text-xs leading-snug text-foreground">
+          <div className="space-y-3.5 rounded-2xl border border-ocean-600/30 bg-ocean-900/60 p-4 text-xs sm:text-sm text-ocean-100">
+            <label className="flex cursor-pointer items-start gap-2.5 leading-snug">
               <input
                 type="checkbox"
                 checked={ageDeclared}
                 onChange={(e) => setAgeDeclared(e.target.checked)}
                 required
-                className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
+                className="mt-0.5 size-4 shrink-0 rounded border-ocean-600/50 accent-ocean-300"
               />
               <span>
                 Dichiaro di avere <strong>almeno 18 anni</strong>. Se creerò profili per persone
@@ -240,33 +255,33 @@ function RegisterPage() {
                 comunque autorizzato a gestirne i dati sanitari.
               </span>
             </label>
-            <label className="flex cursor-pointer items-start gap-2 text-xs leading-snug text-foreground">
+            <label className="flex cursor-pointer items-start gap-2.5 leading-snug">
               <input
                 type="checkbox"
                 checked={consentTerms}
                 onChange={(e) => setConsentTerms(e.target.checked)}
                 required
-                className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
+                className="mt-0.5 size-4 shrink-0 rounded border-ocean-600/50 accent-ocean-300"
               />
               <span>
                 Ho letto e accetto i{" "}
-                <Link to="/termini" target="_blank" className="font-semibold text-primary hover:underline">
+                <Link to="/termini" target="_blank" className="font-semibold text-ocean-300 hover:text-white underline">
                   Termini di Servizio
                 </Link>{" "}
                 e l'{" "}
-                <Link to="/privacy" target="_blank" className="font-semibold text-primary hover:underline">
+                <Link to="/privacy" target="_blank" className="font-semibold text-ocean-300 hover:text-white underline">
                   Informativa Privacy
                 </Link>
                 .
               </span>
             </label>
-            <label className="flex cursor-pointer items-start gap-2 text-xs leading-snug text-foreground">
+            <label className="flex cursor-pointer items-start gap-2.5 leading-snug">
               <input
                 type="checkbox"
                 checked={consentHealth}
                 onChange={(e) => setConsentHealth(e.target.checked)}
                 required
-                className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
+                className="mt-0.5 size-4 shrink-0 rounded border-ocean-600/50 accent-ocean-300"
               />
               <span>
                 Presto il <strong>consenso esplicito</strong> al trattamento dei miei dati relativi alla
@@ -280,7 +295,7 @@ function RegisterPage() {
 
           <Button
             type="submit"
-            className="w-full touch-manipulation"
+            className="w-full touch-manipulation bg-ocean-300 text-ocean-950 font-extrabold hover:bg-ocean-200 rounded-2xl py-3.5 text-base shadow-ocean transition-all"
             disabled={
               submitting ||
               !consentTerms ||
@@ -293,9 +308,9 @@ function RegisterPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        <p className="mt-6 text-center text-sm text-ocean-100">
           Hai già un account?{" "}
-          <Link to="/login" className="font-semibold text-primary hover:underline">
+          <Link to="/login" className="font-bold text-ocean-300 hover:text-white underline">
             Accedi
           </Link>
         </p>

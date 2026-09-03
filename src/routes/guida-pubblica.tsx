@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Pill, ArrowRight } from "lucide-react";
+import { ArrowRight, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GuidaContent } from "@/components/guida/GuidaContent";
+import { PublicPageShell } from "@/components/public/PublicPageShell";
 
 export const Route = createFileRoute("/guida-pubblica")({
   head: () => ({
@@ -19,53 +20,46 @@ export const Route = createFileRoute("/guida-pubblica")({
 
 function GuidaPubblicaPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <Link to="/" className="flex items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-lift">
-            <Pill className="size-5" />
+    <PublicPageShell currentPath="/guida-pubblica">
+      <div className="pb-12 pt-6 sm:pt-8">
+        <div className="mb-10 text-center sm:text-left">
+          <div className="inline-flex items-center gap-2 rounded-full border border-ocean-300/40 bg-ocean-800/60 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-ocean-300 mb-4">
+            <HelpCircle className="size-3.5" />
+            <span>Guida Completa</span>
           </div>
-          <div>
-            <p className="text-lg font-black tracking-tight leading-none">FamilyMed</p>
-          </div>
-        </Link>
-
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/">
-            <ArrowLeft className="mr-2 size-4" />
-            Torna alla home
-          </Link>
-        </Button>
-      </header>
-
-      <main className="mx-auto max-w-6xl px-6 pb-16">
-        <div className="mb-8 fm-reveal">
-          <h1 className="text-3xl font-black tracking-tight md:text-4xl">Guida all'app</h1>
-          <p className="mt-2 text-muted-foreground">
-            Ecco come funziona FamilyMed — puoi consultarla anche prima di creare un profilo.
+          <h1 className="font-display text-3xl font-bold tracking-tight text-white italic sm:text-5xl md:text-6xl">
+            Guida all'app
+          </h1>
+          <p className="mt-3 max-w-2xl text-base sm:text-lg text-ocean-100 leading-relaxed font-normal">
+            Ecco come funziona FamilyMed — puoi consultarla anche prima di creare un profilo per capire come proteggiamo e coordiniamo la cura dei tuoi cari.
           </p>
         </div>
 
-        <GuidaContent />
+        <div className="[&_.bg-card]:bg-ocean-800/45 [&_.bg-card]:border-ocean-600/30 [&_.bg-card]:backdrop-blur-sm [&_.shadow-card]:shadow-ocean">
+          <GuidaContent />
+        </div>
 
-        <div className="mt-12 rounded-3xl border border-primary/20 bg-primary-soft/40 p-6 text-center">
-          <p className="font-black text-lg">Pronto a iniziare?</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Crea un profilo per attivare promemoria, monitoraggio e alert per la tua famiglia.
+        {/* CTA IN FONDO ALLA GUIDA */}
+        <div className="mt-16 rounded-3xl border border-ocean-600/30 bg-gradient-to-br from-ocean-800 to-ocean-950 p-8 sm:p-12 text-center shadow-ocean relative overflow-hidden">
+          <div className="pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full bg-ocean-300/10 blur-3xl" />
+          <p className="relative z-10 font-display text-2xl font-bold text-white italic sm:text-3xl">
+            Pronto a iniziare?
           </p>
-          <Button size="lg" className="mt-4 h-12 px-6 font-bold" asChild>
-            <Link to="/login">Accedi
-                <ArrowRight className="ml-2 size-5" />
+          <p className="relative z-10 mx-auto mt-3 max-w-md text-base text-ocean-100 leading-relaxed">
+            Crea un profilo gratuito per attivare promemoria, monitoraggio e alert per la tua famiglia.
+          </p>
+          <Button
+            size="lg"
+            className="relative z-10 mt-6 h-13 bg-ocean-300 px-8 font-extrabold text-ocean-950 shadow-ocean hover:bg-ocean-200 rounded-2xl text-base transition-all"
+            asChild
+          >
+            <Link to="/registrati">
+              Inizia gratis
+              <ArrowRight className="ml-2 size-5" />
             </Link>
           </Button>
         </div>
-      </main>
-
-      <footer className="border-t border-border/60 py-6">
-        <p className="text-center text-xs text-muted-foreground">
-          © FamilyMed · Uso interno esclusivo. Non distribuire.
-        </p>
-      </footer>
-    </div>
+      </div>
+    </PublicPageShell>
   );
 }
