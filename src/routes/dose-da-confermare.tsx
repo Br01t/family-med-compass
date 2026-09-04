@@ -26,23 +26,27 @@ export const Route = createFileRoute("/dose-da-confermare")({
 const ACK_TAG = CAREGIVER_ACK_TAG;
 
 function DoseDaConfermarePage() {
-  const { data, user, confirmDose, acknowledgeDose } = useFamilyMed();
+  const { data, user, confirmDose, acknowledgeDose, subscriptionPlan } = useFamilyMed();
   const [patientFilter, setPatientFilter] = useState<string>("");
   const [busy, setBusy] = useState<string | null>(null);
 
   const pending = useMemo(() => {
+    const isFree = subscriptionPlan === "free";
+    const cutoffMs = isFree ? 7 * 24 * 60 * 60 * 1000 : 180 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
     return data.events
       .filter(
         (e) =>
           (e.status === "missed" || e.status === "skipped") &&
           !isDoseAcknowledged(e) &&
-          (!patientFilter || e.patientId === patientFilter),
+          (!patientFilter || e.patientId === patientFilter) &&
+          now - new Date(e.scheduledAt).getTime() <= cutoffMs,
       )
       .sort(
         (a, b) =>
           new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime(),
       );
-  }, [data.events, patientFilter]);
+  }, [data.events, patientFilter, subscriptionPlan]);
 
   const handleConfirm = async (e: MedicationEvent) => {
     if (busy) return;

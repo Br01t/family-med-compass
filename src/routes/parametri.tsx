@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { useFeatureToggles } from "@/lib/feature-toggles";
 import { DisabledFeatureBanner } from "@/components/DisabledFeatureBanner";
 import { PlanGate } from "@/components/PlanGate";
+import { getPlanLimits } from "@/lib/subscription";
 import {
   downloadVitalSignsPdf,
   movingAverage,
@@ -124,7 +125,8 @@ const VITALS_CACHE = new Map<string, { rows: VitalRow[]; fetchedAt: number }>();
 const VITALS_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minuti
 
 function VitalSignsPage() {
-  const { data, user, userProfile } = useFamilyMed();
+  const { data, user, userProfile, subscriptionPlan } = useFamilyMed();
+  const limits = getPlanLimits(subscriptionPlan);
   const { toggles } = useFeatureToggles();
   const isPatient = userProfile?.role === "paziente";
 
@@ -164,7 +166,7 @@ function VitalSignsPage() {
   const currentPatient = data.patients.find((p) => p.id === patientId);
 
   const fetchRows = async (opts?: { force?: boolean }) => {
-    if (!patientId) return;
+    if (!patientId || !limits.vitalParameters) return;
 
     // Serve dalla cache se ancora fresca: 0 chiamate al DB.
     const cached = VITALS_CACHE.get(patientId);

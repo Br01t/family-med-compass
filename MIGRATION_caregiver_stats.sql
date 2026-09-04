@@ -17,12 +17,18 @@ pats AS (
 ),
 alerts AS (
   -- dosi missed/skipped non ancora "acknowledged" dal caregiver
-  -- (il tag di ack è memorizzato dentro events.notes come CG_ACK)
+  -- Finestra temporale di 9 giorni coerente con il client e filtro terapie attive
   SELECT p.caregiver_id, count(*)::int AS active_alerts
   FROM pats p
   JOIN public.events e ON e.patient_id = p.patient_id
+  JOIN public.therapies t ON t.id = e.therapy_id
   WHERE e.status IN ('missed','skipped')
+    AND COALESCE(e.note,'') NOT LIKE '%caregiver_ack%'
     AND COALESCE(e.note,'') NOT LIKE '%CG_ACK%'
+    AND COALESCE(t.active, true) = true
+    AND COALESCE(t.suspended, false) = false
+    AND e.scheduled_at >= now() - interval '9 days'
+    AND e.scheduled_at <= now()
   GROUP BY p.caregiver_id
 ),
 low_stock AS (

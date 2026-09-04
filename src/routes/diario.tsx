@@ -166,12 +166,20 @@ function WellnessDiaryPage() {
       return;
     }
     setLoading(true);
-    const { data: res, error } = await (supabase as any)
+    let q = (supabase as any)
       .from("wellness_notes")
       .select(NOTE_COLUMNS)
       .eq("patient_id", patientId)
-      .order("occurred_at", { ascending: false })
-      .limit(300);
+      .order("occurred_at", { ascending: false });
+
+    if (limits.historyDaysLimit !== Infinity) {
+      const since = new Date(Date.now() - limits.historyDaysLimit * 86400 * 1000).toISOString();
+      q = q.gte("occurred_at", since);
+    } else {
+      q = q.limit(300);
+    }
+
+    const { data: res, error } = await q;
     setLoading(false);
     if (error) {
       toast.error("Impossibile caricare il diario", { description: error.message });

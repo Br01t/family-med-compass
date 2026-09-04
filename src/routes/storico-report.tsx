@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { FileDown } from "lucide-react";
+import { FileDown, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -74,7 +74,8 @@ function HistoryReportPage() {
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const patients = data.patients;
   const [patientId, setPatientId] = useState<string | undefined>(patients[0]?.id);
-  const [period, setPeriod] = useState<PeriodDays>(30);
+  const isFree = subscriptionPlan === "free";
+  const [period, setPeriod] = useState<PeriodDays>(isFree ? 7 : 30);
   const [selected, setSelected] = useState<Date | null>(null);
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
   const [therapyFilter, setTherapyFilter] = useState<Set<string>>(new Set());
@@ -158,7 +159,7 @@ function HistoryReportPage() {
   }, [monthlyHistory]);
 
   useEffect(() => {
-    if (!patientId || period <= 7) {
+    if (!patientId || period <= 7 || isFree) {
       setExtraEvents([]);
       return;
     }
@@ -379,20 +380,30 @@ function HistoryReportPage() {
         {/* Griglia fissa a 3 colonne su mobile per evitare overflow di testo o pillole */}
         <div className="flex items-center gap-2 sm:ml-auto">
           <div className="grid grid-cols-3 gap-1 w-full rounded-full border border-border bg-card p-1 sm:w-auto sm:flex">
-            {[7, 30, 90].map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p as PeriodDays)}
-                className={cn(
-                  "rounded-full py-1.5 px-2 text-[11px] font-bold uppercase tracking-wider transition text-center whitespace-nowrap sm:px-3",
-                  period === p
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {p} giorni
-              </button>
-            ))}
+            {[7, 30, 90].map((p) => {
+              const isLocked = isFree && p > 7;
+              return (
+                <button
+                  key={p}
+                  onClick={() => {
+                    if (isLocked) {
+                      setUpgradeModalOpen(true);
+                      return;
+                    }
+                    setPeriod(p as PeriodDays);
+                  }}
+                  className={cn(
+                    "rounded-full py-1.5 px-2 text-[11px] font-bold uppercase tracking-wider transition text-center whitespace-nowrap sm:px-3 flex items-center justify-center gap-1",
+                    period === p
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <span>{p} giorni</span>
+                  {isLocked && <Lock className="size-3 opacity-70" />}
+                </button>
+              );
+            })}
           </div>
           {loadingExtra && (
             <span className="hidden sm:inline text-[10px] text-muted-foreground whitespace-nowrap">

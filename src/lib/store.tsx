@@ -244,8 +244,9 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       setEvents([]);
       return;
     }
+    const plan = userProfile.subscriptionPlan ?? "free";
     const unsubTherapies = subscribeTherapiesForPatients(ids, setTherapies);
-    const unsubEvents = subscribeEventsForPatients(ids, setEvents);
+    const unsubEvents = subscribeEventsForPatients(ids, setEvents, plan);
     return () => {
       unsubTherapies();
       unsubEvents();

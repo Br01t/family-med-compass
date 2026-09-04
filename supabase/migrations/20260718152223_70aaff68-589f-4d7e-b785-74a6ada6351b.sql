@@ -15,8 +15,13 @@ alerts AS (
   SELECT cp.caregiver_id, COUNT(*)::int AS active_alerts
   FROM public.caregiver_patients cp
   JOIN public.events e ON e.patient_id = cp.patient_id
+  JOIN public.therapies t ON t.id = e.therapy_id
   WHERE e.status IN ('missed','skipped')
-    AND (e.note IS NULL OR e.note NOT LIKE '%caregiver_ack%')
+    AND (e.note IS NULL OR (e.note NOT LIKE '%caregiver_ack%' AND e.note NOT LIKE '%CG_ACK%'))
+    AND COALESCE(t.active, true) = true
+    AND COALESCE(t.suspended, false) = false
+    AND e.scheduled_at >= now() - interval '9 days'
+    AND e.scheduled_at <= now()
   GROUP BY cp.caregiver_id
 ),
 low_stock AS (

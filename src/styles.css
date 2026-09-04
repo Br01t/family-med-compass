@@ -219,6 +219,77 @@
   animation: fm-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+@keyframes fluid-blob {
+  0%, 100% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    transform: rotate(0deg) scale(1);
+  }
+  33% {
+    border-radius: 40% 60% 70% 30% / 50% 60% 30% 60%;
+    transform: rotate(4deg) scale(1.03);
+  }
+  66% {
+    border-radius: 68% 32% 52% 48% / 32% 42% 58% 68%;
+    transform: rotate(-3deg) scale(0.98);
+  }
+}
+
+@keyframes gentle-float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.04); }
+}
+
+.animate-fluid-blob {
+  animation: fluid-blob 18s ease-in-out infinite;
+}
+
+.animate-gentle-float {
+  animation: gentle-float 7s ease-in-out infinite;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 8s ease-in-out infinite;
+}
+
+/* Pagine pubbliche "Light & Organic Care" */
+.landing-light {
+  font-family: "Nunito Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  color-scheme: light;
+  --background: #faf8f5;
+  --foreground: #1e293b;
+  --surface: #ffffff;
+  --surface-muted: #f1ede6;
+  --card: rgba(255, 255, 255, 0.85);
+  --card-foreground: #1e293b;
+  --popover: #ffffff;
+  --popover-foreground: #1e293b;
+  --primary: #1b4332;
+  --primary-foreground: #ffffff;
+  --primary-soft: #d8f3dc;
+  --secondary: #f3eee7;
+  --secondary-foreground: #2d3748;
+  --muted: #f1ede6;
+  --muted-foreground: #64748b;
+  --border: rgba(30, 41, 59, 0.08);
+  --input: rgba(30, 41, 59, 0.12);
+  --ring: rgba(27, 67, 50, 0.35);
+}
+
+.landing-light ::selection {
+  background: #b7e4c7;
+  color: #1b4332;
+}
+
+
 /* Pagine pubbliche "Ocean Deep" */
 .landing-ocean {
   font-family: "Nunito Sans", "Inter", ui-sans-serif, system-ui, sans-serif;

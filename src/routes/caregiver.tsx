@@ -35,7 +35,7 @@ export const Route = createFileRoute("/caregiver")({
 });
 
 function CaregiverHome() {
-  const { data } = useFamilyMed();
+  const { data, userProfile } = useFamilyMed();
   const [tick, setTick] = useState(0);
   const [stats, setStats] = useState<CaregiverDashboardStats | null>(null);
 
@@ -91,20 +91,27 @@ function CaregiverHome() {
     () => data.therapies.filter((t) => t.pillsRemaining <= t.lowStockThreshold),
     [data.therapies],
   );
-  const fallbackAlerts = useMemo(
-    () =>
-      data.events.filter(
-        (e) => (e.status === "missed" || e.status === "skipped") && !isDoseAcknowledged(e),
-      ).length,
-    [data.events],
-  );
+  const fallbackAlerts = useMemo(() => {
+    const isFree = (userProfile?.subscriptionPlan ?? "free") === "free";
+    const cutoffMs = isFree ? 7 * 24 * 60 * 60 * 1000 : 180 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    return data.events.filter(
+      (e) =>
+        (e.status === "missed" || e.status === "skipped") &&
+        !isDoseAcknowledged(e) &&
+        now - new Date(e.scheduledAt).getTime() <= cutoffMs,
+    ).length;
+  }, [data.events, userProfile?.subscriptionPlan]);
   const fallbackAdherence = Math.round(
     patients.reduce((sum, p) => sum + getAdherenceForPatient(data, p.id), 0) /
       Math.max(patients.length, 1),
   );
 
   const totalAdherence = stats?.adherence7d ?? fallbackAdherence;
-  const activeAlerts = stats?.activeAlerts ?? fallbackAlerts;
+  // Gli alert attivi devono sempre coincidere in tempo reale con le dosi
+  // mostrate nella pagina "/dose-da-confermare", evitando discrepanze dovute
+  // a cache o a storici non filtrati della vista materializzata.
+  const activeAlerts = fallbackAlerts;
   const lowStockCount = stats?.lowStockCount ?? fallbackLowStock.length;
   const lowStockNames =
     stats?.lowStockNames && stats.lowStockNames.length > 0

@@ -23,14 +23,14 @@ function PrivacyPage() {
       <div className="py-6 sm:py-8 max-w-3xl mx-auto">
         <Link
           to="/"
-          className="mb-6 inline-flex items-center gap-2 text-sm text-ocean-200 hover:text-ocean-300 transition-colors font-medium"
+          className="mb-6 inline-flex items-center gap-2 text-sm text-stone-500 hover:text-emerald-800 transition-colors font-medium"
         >
           <ArrowLeft className="size-4" /> Torna alla home
         </Link>
 
-        <article className="prose prose-invert max-w-none rounded-3xl border border-ocean-600/30 bg-ocean-800/40 p-6 sm:p-12 shadow-ocean backdrop-blur-sm">
-          <h1 className="font-display text-3xl sm:text-4xl font-bold text-white italic">Informativa sulla Privacy</h1>
-          <p className="text-xs sm:text-sm text-ocean-200 font-normal">
+        <article className="prose max-w-none rounded-3xl border border-stone-200/80 bg-white/85 p-6 sm:p-12 shadow-sm backdrop-blur-sm">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold text-stone-900 italic">Informativa sulla Privacy</h1>
+          <p className="text-xs sm:text-sm text-stone-500 font-normal">
             Ultimo aggiornamento: 31 agosto 2026 — Ai sensi degli artt. 13-14 del Regolamento
             UE 2016/679 (GDPR) e del D.lgs. 196/2003.
           </p>
@@ -188,10 +188,10 @@ function PrivacyPage() {
           </p>
         </article>
 
-        <p className="mt-8 text-center text-sm text-ocean-200">
-          <Link to="/termini" className="hover:text-ocean-300 underline transition-colors">Termini di Servizio</Link>
+        <p className="mt-8 text-center text-sm text-stone-500">
+          <Link to="/termini" className="hover:text-emerald-800 underline transition-colors">Termini di Servizio</Link>
           {" · "}
-          <Link to="/cookie" className="hover:text-ocean-300 underline transition-colors">Cookie Policy</Link>
+          <Link to="/cookie" className="hover:text-emerald-800 underline transition-colors">Cookie Policy</Link>
         </p>
       </div>
     </PublicPageShell>

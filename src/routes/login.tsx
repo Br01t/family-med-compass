@@ -244,15 +244,17 @@ function LoginPage() {
   const isThrottled = backoffSecondsLeft > 0;
 
   return (
-    <div className="landing-ocean min-h-screen w-full flex flex-col items-center justify-center bg-ocean-950 px-4 py-10 text-white selection:bg-ocean-300 selection:text-ocean-950 relative overflow-hidden">
-      {/* Glow d'atmosfera */}
-      <div className="pointer-events-none absolute -top-32 left-1/2 size-96 -translate-x-1/2 rounded-full bg-ocean-300/10 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-20 right-1/4 size-80 rounded-full bg-ocean-600/15 blur-3xl" />
+    <div className="landing-light min-h-screen w-full flex flex-col items-center justify-center bg-[#FAF8F5] px-4 py-10 text-stone-800 selection:bg-emerald-100 selection:text-emerald-900 relative overflow-hidden">
+      {/* Blob organici di sfondo */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="animate-fluid-blob absolute -top-24 -left-16 h-96 w-96 bg-gradient-to-tr from-emerald-100 via-teal-50 to-emerald-50 opacity-70 blur-3xl" />
+        <div className="animate-fluid-blob absolute -bottom-20 -right-16 h-96 w-96 bg-gradient-to-bl from-amber-100 via-orange-50 to-stone-100 opacity-60 blur-3xl" style={{ animationDelay: "-6s" }} />
+      </div>
 
       <div className="w-full max-w-sm relative z-10">
         <Link
           to="/"
-          className="mb-6 inline-flex items-center gap-2 text-sm text-ocean-200 hover:text-ocean-300 transition-colors font-medium"
+          className="mb-6 inline-flex items-center gap-2 text-sm text-stone-500 hover:text-emerald-800 transition-colors font-medium"
         >
           <ArrowLeft className="size-4" /> Torna alla home
         </Link>
@@ -260,22 +262,22 @@ function LoginPage() {
         <div className="mb-8 flex flex-col items-center text-center">
           <Link
             to="/"
-            className="mb-4 grid size-14 place-items-center rounded-2xl bg-ocean-300 text-ocean-950 shadow-ocean hover:bg-ocean-200 transition-all"
+            className="mb-4 grid size-14 place-items-center rounded-2xl bg-emerald-800 text-white shadow-sm hover:bg-emerald-900 transition-all"
           >
             <Pill className="size-6.5" />
           </Link>
 
-          <h1 className="font-display text-3xl font-bold tracking-tight text-white italic">
+          <h1 className="font-display text-3xl font-bold tracking-tight text-stone-900 italic">
             Bentornato su FamilyMed
           </h1>
 
-          <p className="mt-2 text-base text-ocean-100 font-normal">
+          <p className="mt-2 text-base text-stone-600 font-normal">
             Accedi con le tue credenziali per continuare.
           </p>
         </div>
 
         {isBlocked && (
-          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200">
+          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-rose-500/30 bg-rose-50 p-4 text-sm text-rose-700">
             <Clock className="mt-0.5 size-4 shrink-0 text-rose-300" />
             <p>
               <strong>Accesso bloccato.</strong> Troppi tentativi falliti.{" "}
@@ -287,16 +289,16 @@ function LoginPage() {
         {mfaChallenge ? (
           <form
             onSubmit={handleMfaVerify}
-            className="space-y-4 rounded-3xl border border-ocean-600/30 bg-ocean-800/40 p-6 sm:p-7 shadow-ocean backdrop-blur-sm"
+            className="space-y-4 rounded-3xl border border-stone-200/80 bg-white/85 p-6 sm:p-7 shadow-sm backdrop-blur-md"
           >
             <div className="text-center">
-              <p className="text-base font-bold text-white">Verifica in due passaggi</p>
-              <p className="mt-1 text-sm text-ocean-100">
+              <p className="text-base font-bold text-stone-900">Verifica in due passaggi</p>
+              <p className="mt-1 text-sm text-stone-600">
                 Inserisci il codice a 6 cifre dalla tua app di autenticazione.
               </p>
             </div>
             <div>
-              <Label htmlFor="mfa-login-code" className="text-sm font-semibold text-ocean-100">Codice</Label>
+              <Label htmlFor="mfa-login-code" className="text-sm font-semibold text-stone-700">Codice</Label>
               <Input
                 id="mfa-login-code"
                 inputMode="numeric"
@@ -305,12 +307,12 @@ function LoginPage() {
                 value={mfaCode}
                 onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
                 placeholder="123456"
-                className="mt-1 text-center text-lg tracking-[0.5em] bg-ocean-900/60 border-ocean-600/40 text-white placeholder:text-ocean-200/40 rounded-xl"
+                className="mt-1 text-center text-lg tracking-[0.5em] bg-white border-stone-300 text-stone-900 placeholder:text-stone-400 rounded-xl"
               />
             </div>
             <Button
               type="submit"
-              className="w-full bg-ocean-300 text-ocean-950 font-extrabold hover:bg-ocean-200 rounded-2xl py-3.5 text-base shadow-ocean transition-all"
+              className="w-full bg-emerald-800 text-white font-bold hover:bg-emerald-900 rounded-2xl py-3.5 text-base shadow-sm transition-all"
               disabled={mfaSubmitting || mfaCode.length !== 6}
             >
               {mfaSubmitting ? "Verifica in corso..." : "Conferma"}
@@ -318,7 +320,7 @@ function LoginPage() {
             <Button
               type="button"
               variant="ghost"
-              className="w-full text-sm font-semibold text-ocean-200 hover:text-white hover:bg-ocean-800/60 rounded-xl"
+              className="w-full text-sm font-semibold text-stone-600 hover:text-stone-900 hover:bg-stone-100/60 rounded-xl"
               onClick={() => {
                 setMfaChallenge(null);
                 setPendingUser(null);
@@ -331,10 +333,10 @@ function LoginPage() {
         ) : (
           <form
             onSubmit={handleSubmit}
-            className="space-y-4 rounded-3xl border border-ocean-600/30 bg-ocean-800/40 p-6 sm:p-7 shadow-ocean backdrop-blur-sm"
+            className="space-y-4 rounded-3xl border border-stone-200/80 bg-white/85 p-6 sm:p-7 shadow-sm backdrop-blur-md"
           >
             <div>
-              <Label htmlFor="email" className="text-sm font-semibold text-ocean-100">Email</Label>
+              <Label htmlFor="email" className="text-sm font-semibold text-stone-700">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -343,14 +345,14 @@ function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="nome@esempio.it"
-                className="mt-1 text-base bg-ocean-900/60 border-ocean-600/40 text-white placeholder:text-ocean-200/40 rounded-xl focus:border-ocean-300 focus:ring-ocean-300/30"
+                className="mt-1 text-base bg-white border-stone-300 text-stone-900 placeholder:text-stone-400 rounded-xl focus:border-emerald-700 focus:ring-emerald-700/20"
                 style={{ fontSize: "16px" }}
                 disabled={isBlocked}
               />
             </div>
 
             <div>
-              <Label htmlFor="password" className="text-sm font-semibold text-ocean-100">Password</Label>
+              <Label htmlFor="password" className="text-sm font-semibold text-stone-700">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -358,7 +360,7 @@ function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="mt-1 text-base bg-ocean-900/60 border-ocean-600/40 text-white placeholder:text-ocean-200/40 rounded-xl focus:border-ocean-300 focus:ring-ocean-300/30"
+                className="mt-1 text-base bg-white border-stone-300 text-stone-900 placeholder:text-stone-400 rounded-xl focus:border-emerald-700 focus:ring-emerald-700/20"
                 style={{ fontSize: "16px" }}
                 disabled={isBlocked}
               />
@@ -368,7 +370,7 @@ function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full touch-manipulation bg-ocean-300 text-ocean-950 font-extrabold hover:bg-ocean-200 rounded-2xl py-3.5 text-base shadow-ocean transition-all"
+              className="w-full touch-manipulation bg-emerald-800 text-white font-bold hover:bg-emerald-900 rounded-2xl py-3.5 text-base shadow-sm transition-all"
               disabled={submitting || isBlocked || isThrottled || (!!import.meta.env.VITE_TURNSTILE_SITE_KEY && !captchaToken)}
             >
               {isBlocked
@@ -424,7 +426,7 @@ function LoginPage() {
                   setDialogOpen(true);
                 }
               }}
-              className="w-full touch-manipulation text-center text-sm font-semibold text-ocean-200 hover:text-ocean-300 hover:underline disabled:opacity-40"
+              className="w-full touch-manipulation text-center text-sm font-semibold text-stone-500 hover:text-emerald-800 hover:underline disabled:opacity-40"
               disabled={isBlocked}
             >
               Password dimenticata?
@@ -432,9 +434,9 @@ function LoginPage() {
           </form>
         )}
 
-        <p className="mt-6 text-center text-sm text-ocean-100">
+        <p className="mt-6 text-center text-sm text-stone-600">
           Non hai un account?{" "}
-          <Link to="/registrati" className="font-bold text-ocean-300 hover:text-white underline">
+          <Link to="/registrati" className="font-bold text-emerald-800 hover:text-emerald-900 underline">
             Registrati
           </Link>
         </p>

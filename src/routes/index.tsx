@@ -2,6 +2,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
   Check,
+  CheckCircle2,
+  Clock,
   ClipboardList,
   Eye,
   History,
@@ -85,17 +87,17 @@ const STEPS = [
   {
     n: "1",
     title: "Crea il gruppo di cura",
-    body: "Inviti familiari e badanti con un link o un QR code e assegni i permessi.",
+    body: "Inviti familiari e badanti con un link o un QR code e assegni i permessi in pochi secondi.",
   },
   {
     n: "2",
     title: "Imposta le terapie",
-    body: "Orari, dosaggi, tempo massimo di ritardo e scorte disponibili.",
+    body: "Orari, dosaggi, finestre di assunzione e scorte disponibili, facili da consultare.",
   },
   {
     n: "3",
     title: "Coordinatevi ogni giorno",
-    body: "La persona conferma con un tap, il gruppo vede tutto e interviene solo se serve.",
+    body: "La persona o chi assiste conferma con un tap, e l'intera famiglia resta aggiornata senza ansie.",
   },
 ];
 
@@ -150,8 +152,8 @@ const PLANS = [
 
 function Eyebrow({ children }: { children: string }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-ocean-300/40 bg-ocean-800/60 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-ocean-300 sm:text-xs">
-      <span className="size-2 shrink-0 rounded-full bg-ocean-300 shadow-[0_0_8px_rgba(115,200,200,0.6)]" />
+    <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-emerald-800/15 bg-emerald-50/90 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-emerald-900 shadow-xs backdrop-blur-md">
+      <span className="size-2 shrink-0 rounded-full bg-emerald-600 animate-pulse" />
       <span className="truncate">{children}</span>
     </span>
   );
@@ -169,11 +171,11 @@ function SectionHeading({
   return (
     <div className="mx-auto max-w-3xl text-center">
       <Eyebrow>{eyebrow}</Eyebrow>
-      <h2 className="mt-5 font-display text-3xl leading-tight tracking-tight text-white italic sm:text-4xl md:text-[2.85rem]">
+      <h2 className="mt-5 font-display text-3xl sm:text-4xl md:text-[2.85rem] leading-tight tracking-tight text-stone-900 italic font-bold">
         {title}
       </h2>
       {body && (
-        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-ocean-100 sm:text-lg">
+        <p className="mx-auto mt-4 max-w-2xl text-base sm:text-lg leading-relaxed text-stone-600 font-normal">
           {body}
         </p>
       )}
@@ -214,65 +216,159 @@ function LandingPage() {
   };
 
   return (
-    <div className="landing-ocean min-h-screen w-full max-w-full overflow-x-hidden bg-ocean-950 text-left text-white selection:bg-ocean-300 selection:text-ocean-950">
+    <div className="landing-light min-h-screen w-full max-w-full overflow-x-hidden bg-[#FAF8F5] text-left text-stone-800 selection:bg-emerald-100 selection:text-emerald-900">
+      {/* Sfondi organici con forme asimmetriche fluide & texture filigrana */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden -z-0">
+        {/* Forma organica fluida 1: Salvia e Menta delicata in alto a sinistra */}
+        <div
+          className="animate-fluid-blob absolute -top-32 -left-20 h-[520px] w-[520px] bg-gradient-to-tr from-emerald-100 via-teal-50 to-emerald-50 opacity-70 blur-3xl"
+        />
+        {/* Forma organica fluida 2: Sabbia calda e pesca in alto a destra */}
+        <div
+          className="animate-fluid-blob absolute top-16 -right-28 h-[560px] w-[560px] bg-gradient-to-bl from-amber-100 via-orange-50 to-stone-100 opacity-60 blur-3xl"
+          style={{ animationDelay: "-9s" }}
+        />
+        {/* Forma fluida 3: Centro-basso */}
+        <div
+          className="animate-fluid-blob absolute top-[950px] left-1/2 h-[650px] w-[650px] -translate-x-1/2 bg-gradient-to-r from-teal-100 via-emerald-50 to-amber-50 opacity-50 blur-3xl"
+          style={{ animationDelay: "-5s" }}
+        />
+        {/* Filigrana organica a onde sottili per dare carattere editoriale unico */}
+        <svg
+          className="absolute inset-0 h-full w-full opacity-[0.04]"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <pattern id="care-wave" width="72" height="72" patternUnits="userSpaceOnUse">
+              <path
+                d="M0 36 C 18 18, 36 54, 54 36 C 63 27, 68 27, 72 36"
+                fill="none"
+                stroke="#1B4332"
+                strokeWidth="1.2"
+              />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#care-wave)" />
+        </svg>
+      </div>
+
       {/* HEADER PUBBLICO */}
       <PublicHeader currentPath="/" />
 
-      <main className="mx-auto w-full min-w-0 max-w-6xl px-4 pb-20 sm:px-6">
+      <main className="mx-auto w-full min-w-0 max-w-6xl px-4 pb-20 sm:px-6 relative">
         {/* HERO */}
-        <section className="pt-6 text-center md:pt-14">
-          <Eyebrow>Family care coordination</Eyebrow>
+        <section className="pt-8 text-center md:pt-16">
+          <Eyebrow>Coordinamento della cura in famiglia</Eyebrow>
 
-          <h1 className="mx-auto mt-6 max-w-4xl font-display text-[2.25rem] leading-[1.14] tracking-tight text-white italic sm:text-5xl md:text-[3.5rem]">
+          <h1 className="mx-auto mt-6 max-w-4xl font-display text-[2.35rem] sm:text-5xl md:text-[3.65rem] leading-[1.12] tracking-tight text-stone-900 italic font-bold">
             Tutti sanno cosa è stato fatto,{" "}
-            <span className="text-ocean-300">cosa deve essere fatto</span> e chi se ne sta
-            occupando.
+            <span className="relative inline-block text-emerald-800 not-italic font-extrabold px-1">
+              <span className="italic font-normal">cosa deve essere fatto</span>
+              <span className="absolute -bottom-1 left-0 w-full h-3 bg-emerald-200/50 -rotate-1 -z-10 rounded-full" />
+            </span>{" "}
+            e chi se ne sta occupando.
           </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-ocean-100 sm:text-lg md:text-xl font-normal">
+          <p className="mx-auto mt-6 max-w-2xl text-base sm:text-lg md:text-xl font-normal leading-relaxed text-stone-600">
             FamilyMed è lo spazio condiviso dove una famiglia coordina la cura quotidiana di una
             persona: terapie, eventi, turni e storico, sempre allineati per tutti.
           </p>
 
+          {/* CTA Buttons */}
           <div className="mx-auto mt-8 flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
             <button
               type="button"
               onClick={handleEnter}
-              className="inline-flex h-13 w-full items-center justify-center rounded-2xl bg-ocean-300 px-7 text-sm font-extrabold text-ocean-950 shadow-ocean transition-all hover:bg-ocean-200 active:scale-[0.98] sm:w-auto sm:text-base"
+              className="inline-flex h-13 w-full sm:w-auto items-center justify-center rounded-2xl bg-emerald-800 px-7 text-sm sm:text-base font-bold text-white shadow-md shadow-emerald-950/10 transition-all hover:bg-emerald-900 hover:shadow-lg active:scale-[0.98]"
             >
               {user ? "Entra" : "Inizia gratis"}
-              <ArrowRight className="ml-2 size-4 shrink-0 sm:size-5" />
+              <ArrowRight className="ml-2 size-4 sm:size-5 shrink-0" />
             </button>
             <a
               href="#demo"
-              className="inline-flex h-13 w-full items-center justify-center rounded-2xl border border-ocean-600/40 px-7 text-sm font-bold text-white transition-colors hover:border-ocean-300/60 hover:bg-ocean-800/40 sm:w-auto sm:text-base"
+              className="inline-flex h-13 w-full sm:w-auto items-center justify-center rounded-2xl border border-stone-300/90 bg-white/90 px-7 text-sm sm:text-base font-bold text-stone-700 shadow-xs transition-all hover:bg-white hover:border-stone-400 hover:text-stone-950"
             >
-              <Play className="mr-2 size-4 shrink-0 fill-current sm:size-5" />
+              <Play className="mr-2 size-4 sm:size-5 shrink-0 fill-current text-emerald-800" />
               Guarda la demo (30s)
             </a>
           </div>
 
-          <p className="mt-5 text-sm font-medium text-ocean-200">
-            Nessuna carta richiesta · Dati sanitari cifrati e conformi GDPR
+          <p className="mt-5 text-sm font-medium text-stone-500 flex items-center justify-center gap-1.5">
+            <ShieldCheck className="size-4 text-emerald-700 shrink-0" />
+            <span>Nessuna carta richiesta · Dati sanitari cifrati e conformi GDPR</span>
           </p>
+
+          {/* ELEMENTO SCULTOREO DISTINTIVO: "Live Coordination Capsule" */}
+          <div className="mt-12 sm:mt-16 mx-auto max-w-3xl">
+            <div className="relative rounded-[2.5rem] rounded-tr-[4.5rem] rounded-bl-[3.5rem] border border-stone-200/90 bg-white/85 p-6 sm:p-8 shadow-[0_20px_50px_-20px_rgba(27,67,50,0.12)] backdrop-blur-xl">
+              {/* Badge decorativo asimmetrico */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex size-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex size-2.5 rounded-full bg-emerald-600" />
+                  </span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-stone-600">
+                    Oggi in famiglia · Ore 09:15
+                  </span>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 border border-emerald-100">
+                  Tutti allineati
+                </span>
+              </div>
+
+              {/* Timeline live con pillole scultoree */}
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="flex items-start gap-3 rounded-2xl bg-stone-50/80 p-3.5 border border-stone-100">
+                  <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800 font-bold text-xs">
+                    AR
+                  </div>
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className="text-xs font-bold text-stone-900">Nonna Rosa ha confermato</p>
+                    <p className="text-xs text-stone-600 truncate">Cardiaspirina 100mg · Ore 08:30</p>
+                    <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                      <CheckCircle2 className="size-3" /> Presa regolarmente
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 rounded-2xl bg-stone-50/80 p-3.5 border border-stone-100">
+                  <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-800 font-bold text-xs">
+                    MC
+                  </div>
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className="text-xs font-bold text-stone-900">Marco (Figlio)</p>
+                    <p className="text-xs text-stone-600 truncate">Pressione 125/80 · Ore 09:00</p>
+                    <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-stone-600">
+                      <Clock className="size-3 text-stone-400" /> Prossima: Pranzo 13:00
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dettaglio di fondo organico e rassicurante */}
+              <p className="mt-4 text-center text-xs text-stone-500 font-medium italic">
+                Nessun dubbio, nessuna telefonata d'ansia. Ognuno sa esattamente cosa succede.
+              </p>
+            </div>
+          </div>
         </section>
 
         {/* BENTO: DEMO + STEP */}
-        <section id="demo" className="mt-12 scroll-mt-24 sm:mt-16">
-          <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-12">
-            {/* Demo video — tile principale */}
-            <div className="relative overflow-hidden rounded-3xl border border-ocean-600/30 bg-gradient-to-br from-ocean-800 to-ocean-950 p-5 sm:p-8 md:col-span-8">
-              <div className="pointer-events-none absolute -right-20 -bottom-20 size-64 rounded-full bg-ocean-300/10 blur-3xl" />
+        <section id="demo" className="mt-16 scroll-mt-24 sm:mt-24">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-12">
+            {/* Demo video — card scultorea principale */}
+            <div className="relative overflow-hidden rounded-[2.5rem] rounded-tl-[4rem] border border-stone-200/90 bg-gradient-to-br from-white/95 via-white/85 to-emerald-50/30 p-6 sm:p-8 md:col-span-8 shadow-sm backdrop-blur-md">
               <div className="relative z-10">
-                <h3 className="font-display text-2xl text-white italic sm:text-3xl">
+                <h3 className="font-display text-2xl sm:text-3xl text-stone-900 italic font-bold">
                   La cura, semplificata.
                 </h3>
-                <p className="mt-2 max-w-md text-base leading-relaxed text-ocean-100 font-normal">
+                <p className="mt-2 max-w-md text-base leading-relaxed text-stone-600 font-normal">
                   Trenta secondi per vedere come il gruppo resta allineato, dal promemoria alla
                   conferma.
                 </p>
               </div>
-              <div className="relative z-10 mt-6 overflow-hidden rounded-2xl border border-ocean-600/30 [&_video]:bg-ocean-950 [&>div]:w-full">
+              <div className="relative z-10 mt-6 overflow-hidden rounded-2xl border border-stone-200/80 shadow-xs [&_video]:bg-stone-950 [&>div]:w-full">
                 <VideoPlayer
                   id="familymed-demo"
                   src={demoVideoUrl}
@@ -282,18 +378,22 @@ function LandingPage() {
               </div>
             </div>
 
-            {/* Step 1-3 in colonna */}
+            {/* Step 1-3 in colonna con forme organiche */}
             <div className="grid grid-cols-1 gap-4 sm:gap-5 md:col-span-4">
               {STEPS.map((s) => (
                 <div
                   key={s.n}
-                  className="flex flex-col justify-center rounded-3xl border border-ocean-600/30 bg-ocean-800/40 p-5 backdrop-blur-sm sm:p-6"
+                  className="flex flex-col justify-center rounded-3xl border border-stone-200/80 bg-white/80 p-5 sm:p-6 shadow-xs hover:border-emerald-700/30 hover:shadow-sm transition-all"
                 >
-                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ocean-300/20 font-display text-base font-bold text-ocean-300 italic">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-2xl bg-emerald-100/90 font-display text-base font-bold text-emerald-900 italic shadow-xs">
                     {s.n}
                   </span>
-                  <p className="mt-3 font-display text-lg font-bold text-white italic sm:text-xl">{s.title}</p>
-                  <p className="mt-1.5 text-base leading-relaxed text-ocean-100">{s.body}</p>
+                  <p className="mt-3 font-display text-lg sm:text-xl font-bold text-stone-900 italic">
+                    {s.title}
+                  </p>
+                  <p className="mt-1.5 text-sm sm:text-base leading-relaxed text-stone-600">
+                    {s.body}
+                  </p>
                 </div>
               ))}
             </div>
@@ -308,20 +408,25 @@ function LandingPage() {
             body="La cura di una persona non è un compito individuale. FamilyMed tiene insieme le persone che se ne occupano."
           />
           <div className="mt-10 grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-12">
-            {PILLARS.map((f) => (
+            {PILLARS.map((f, i) => (
               <div
                 key={f.title}
                 className={cn(
-                  "group rounded-3xl border border-ocean-600/30 p-6 transition-all sm:p-7",
-                  "bg-ocean-800/35 hover:border-ocean-300/50 hover:bg-ocean-800/60",
+                  "group rounded-3xl border border-stone-200/80 p-6 sm:p-7 transition-all",
+                  "bg-white/80 hover:border-emerald-700/40 hover:shadow-md hover:bg-white",
+                  i % 2 === 0 ? "rounded-tl-[3.5rem]" : "rounded-br-[3.5rem]",
                   f.span,
                 )}
               >
-                <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-ocean-300/20 text-ocean-300 sm:size-12">
+                <div className="grid size-11 sm:size-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-100 group-hover:bg-emerald-800 group-hover:text-white transition-colors">
                   <f.icon className="size-5 sm:size-6" />
                 </div>
-                <p className="mt-4 font-display text-xl font-bold text-white italic sm:text-2xl">{f.title}</p>
-                <p className="mt-2 text-base leading-relaxed text-ocean-100 font-normal">{f.body}</p>
+                <p className="mt-4 font-display text-xl sm:text-2xl font-bold text-stone-900 italic">
+                  {f.title}
+                </p>
+                <p className="mt-2 text-base leading-relaxed text-stone-600 font-normal">
+                  {f.body}
+                </p>
               </div>
             ))}
           </div>
@@ -335,24 +440,24 @@ function LandingPage() {
             body="Brevi tutorial per iniziare: creare una terapia, invitare un caregiver, confermare una dose e altro."
           />
 
-          <ul className="mx-auto mt-10 max-w-3xl divide-y divide-ocean-600/25 overflow-hidden rounded-3xl border border-ocean-600/30 bg-ocean-800/40">
+          <ul className="mx-auto mt-10 max-w-3xl divide-y divide-stone-100 overflow-hidden rounded-[2.25rem] border border-stone-200/80 bg-white/90 shadow-sm">
             {FAQ_VIDEOS.map((v, i) => (
               <li key={v.id}>
                 <Link
                   to="/guida-pubblica"
                   hash="faq-video"
-                  className="group flex w-full min-w-0 items-center gap-3 px-4 py-4.5 transition-colors hover:bg-ocean-800/70 sm:gap-4 sm:px-6"
+                  className="group flex w-full min-w-0 items-center gap-3.5 px-4 sm:px-6 py-4.5 transition-colors hover:bg-emerald-50/50"
                 >
-                  <span className="shrink-0 font-display text-xl font-bold text-ocean-300 italic tabular-nums transition-colors group-hover:text-white sm:text-2xl">
+                  <span className="shrink-0 font-display text-xl sm:text-2xl font-bold text-emerald-800 italic tabular-nums group-hover:text-emerald-950 transition-colors">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-base font-bold tracking-tight text-white sm:text-lg">
+                    <span className="truncate text-base sm:text-lg font-bold tracking-tight text-stone-900 group-hover:text-emerald-950 transition-colors">
                       {v.title}
                     </span>
-                    <span className="truncate text-sm text-ocean-100 font-normal">{v.short}</span>
+                    <span className="truncate text-sm text-stone-500 font-normal">{v.short}</span>
                   </span>
-                  <span className="shrink-0 rounded-full border border-ocean-600/40 bg-ocean-900/60 px-3 py-1 text-xs font-bold tabular-nums text-ocean-200">
+                  <span className="shrink-0 rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold tabular-nums text-stone-600">
                     {v.duration}s
                   </span>
                 </Link>
@@ -364,9 +469,9 @@ function LandingPage() {
             <Link
               to="/guida-pubblica"
               hash="faq-video"
-              className="inline-flex h-12 items-center justify-center rounded-2xl border border-ocean-600/40 px-6 text-sm font-bold text-white transition-colors hover:border-ocean-300/60 hover:bg-ocean-800/50"
+              className="inline-flex h-12 items-center justify-center rounded-2xl border border-stone-300/80 bg-white px-6 text-sm font-bold text-stone-800 shadow-xs transition-all hover:bg-stone-50 hover:border-stone-400"
             >
-              <Play className="mr-2 size-4 fill-current" />
+              <Play className="mr-2 size-4 fill-current text-emerald-800" />
               Guarda tutti i video
             </Link>
           </div>
@@ -375,7 +480,7 @@ function LandingPage() {
         {/* PREZZI */}
         <section id="prezzi" className="mt-16 scroll-mt-24 sm:mt-24">
           <SectionHeading
-            eyebrow="Prezzi"
+            eyebrow="Piani trasparenti"
             title="Inizia gratis, cresci quando il gruppo si allarga"
             body="Nessun vincolo: puoi cambiare o disdire il piano in qualsiasi momento."
           />
@@ -385,33 +490,35 @@ function LandingPage() {
               <div
                 key={plan.name}
                 className={cn(
-                  "relative flex h-full flex-col rounded-3xl border p-6 sm:p-7",
+                  "relative flex h-full flex-col rounded-[2.25rem] border p-6 sm:p-7 transition-all",
                   plan.highlight
-                    ? "border-ocean-300/60 bg-gradient-to-b from-ocean-800 to-ocean-900 shadow-ocean md:-mt-3 md:pb-9"
-                    : "border-ocean-600/30 bg-ocean-800/40",
+                    ? "border-2 border-emerald-700/80 bg-gradient-to-b from-emerald-50/60 via-white to-white shadow-lg ring-1 ring-emerald-600/15 md:-mt-3 md:pb-9"
+                    : "border-stone-200/90 bg-white/80 shadow-xs hover:shadow-md",
                 )}
               >
                 {plan.highlight && (
-                  <span className="absolute -top-3 left-6 rounded-full bg-ocean-300 px-3 py-1 text-xs font-extrabold uppercase tracking-widest text-ocean-950 shadow-ocean">
+                  <span className="absolute -top-3.5 left-6 rounded-full bg-emerald-800 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-sm">
                     Più scelto
                   </span>
                 )}
 
-                <p className="font-display text-2xl font-bold text-white italic sm:text-3xl">{plan.name}</p>
-                <p className="mt-1.5 text-sm text-ocean-200 font-medium">{plan.tagline}</p>
+                <p className="font-display text-2xl sm:text-3xl font-bold text-stone-900 italic">
+                  {plan.name}
+                </p>
+                <p className="mt-1.5 text-sm text-stone-500 font-medium">{plan.tagline}</p>
 
                 <div className="mt-6 flex items-end gap-2">
-                  <span className="font-display text-5xl font-bold tracking-tight text-white">
+                  <span className="font-display text-5xl font-bold tracking-tight text-stone-900">
                     {plan.price}
                   </span>
-                  <span className="pb-1.5 text-sm text-ocean-200 font-medium">{plan.period}</span>
+                  <span className="pb-1.5 text-sm text-stone-500 font-medium">{plan.period}</span>
                 </div>
 
                 <ul className="mt-7 space-y-3.5 text-base">
                   {plan.features.map((feat) => (
                     <li key={feat} className="flex items-start gap-2.5">
-                      <Check className="mt-1 size-4.5 shrink-0 text-ocean-300" />
-                      <span className="leading-snug text-white font-normal">{feat}</span>
+                      <Check className="mt-1 size-4.5 shrink-0 text-emerald-700" />
+                      <span className="leading-snug text-stone-700 font-normal">{feat}</span>
                     </li>
                   ))}
                 </ul>
@@ -420,10 +527,10 @@ function LandingPage() {
                   type="button"
                   onClick={handleEnter}
                   className={cn(
-                    "mt-8 inline-flex h-12 w-full items-center justify-center rounded-2xl text-base font-extrabold transition-all active:scale-[0.98]",
+                    "mt-8 inline-flex h-12 w-full items-center justify-center rounded-2xl text-base font-bold transition-all active:scale-[0.98]",
                     plan.highlight
-                      ? "bg-ocean-300 text-ocean-950 shadow-ocean hover:bg-ocean-200"
-                      : "border border-ocean-600/40 text-white hover:border-ocean-300/60 hover:bg-ocean-800/50",
+                      ? "bg-emerald-800 text-white shadow-md hover:bg-emerald-900"
+                      : "border border-stone-300/80 bg-white text-stone-800 hover:bg-stone-50 hover:border-stone-400 shadow-xs",
                   )}
                 >
                   {plan.cta}
@@ -432,33 +539,34 @@ function LandingPage() {
             ))}
           </div>
 
-          <p className="mt-8 text-center text-sm text-ocean-200">
-            FamilyMed non sostituisce il parere medico: segui sempre le indicazioni del medico
-            curante.
+          <p className="mt-8 text-center text-sm text-stone-500">
+            FamilyMed non sostituisce il parere medico: segui sempre le indicazioni del medico curante.
           </p>
         </section>
 
-        {/* CTA FINALE */}
-        <section className="relative mt-16 overflow-hidden rounded-3xl border border-ocean-600/30 bg-gradient-to-br from-ocean-800 to-ocean-950 p-8 text-center sm:mt-24 sm:p-12">
-          <div className="pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full bg-ocean-300/10 blur-3xl" />
-          <p className="relative z-10 font-display text-2xl font-bold tracking-tight text-white italic sm:text-3xl md:text-4xl">
+        {/* CTA FINALE — card scultorea accogliente */}
+        <section className="relative mt-16 sm:mt-24 overflow-hidden rounded-[3rem] rounded-tl-[4.5rem] border border-emerald-800/15 bg-gradient-to-br from-emerald-100/90 via-teal-50/70 to-amber-50/80 p-8 sm:p-14 text-center text-stone-900 shadow-md">
+          {/* Forma organica in sottofondo */}
+          <div className="pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full bg-white/60 blur-2xl" />
+
+          <p className="relative z-10 font-display text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-stone-900 italic">
             Smettete di chiedervi «l'ha presa?»
           </p>
-          <p className="relative z-10 mx-auto mt-3 max-w-lg text-base leading-relaxed text-ocean-100 sm:text-lg">
-            Bastano due minuti per creare il gruppo di cura e la prima terapia.
+          <p className="relative z-10 mx-auto mt-3 max-w-lg text-base sm:text-lg leading-relaxed text-stone-600">
+            Bastano due minuti per creare il gruppo di cura e impostare la prima terapia.
           </p>
           <div className="relative z-10 mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <button
               type="button"
               onClick={handleEnter}
-              className="inline-flex h-13 w-full items-center justify-center rounded-2xl bg-ocean-300 px-7 text-base font-extrabold text-ocean-950 shadow-ocean transition-all hover:bg-ocean-200 active:scale-[0.98] sm:w-auto"
+              className="inline-flex h-13 w-full sm:w-auto items-center justify-center rounded-2xl bg-emerald-800 px-7 text-base font-bold text-white shadow-md transition-all hover:bg-emerald-900 active:scale-[0.98]"
             >
               Inizia gratis
               <ArrowRight className="ml-2 size-5 shrink-0" />
             </button>
             <Link
               to="/guida-pubblica"
-              className="inline-flex h-13 w-full items-center justify-center rounded-2xl border border-ocean-600/40 px-7 text-base font-bold text-white transition-colors hover:border-ocean-300/60 hover:bg-ocean-800/40 sm:w-auto"
+              className="inline-flex h-13 w-full sm:w-auto items-center justify-center rounded-2xl border border-stone-300/80 bg-white/90 px-7 text-base font-bold text-stone-800 shadow-xs transition-all hover:bg-white hover:border-stone-400"
             >
               Guarda la guida
             </Link>

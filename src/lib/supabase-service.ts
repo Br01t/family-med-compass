@@ -6,6 +6,7 @@ import {
   type MedicationEvent,
   type Notification,
 } from "./mock-data";
+import type { SubscriptionPlan } from "./subscription";
 
 /* =========================================================
    SAFE GUARD BASE
@@ -358,6 +359,7 @@ export function subscribeTherapies(
 export function subscribeEventsForPatients(
   patientIds: string[],
   onUpdate: (events: MedicationEvent[]) => void,
+  plan: SubscriptionPlan = "free",
 ): () => void {
   if (!supabase) return () => {};
   if (!patientIds || patientIds.length === 0) {
@@ -365,29 +367,59 @@ export function subscribeEventsForPatients(
     return () => {};
   }
   const ids = [...patientIds].sort();
-  // Finestra ridotta a 9 giorni: basta per l'aderenza a 7gg mostrata
-  // ovunque nell'app. I periodi più lunghi (30/90gg) non servono al 95%
-  // delle sessioni — vengono caricati a parte, solo quando l'utente apre
-  // "Storico & Report" e solo per il paziente selezionato, tramite
-  // fetchEventsForPatientRange (vedi sotto).
-  const sinceMs = 9 * 24 * 60 * 60 * 1000;
+
+  // Finestra temporale determinata dal piano di abbonamento:
+  // - Piano Free: limite rigoroso di 7 giorni (come da specifiche piano).
+  // - Piani Pro / Max: finestra recente di 30 giorni + recupero delle dosi
+  //   'missed'/'skipped' non ancora gestite fino a 180 giorni (retention GDPR).
+  const isFree = plan === "free";
+  const recentDays = isFree ? 7 : 30;
+  const recentMs = recentDays * 24 * 60 * 60 * 1000;
+  const maxRetentionMs = 180 * 24 * 60 * 60 * 1000;
 
   // Cache locale degli eventi: popolata dal fetch iniziale e poi
   // aggiornata riga-per-riga dai payload realtime — ZERO round-trip
   // aggiuntivi per conferme/snooze/salti di dose.
   let cache: MedicationEvent[] = [];
-  let ready = false; // true dopo il primo fetch
+  let ready = false;
 
   const fetchAndEmit = async () => {
     try {
-      const since = new Date(Date.now() - sinceMs).toISOString();
-      const { data, error } = await supabase!
+      const sinceRecent = new Date(Date.now() - recentMs).toISOString();
+
+      // 1. Fetch eventi recenti
+      const recentPromise = supabase!
         .from("events")
         .select("id, therapy_id, patient_id, scheduled_at, status, confirmed_at, confirmed_by, snoozed_until, note, timeline")
         .in("patient_id", ids)
-        .gte("scheduled_at", since);
-      if (error) throw error;
-      cache = (data || []).map(mapEventRow);
+        .gte("scheduled_at", sinceRecent);
+
+      // 2. Per utenti Pro e Max: recupera anche eventuali alert 'missed'/'skipped'
+      // non ancora gestiti dal caregiver più vecchi di 30 giorni (fino a 180gg)
+      const pendingOlderPromise = !isFree
+        ? supabase!
+            .from("events")
+            .select("id, therapy_id, patient_id, scheduled_at, status, confirmed_at, confirmed_by, snoozed_until, note, timeline")
+            .in("patient_id", ids)
+            .lt("scheduled_at", sinceRecent)
+            .gte("scheduled_at", new Date(Date.now() - maxRetentionMs).toISOString())
+            .in("status", ["missed", "skipped"])
+            .not("note", "ilike", "%caregiver_ack%")
+            .limit(100)
+        : Promise.resolve({ data: [] as any[], error: null });
+
+      const [recentRes, olderRes] = await Promise.all([recentPromise, pendingOlderPromise]);
+
+      if (recentRes.error) throw recentRes.error;
+      if (olderRes.error) throw olderRes.error;
+
+      const combined = [...(recentRes.data || []), ...(olderRes.data || [])];
+      const uniqueMap = new Map<string, any>();
+      for (const row of combined) {
+        uniqueMap.set(row.id, row);
+      }
+
+      cache = Array.from(uniqueMap.values()).map(mapEventRow);
       ready = true;
       onUpdate(cache);
     } catch (err) {
@@ -402,14 +434,15 @@ export function subscribeEventsForPatients(
 
   const channel = supabase
     .channel(`events-multi-${ids.join(",")}`)
-    // INSERT: aggiungi alla cache locale senza ri-scaricare tutto
+    // INSERT: aggiungi alla cache locale se rientra nelle finestre consentite dal piano
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "events", filter }, (payload) => {
       if (!ready) return;
       const e = payload.new as any;
       if (!ids.includes(e.patient_id)) return;
-      // Ignora eventi fuori dalla finestra temporale
-      if (Date.now() - new Date(e.scheduled_at).getTime() > sinceMs) return;
-      cache = [...cache, mapEventRow(e)];
+      const ageMs = Date.now() - new Date(e.scheduled_at).getTime();
+      if (isFree && ageMs > recentMs) return;
+      if (!isFree && ageMs > maxRetentionMs) return;
+      cache = [...cache.filter((ev) => ev.id !== e.id), mapEventRow(e)];
       onUpdate(cache);
     })
     // UPDATE: aggiorna solo la riga cambiata (dose confermata, saltata, snoozata…)
@@ -436,8 +469,9 @@ export function subscribeEventsForPatients(
 export function subscribeEvents(
   patientId: string,
   onUpdate: (events: MedicationEvent[]) => void,
+  plan: SubscriptionPlan = "free",
 ): () => void {
-  return subscribeEventsForPatients(patientId ? [patientId] : [], onUpdate);
+  return subscribeEventsForPatients(patientId ? [patientId] : [], onUpdate, plan);
 }
 
 /**
