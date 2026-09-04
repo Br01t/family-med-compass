@@ -81,21 +81,21 @@ function Limbs({ mood }: { mood: MascotMood }) {
     <g className="fill-current" opacity={0.92}>
       {/* braccio sinistro */}
       <ellipse
-        cx={17}
+        cx={13}
         cy={both || raised ? 58 : 74}
         rx={6.4}
         ry={9.2}
         transform={
-          both || raised ? "rotate(-32 17 58)" : "rotate(-12 17 74)"
+          both || raised ? "rotate(-32 13 58)" : "rotate(-12 13 74)"
         }
       />
       {/* braccio destro */}
       <ellipse
-        cx={83}
+        cx={87}
         cy={both ? 58 : 74}
         rx={6.4}
         ry={9.2}
-        transform={both ? "rotate(32 83 58)" : "rotate(12 83 74)"}
+        transform={both ? "rotate(32 87 58)" : "rotate(12 87 74)"}
       />
       {/* gambe tozze */}
       <ellipse cx={40} cy={102} rx={8} ry={6.4} />
