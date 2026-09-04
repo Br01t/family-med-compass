@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Mascot } from "@/components/mascot/Mascot";
 import { caregiverSteps, patientSteps, type TourStep } from "./tour-steps";
 
 export type OnboardingRole = "caregiver" | "paziente";
