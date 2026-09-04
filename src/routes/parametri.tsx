@@ -14,6 +14,7 @@ import {
 } from "recharts";
 
 import { AppShell } from "@/components/AppShell";
+import { Mascot } from "@/components/mascot/Mascot";
 import { PatientShell } from "@/components/PatientShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -705,7 +706,13 @@ function VitalSignsPage() {
         {loading ? (
           <p className="text-sm text-muted-foreground">Caricamento…</p>
         ) : filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nessuna misurazione nel periodo.</p>
+          <div className="py-4">
+            <Mascot
+              mood="encouraging"
+              size="md"
+              message="Registra la prima misurazione: bastano pochi secondi e potrai vedere subito l'andamento."
+            />
+          </div>
         ) : (
           <ul className="divide-y">
             {filtered.map((r) => {

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { CalendarPlus, FileDown, Pill, Plus, Power, PowerOff } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { Mascot } from "@/components/mascot/Mascot";
 import { AddTherapyDialog } from "@/components/AddTherapyDialog";
 import { SecondaryCaregiverNotice } from "@/components/SecondaryCaregiverNotice";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,16 @@ function TherapiesPage() {
                   )}
                 </div>
               </div>
+              {therapies.length === 0 && (
+                <div className="rounded-3xl border border-dashed border-border/60 bg-card p-6 sm:p-8">
+                  <Mascot
+                    mood="encouraging"
+                    size="lg"
+                    message="Aggiungi la prima terapia per iniziare a tenere tutto sotto controllo."
+                    className="flex-col text-center sm:flex-row sm:text-left"
+                  />
+                </div>
+              )}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {therapies.map((t) => (
                   <div
