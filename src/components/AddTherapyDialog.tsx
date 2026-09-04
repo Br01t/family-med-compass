@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Camera, Plus, Trash2, PillIcon, X } from "lucide-react";
 import { toast } from "sonner";
+import { Mascot } from "@/components/mascot/Mascot";
 import { Button } from "@/components/ui/button";
 import { fileToCompressedDataUrl } from "@/lib/image-utils";
 import { ensureTherapyPhotoUrl } from "@/lib/supabase-service";
@@ -800,9 +801,19 @@ function PhotoField({
       const dataUrl = await fileToCompressedDataUrl(f);
       onChange(dataUrl);
     } catch (e) {
-      toast.error("Impossibile caricare l'immagine", {
-        description: e instanceof Error ? e.message : undefined,
-      });
+      console.warn(e);
+      toast.custom(() => (
+        <div className="flex items-start gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3 shadow-lg">
+          <Mascot mood="concerned" size="sm" />
+          <div>
+            <p className="text-sm font-bold">La foto non è stata caricata</p>
+            <p className="text-xs text-muted-foreground">
+              Nessun problema: riprova con un'altra immagine o continua senza foto,
+              puoi aggiungerla più tardi.
+            </p>
+          </div>
+        </div>
+      ));
     } finally {
       setBusy(false);
       if (ref.current) ref.current.value = "";

@@ -3,6 +3,8 @@ import { AlertOctagon, Bell, Check, Clock, Timer } from "lucide-react";
 import { useFamilyMed } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { getPrimedAlarmAudioContext } from "@/lib/alarm-audio";
+import { toast } from "sonner";
+import { Mascot } from "@/components/mascot/Mascot";
 
 function formatMMSS(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return "00:00";
@@ -298,6 +300,17 @@ export function AlarmRinger() {
               scheduledAt,
               confirmedBy: userProfile?.name ?? "Paziente",
             });
+            toast.custom(() => (
+              <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3 shadow-lg">
+                <Mascot mood="celebrating" size="sm" />
+                <div>
+                  <p className="text-sm font-bold">Dose registrata</p>
+                  <p className="text-xs text-muted-foreground">
+                    Ottimo, è tutto in ordine. Ci vediamo alla prossima.
+                  </p>
+                </div>
+              </div>
+            ));
           } else if (action === "snooze") {
             await snoozeDose({
               therapyId: therapy.id,
