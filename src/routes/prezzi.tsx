@@ -49,7 +49,7 @@ function PublicPricingPage() {
           <Sparkles className="size-3.5" />
           <span>Trasparenza Totale</span>
         </div>
-        <h1 className="font-display text-3xl font-bold tracking-tight text-white italic sm:text-5xl md:text-[3.3rem] leading-[1.12]">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-stone-900 italic sm:text-5xl md:text-[3.3rem] leading-[1.12]">
           Scegli la tranquillità per la tua famiglia
         </h1>
         <p className="mx-auto max-w-2xl text-base sm:text-lg text-stone-600 leading-relaxed font-normal">
@@ -65,7 +65,7 @@ function PublicPricingPage() {
             type="button"
             onClick={() => setIsAnnual(!isAnnual)}
             className={`relative inline-flex h-8 w-15 items-center rounded-full border border-stone-300/80 transition-colors p-1 ${
-              isAnnual ? "bg-ocean-300" : "bg-stone-50/90"
+              isAnnual ? "bg-emerald-800" : "bg-stone-200/90"
             }`}
           >
             <span
@@ -169,16 +169,16 @@ function PublicPricingPage() {
           <table className="w-full text-left text-sm border-collapse">
             <thead>
               <tr className="border-b border-stone-200/80 bg-stone-50/90">
-                <th className="p-4 sm:p-5 font-bold text-base text-white min-w-[220px]">
+                <th className="p-4 sm:p-5 font-bold text-base text-stone-900 min-w-[220px]">
                   Funzionalità & Limiti
                 </th>
-                <th className="p-4 sm:p-5 font-bold text-center text-white w-[160px]">
+                <th className="p-4 sm:p-5 font-bold text-center text-stone-900 w-[160px]">
                   Free (0€)
                 </th>
                 <th className="p-4 sm:p-5 font-bold text-center text-emerald-800 bg-emerald-800/10 w-[180px]">
                   Pro (4,99€/m)
                 </th>
-                <th className="p-4 sm:p-5 font-bold text-center text-white w-[180px]">
+                <th className="p-4 sm:p-5 font-bold text-center text-stone-900 w-[180px]">
                   Max (9,99€/m)
                 </th>
               </tr>
@@ -212,7 +212,7 @@ function PublicPricingPage() {
 
       {/* GDPR & GUARANTEE CARD */}
       <section className="mx-auto max-w-4xl py-6">
-        <div className="rounded-3xl border border-ocean-300/30 bg-white/80 p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 backdrop-blur-sm">
+        <div className="rounded-3xl border border-emerald-800/15 bg-white/80 p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 backdrop-blur-sm">
           <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-emerald-800/10 text-emerald-800">
             <ShieldCheck className="size-8" />
           </div>
@@ -249,12 +249,12 @@ function PublicPricingPage() {
                 <button
                   type="button"
                   onClick={() => toggleFaq(idx)}
-                  className="w-full p-4 sm:p-5 flex items-center justify-between text-left font-bold text-base sm:text-lg text-white hover:bg-emerald-50/50 transition-colors"
+                  className="w-full p-4 sm:p-5 flex items-center justify-between text-left font-bold text-base sm:text-lg text-stone-900 hover:bg-emerald-50/50 transition-colors"
                 >
                   <span>{faq.q}</span>
                   <ChevronDown
                     className={`size-5 text-emerald-800 transition-transform ${
-                      isOpen ? "rotate-180 text-white" : ""
+                      isOpen ? "rotate-180" : ""
                     }`}
                   />
                 </button>
@@ -337,11 +337,11 @@ function PricingCard({
       <div>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-2xl sm:text-3xl font-bold text-stone-900 italic">{name}</h3>
-          <span className="text-[10px] sm:text-xs uppercase font-bold tracking-wider px-3 py-1 rounded-full bg-emerald-800/10 text-emerald-800 border border-ocean-300/30">
+          <span className="text-[10px] sm:text-xs uppercase font-bold tracking-wider px-3 py-1 rounded-full bg-emerald-800/10 text-emerald-800 border border-emerald-800/15">
             {badge}
           </span>
         </div>
-        <p className="text-sm text-ocean-200 font-medium mt-2 min-h-[32px]">{tagline}</p>
+        <p className="text-sm text-stone-600 font-medium mt-2 min-h-[32px]">{tagline}</p>
 
         <div className="mt-5 mb-6">
           {price === 0 ? (
@@ -352,10 +352,10 @@ function PricingCard({
                 <span className="font-display text-4xl sm:text-5xl font-bold text-stone-900">
                   {formatPrice(price)}
                 </span>
-                <span className="text-sm text-ocean-200 font-medium">/mese</span>
+                <span className="text-sm text-stone-500 font-medium">/mese</span>
               </div>
               {periodLabel && (
-                <p className="text-xs sm:text-sm text-ocean-200 mt-1 font-medium">{periodLabel}</p>
+                <p className="text-xs sm:text-sm text-stone-500 mt-1 font-medium">{periodLabel}</p>
               )}
             </div>
           )}
@@ -365,7 +365,7 @@ function PricingCard({
           {features.map((f, i) => (
             <div key={i} className="flex items-start gap-2.5 text-sm sm:text-base">
               <Check className="size-4.5 text-emerald-800 shrink-0 mt-0.5" />
-              <span className={f.highlight ? "font-semibold text-white" : "text-stone-600"}>
+              <span className={f.highlight ? "font-semibold text-stone-900" : "text-stone-600"}>
                 {f.text}
               </span>
             </div>
@@ -379,7 +379,7 @@ function PricingCard({
           className={`w-full font-extrabold rounded-2xl py-3.5 text-base transition-all ${
             highlighted
               ? "bg-emerald-800 text-white shadow-sm hover:bg-emerald-900"
-              : "border border-stone-300/80 text-white hover:border-emerald-700/50 hover:bg-stone-50/80"
+              : "border border-stone-300/80 text-stone-700 hover:border-emerald-700/50 hover:bg-stone-50/80 hover:text-stone-900"
           }`}
         >
           <Link to={ctaLink as any}>{ctaText}</Link>
@@ -392,7 +392,7 @@ function PricingCard({
 function TableCategoryHeader({ title }: { title: string }) {
   return (
     <tr className="bg-stone-50/90">
-      <td colSpan={4} className="p-3.5 px-4 font-bold text-xs uppercase tracking-widest text-ocean-300">
+      <td colSpan={4} className="p-3.5 px-4 font-bold text-xs uppercase tracking-widest text-stone-500">
         {title}
       </td>
     </tr>
@@ -412,9 +412,9 @@ function TableRow({
 }) {
   return (
     <tr className="hover:bg-stone-50/80 transition-colors">
-      <td className="p-4 font-medium text-white text-sm sm:text-base">{label}</td>
+      <td className="p-4 font-medium text-stone-700 text-sm sm:text-base">{label}</td>
       <td className="p-4 text-center">{renderCell(free)}</td>
-      <td className="p-4 text-center bg-ocean-300/5">{renderCell(pro)}</td>
+      <td className="p-4 text-center bg-emerald-800/5">{renderCell(pro)}</td>
       <td className="p-4 text-center">{renderCell(max)}</td>
     </tr>
   );
@@ -425,10 +425,10 @@ function renderCell(val: boolean | string) {
     return val ? (
       <Check className="size-5 text-emerald-800 mx-auto" />
     ) : (
-      <X className="size-5 text-ocean-600/50 mx-auto" />
+      <X className="size-5 text-stone-300 mx-auto" />
     );
   }
-  return <span className="font-semibold text-sm sm:text-base text-white">{val}</span>;
+  return <span className="font-semibold text-sm sm:text-base text-stone-700">{val}</span>;
 }
 
 const FAQS = [

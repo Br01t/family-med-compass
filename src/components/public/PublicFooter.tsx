@@ -103,7 +103,7 @@ export function PublicFooter() {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-stone-200/80 pt-6 sm:flex-row text-xs text-stone-500">
+        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-stone-200/80 pt-6 sm:flex-row text-xs text-stone-600">
           <p>
             © {year} FamilyMed · Protezione e conformità dati sanitari GDPR
           </p>

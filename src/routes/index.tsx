@@ -1,13 +1,21 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
+  Activity,
   Check,
   CheckCircle2,
   Clock,
   ClipboardList,
   Eye,
+  HeartHandshake,
   History,
+  Home,
+  Lock,
+  Package,
+  Pill,
   Play,
+  Quote,
+  Server,
   ShieldCheck,
   Users,
 } from "lucide-react";
@@ -150,10 +158,10 @@ const PLANS = [
   },
 ];
 
-function Eyebrow({ children }: { children: string }) {
+function Eyebrow({ children, animated = false }: { children: string; animated?: boolean }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-emerald-800/15 bg-emerald-50/90 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-emerald-900 shadow-xs backdrop-blur-md">
-      <span className="size-2 shrink-0 rounded-full bg-emerald-600 animate-pulse" />
+    <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-emerald-800/15 bg-emerald-50/90 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-emerald-900 shadow-xs">
+      <span className={cn("size-2 shrink-0 rounded-full bg-emerald-600", animated && "animate-pulse")} />
       <span className="truncate">{children}</span>
     </span>
   );
@@ -171,7 +179,7 @@ function SectionHeading({
   return (
     <div className="mx-auto max-w-3xl text-center">
       <Eyebrow>{eyebrow}</Eyebrow>
-      <h2 className="mt-5 font-display text-3xl sm:text-4xl md:text-[2.85rem] leading-tight tracking-tight text-stone-900 italic font-bold">
+      <h2 className="mt-5 font-display text-3xl sm:text-4xl md:text-[2.85rem] leading-tight tracking-tight text-stone-900 font-bold">
         {title}
       </h2>
       {body && (
@@ -216,40 +224,23 @@ function LandingPage() {
   };
 
   return (
-    <div className="landing-light min-h-screen w-full max-w-full overflow-x-hidden bg-[#FAF8F5] text-left text-stone-800 selection:bg-emerald-100 selection:text-emerald-900">
-      {/* Sfondi organici con forme asimmetriche fluide & texture filigrana */}
+    <div className="landing-light relative min-h-screen w-full max-w-full overflow-x-hidden bg-[#FAF8F5] text-left text-stone-800 selection:bg-emerald-100 selection:text-emerald-900">
+      {/* Sfondi organici con forme asimmetriche fluide */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden -z-0">
-        {/* Forma organica fluida 1: Salvia e Menta delicata in alto a sinistra */}
+        {/* Forma organica fluida 1: Salvia e Menta in alto a sinistra */}
         <div
-          className="animate-fluid-blob absolute -top-32 -left-20 h-[520px] w-[520px] bg-gradient-to-tr from-emerald-100 via-teal-50 to-emerald-50 opacity-70 blur-3xl"
+          className="animate-fluid-blob absolute -top-28 -left-24 h-[460px] w-[460px] rounded-full bg-emerald-200/70 blur-2xl"
         />
         {/* Forma organica fluida 2: Sabbia calda e pesca in alto a destra */}
         <div
-          className="animate-fluid-blob absolute top-16 -right-28 h-[560px] w-[560px] bg-gradient-to-bl from-amber-100 via-orange-50 to-stone-100 opacity-60 blur-3xl"
+          className="animate-fluid-blob absolute top-10 -right-24 h-[480px] w-[480px] rounded-full bg-amber-200/60 blur-2xl"
           style={{ animationDelay: "-9s" }}
         />
         {/* Forma fluida 3: Centro-basso */}
         <div
-          className="animate-fluid-blob absolute top-[950px] left-1/2 h-[650px] w-[650px] -translate-x-1/2 bg-gradient-to-r from-teal-100 via-emerald-50 to-amber-50 opacity-50 blur-3xl"
+          className="animate-fluid-blob absolute top-[950px] left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-teal-200/50 blur-2xl"
           style={{ animationDelay: "-5s" }}
         />
-        {/* Filigrana organica a onde sottili per dare carattere editoriale unico */}
-        <svg
-          className="absolute inset-0 h-full w-full opacity-[0.04]"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            <pattern id="care-wave" width="72" height="72" patternUnits="userSpaceOnUse">
-              <path
-                d="M0 36 C 18 18, 36 54, 54 36 C 63 27, 68 27, 72 36"
-                fill="none"
-                stroke="#1B4332"
-                strokeWidth="1.2"
-              />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#care-wave)" />
-        </svg>
       </div>
 
       {/* HEADER PUBBLICO */}
@@ -258,12 +249,12 @@ function LandingPage() {
       <main className="mx-auto w-full min-w-0 max-w-6xl px-4 pb-20 sm:px-6 relative">
         {/* HERO */}
         <section className="pt-8 text-center md:pt-16">
-          <Eyebrow>Coordinamento della cura in famiglia</Eyebrow>
+          <Eyebrow animated>Coordinamento della cura in famiglia</Eyebrow>
 
-          <h1 className="mx-auto mt-6 max-w-4xl font-display text-[2.35rem] sm:text-5xl md:text-[3.65rem] leading-[1.12] tracking-tight text-stone-900 italic font-bold">
+          <h1 className="mx-auto mt-6 max-w-4xl font-display text-[2.35rem] sm:text-5xl md:text-[3.65rem] leading-[1.12] tracking-tight text-stone-900 font-bold">
             Tutti sanno cosa è stato fatto,{" "}
-            <span className="relative inline-block text-emerald-800 not-italic font-extrabold px-1">
-              <span className="italic font-normal">cosa deve essere fatto</span>
+            <span className="relative inline-block text-emerald-800 font-extrabold px-1">
+              <span className="italic font-semibold">cosa deve essere fatto</span>
               <span className="absolute -bottom-1 left-0 w-full h-3 bg-emerald-200/50 -rotate-1 -z-10 rounded-full" />
             </span>{" "}
             e chi se ne sta occupando.
@@ -293,64 +284,182 @@ function LandingPage() {
             </a>
           </div>
 
-          <p className="mt-5 text-sm font-medium text-stone-500 flex items-center justify-center gap-1.5">
+          <p className="mt-5 text-sm font-medium text-stone-600 flex items-center justify-center gap-1.5">
             <ShieldCheck className="size-4 text-emerald-700 shrink-0" />
             <span>Nessuna carta richiesta · Dati sanitari cifrati e conformi GDPR</span>
           </p>
 
-          {/* ELEMENTO SCULTOREO DISTINTIVO: "Live Coordination Capsule" */}
-          <div className="mt-12 sm:mt-16 mx-auto max-w-3xl">
-            <div className="relative rounded-[2.5rem] rounded-tr-[4.5rem] rounded-bl-[3.5rem] border border-stone-200/90 bg-white/85 p-6 sm:p-8 shadow-[0_20px_50px_-20px_rgba(27,67,50,0.12)] backdrop-blur-xl">
-              {/* Badge decorativo asimmetrico */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 pb-4">
-                <div className="flex items-center gap-2">
-                  <span className="relative flex size-2.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex size-2.5 rounded-full bg-emerald-600" />
-                  </span>
-                  <span className="text-xs font-bold uppercase tracking-wider text-stone-600">
-                    Oggi in famiglia · Ore 09:15
+          {/* MOCKUP REALE: telefono con l'interfaccia dell'app */}
+          <div className="mt-12 sm:mt-16 mx-auto flex justify-center">
+            <div className="relative aspect-[9/19.5] w-[260px] sm:w-[290px] rounded-[3rem] border-[10px] border-stone-900 bg-stone-900 shadow-2xl shadow-stone-900/25">
+              {/* Notch */}
+              <div className="absolute top-0 left-1/2 z-20 h-6 w-32 -translate-x-1/2 rounded-b-2xl bg-stone-900" />
+              {/* Schermo */}
+              <div className="flex h-full flex-col overflow-hidden rounded-[2.25rem] bg-[#FAF8F5]">
+                {/* Status bar */}
+                <div className="flex shrink-0 items-center justify-between px-6 pt-3.5 pb-1 text-[10px] font-bold text-stone-500">
+                  <span>9:15</span>
+                  <span className="flex items-center gap-1">
+                    <span className="text-[9px]">●●●●</span>
                   </span>
                 </div>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 border border-emerald-100">
-                  Tutti allineati
-                </span>
-              </div>
 
-              {/* Timeline live con pillole scultoree */}
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <div className="flex items-start gap-3 rounded-2xl bg-stone-50/80 p-3.5 border border-stone-100">
-                  <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800 font-bold text-xs">
-                    AR
-                  </div>
-                  <div className="min-w-0 flex-1 text-left">
-                    <p className="text-xs font-bold text-stone-900">Nonna Rosa ha confermato</p>
-                    <p className="text-xs text-stone-600 truncate">Cardiaspirina 100mg · Ore 08:30</p>
-                    <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-                      <CheckCircle2 className="size-3" /> Presa regolarmente
+                <div className="flex flex-1 flex-col px-4 pb-4 pt-3 text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+                      Terapie di oggi · Nonna Rosa
+                    </span>
+                    <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-800 border border-emerald-100">
+                      <span className="size-1.5 rounded-full bg-emerald-600" />
+                      Allineati
                     </span>
                   </div>
+
+                  <div className="mt-4 space-y-3">
+                    {/* Dose già confermata */}
+                    <div className="flex items-start gap-2.5 rounded-2xl bg-white p-3 border border-stone-100 shadow-xs">
+                      <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
+                        <CheckCircle2 className="size-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-bold text-stone-900">Cardioaspirina 100mg</p>
+                          <span className="shrink-0 text-[10px] font-bold text-stone-400">08:00</span>
+                        </div>
+                        <p className="text-[11px] text-stone-500">1 compressa a colazione</p>
+                        <span className="mt-1 inline-block text-[10px] font-bold text-emerald-700">
+                          Confermata da Marco (figlio) · 08:05
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Dose imminente */}
+                    <div className="flex items-start gap-2.5 rounded-2xl bg-amber-50/70 p-3 border border-amber-200">
+                      <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-white text-amber-700 border border-amber-200">
+                        <Clock className="size-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-bold text-stone-900">Metformina 500mg</p>
+                          <span className="shrink-0 text-[10px] font-bold text-amber-700">13:00</span>
+                        </div>
+                        <p className="text-[11px] text-stone-500">1 compressa dopo pranzo</p>
+                        <span className="mt-1 inline-block text-[10px] font-bold text-amber-700">
+                          Promemoria tra 20 minuti
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Dose successiva, in attesa */}
+                    <div className="flex items-start gap-2.5 rounded-2xl bg-white p-3 border border-stone-100">
+                      <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-stone-100 text-stone-400">
+                        <Clock className="size-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-bold text-stone-500">Ramipril 5mg</p>
+                          <span className="shrink-0 text-[10px] font-bold text-stone-400">20:00</span>
+                        </div>
+                        <p className="text-[11px] text-stone-400">1 compressa a cena</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Riquadri statistici: aderenza e scorte, a riempimento e a mostrare altre funzioni */}
+                  <div className="mt-3 space-y-2.5">
+                    <div className="rounded-2xl bg-white p-3 border border-stone-100">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-stone-500">
+                          Aderenza ultimi 7 giorni
+                        </span>
+                        <span className="text-xs font-extrabold text-emerald-700">96%</span>
+                      </div>
+                      <div className="mt-2.5 flex h-9 items-end gap-1.5">
+                        {[62, 80, 55, 90, 100, 85, 96].map((h, i) => (
+                          <div
+                            key={i}
+                            className="flex-1 rounded-t-sm bg-emerald-500/85"
+                            style={{ height: `${h}%` }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl bg-white p-3 border border-stone-100">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-stone-800">Scorta Cardioaspirina</span>
+                        <span className="text-[10px] font-bold text-stone-500">12 giorni residui</span>
+                      </div>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-100">
+                        <div className="h-full w-[62%] rounded-full bg-emerald-600" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Barra di navigazione: sezioni reali dell'app */}
+                  <div className="mt-auto flex items-center justify-between border-t border-stone-200/80 pt-2.5">
+                    {[
+                      { icon: Home, label: "Oggi" },
+                      { icon: Pill, label: "Terapie" },
+                      { icon: Activity, label: "Parametri" },
+                      { icon: Package, label: "Scorte" },
+                      { icon: History, label: "Storico" },
+                    ].map((tab, i) => (
+                      <div
+                        key={tab.label}
+                        className={cn(
+                          "flex flex-1 flex-col items-center gap-1 text-[8px] font-bold leading-none",
+                          i === 0 ? "text-emerald-800" : "text-stone-400",
+                        )}
+                      >
+                        <tab.icon className="size-4" />
+                        {tab.label}
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="flex items-start gap-3 rounded-2xl bg-stone-50/80 p-3.5 border border-stone-100">
-                  <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-800 font-bold text-xs">
-                    MC
-                  </div>
-                  <div className="min-w-0 flex-1 text-left">
-                    <p className="text-xs font-bold text-stone-900">Marco (Figlio)</p>
-                    <p className="text-xs text-stone-600 truncate">Pressione 125/80 · Ore 09:00</p>
-                    <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-stone-600">
-                      <Clock className="size-3 text-stone-400" /> Prossima: Pranzo 13:00
-                    </span>
-                  </div>
+                {/* Home indicator */}
+                <div className="flex shrink-0 justify-center pb-2.5 pt-1">
+                  <div className="h-1 w-24 rounded-full bg-stone-300" />
                 </div>
               </div>
-
-              {/* Dettaglio di fondo organico e rassicurante */}
-              <p className="mt-4 text-center text-xs text-stone-500 font-medium italic">
-                Nessun dubbio, nessuna telefonata d'ansia. Ognuno sa esattamente cosa succede.
-              </p>
             </div>
+          </div>
+
+          <p className="mx-auto mt-5 max-w-md text-center text-xs text-stone-500 font-medium">
+            Nessun dubbio, nessuna telefonata d'ansia: ognuno sa esattamente cosa succede.
+          </p>
+
+          {/* TRUST BAR: sicurezza e conformità */}
+          <div className="mx-auto mt-10 flex max-w-3xl flex-wrap items-center justify-center gap-x-8 gap-y-3">
+            {[
+              { icon: ShieldCheck, label: "Conforme GDPR" },
+              { icon: Lock, label: "Dati cifrati end-to-end" },
+              { icon: Server, label: "Server in Unione Europea" },
+              { icon: HeartHandshake, label: "Progettato con caregiver e farmacisti" },
+            ].map((t) => (
+              <span key={t.label} className="inline-flex items-center gap-2 text-sm font-semibold text-stone-600">
+                <t.icon className="size-4 text-emerald-700 shrink-0" />
+                {t.label}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        {/* TESTIMONIANZA */}
+        <section className="mt-16 sm:mt-20">
+          <div className="mx-auto max-w-2xl rounded-[2rem] border border-stone-200/80 bg-white/80 p-6 sm:p-8 text-center shadow-xs">
+            <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-800 border border-emerald-100">
+              <Quote className="size-5" />
+            </div>
+            <p className="mt-4 text-lg sm:text-xl leading-relaxed text-stone-800 font-medium">
+              "Prima ci chiamavamo tre volte al giorno per capire chi avesse dato la terapia alla
+              mamma. Ora apriamo l'app e lo sappiamo subito, tutti quanti."
+            </p>
+            <p className="mt-4 text-sm font-semibold text-stone-500">
+              Famiglia caregiver · utilizzatrice della versione beta
+            </p>
           </div>
         </section>
 
@@ -360,7 +469,7 @@ function LandingPage() {
             {/* Demo video — card scultorea principale */}
             <div className="relative overflow-hidden rounded-[2.5rem] rounded-tl-[4rem] border border-stone-200/90 bg-gradient-to-br from-white/95 via-white/85 to-emerald-50/30 p-6 sm:p-8 md:col-span-8 shadow-sm backdrop-blur-md">
               <div className="relative z-10">
-                <h3 className="font-display text-2xl sm:text-3xl text-stone-900 italic font-bold">
+                <h3 className="font-display text-2xl sm:text-3xl text-stone-900 font-bold">
                   La cura, semplificata.
                 </h3>
                 <p className="mt-2 max-w-md text-base leading-relaxed text-stone-600 font-normal">
@@ -385,10 +494,10 @@ function LandingPage() {
                   key={s.n}
                   className="flex flex-col justify-center rounded-3xl border border-stone-200/80 bg-white/80 p-5 sm:p-6 shadow-xs hover:border-emerald-700/30 hover:shadow-sm transition-all"
                 >
-                  <span className="grid size-9 shrink-0 place-items-center rounded-2xl bg-emerald-100/90 font-display text-base font-bold text-emerald-900 italic shadow-xs">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-2xl bg-emerald-100/90 font-display text-base font-bold text-emerald-900 shadow-xs">
                     {s.n}
                   </span>
-                  <p className="mt-3 font-display text-lg sm:text-xl font-bold text-stone-900 italic">
+                  <p className="mt-3 font-display text-lg sm:text-xl font-bold text-stone-900">
                     {s.title}
                   </p>
                   <p className="mt-1.5 text-sm sm:text-base leading-relaxed text-stone-600">
@@ -421,7 +530,7 @@ function LandingPage() {
                 <div className="grid size-11 sm:size-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-100 group-hover:bg-emerald-800 group-hover:text-white transition-colors">
                   <f.icon className="size-5 sm:size-6" />
                 </div>
-                <p className="mt-4 font-display text-xl sm:text-2xl font-bold text-stone-900 italic">
+                <p className="mt-4 font-display text-xl sm:text-2xl font-bold text-stone-900">
                   {f.title}
                 </p>
                 <p className="mt-2 text-base leading-relaxed text-stone-600 font-normal">
@@ -455,7 +564,7 @@ function LandingPage() {
                     <span className="truncate text-base sm:text-lg font-bold tracking-tight text-stone-900 group-hover:text-emerald-950 transition-colors">
                       {v.title}
                     </span>
-                    <span className="truncate text-sm text-stone-500 font-normal">{v.short}</span>
+                    <span className="truncate text-sm text-stone-600 font-normal">{v.short}</span>
                   </span>
                   <span className="shrink-0 rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold tabular-nums text-stone-600">
                     {v.duration}s
@@ -502,7 +611,7 @@ function LandingPage() {
                   </span>
                 )}
 
-                <p className="font-display text-2xl sm:text-3xl font-bold text-stone-900 italic">
+                <p className="font-display text-2xl sm:text-3xl font-bold text-stone-900">
                   {plan.name}
                 </p>
                 <p className="mt-1.5 text-sm text-stone-500 font-medium">{plan.tagline}</p>
@@ -539,7 +648,7 @@ function LandingPage() {
             ))}
           </div>
 
-          <p className="mt-8 text-center text-sm text-stone-500">
+          <p className="mt-8 text-center text-sm text-stone-600">
             FamilyMed non sostituisce il parere medico: segui sempre le indicazioni del medico curante.
           </p>
         </section>
@@ -549,7 +658,7 @@ function LandingPage() {
           {/* Forma organica in sottofondo */}
           <div className="pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full bg-white/60 blur-2xl" />
 
-          <p className="relative z-10 font-display text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-stone-900 italic">
+          <p className="relative z-10 font-display text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-stone-900">
             Smettete di chiedervi «l'ha presa?»
           </p>
           <p className="relative z-10 mx-auto mt-3 max-w-lg text-base sm:text-lg leading-relaxed text-stone-600">

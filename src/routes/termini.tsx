@@ -39,11 +39,11 @@ function TermsPage() {
             integralmente i presenti Termini.
           </p>
 
-          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 sm:p-5 text-amber-200 my-6">
-            <p className="m-0 text-sm sm:text-base font-bold text-amber-300">
+          <div className="rounded-2xl border border-amber-500/40 bg-amber-50 p-4 sm:p-5 text-amber-800 my-6">
+            <p className="m-0 text-sm sm:text-base font-bold text-amber-900">
               ⚠️ Avvertenza medica importante
             </p>
-            <p className="m-0 mt-1.5 text-sm sm:text-base text-amber-100 leading-relaxed">
+            <p className="m-0 mt-1.5 text-sm sm:text-base text-amber-800 leading-relaxed">
               FamilyMed <strong>non è un dispositivo medico</strong>, non fornisce diagnosi né
               consigli terapeutici e non sostituisce in alcun modo il parere di un medico o di un
               farmacista. In caso di emergenza chiamare il <strong>112</strong>. Non modificare mai

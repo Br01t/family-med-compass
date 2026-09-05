@@ -75,21 +75,21 @@ export function InstallBanner() {
   // iOS guide banner
   if (showIosGuide) {
     return (
-      <div className="landing-ocean fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-4 duration-300 md:left-auto md:right-6 md:w-[26rem]">
-        <div className="rounded-3xl border border-ocean-300/40 bg-ocean-950/90 p-4.5 text-white shadow-ocean backdrop-blur-md ring-1 ring-ocean-300/30">
+      <div className="landing-light fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-4 duration-300 md:left-auto md:right-6 md:w-[26rem]">
+        <div className="rounded-3xl border border-stone-200/80 bg-white/95 p-4.5 text-stone-800 shadow-lg backdrop-blur-md ring-1 ring-emerald-800/10">
           <div className="flex items-start gap-3">
-            <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ocean-300/20 text-ocean-300">
+            <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emerald-800/10 text-emerald-800">
               <Smartphone className="size-5.5" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-base font-bold text-white tracking-tight">Installa FamilyMed su iPhone</p>
-              <p className="mt-1 text-xs sm:text-sm text-ocean-100 leading-relaxed font-normal">
+              <p className="text-base font-bold text-stone-900 tracking-tight">Installa FamilyMed su iPhone</p>
+              <p className="mt-1 text-xs sm:text-sm text-stone-600 leading-relaxed font-normal">
                 Tocca{" "}
-                <span className="inline-flex items-center gap-0.5 font-bold text-ocean-300">
+                <span className="inline-flex items-center gap-0.5 font-bold text-emerald-800">
                   Condividi ↑
                 </span>{" "}
                 in Safari, poi scegli{" "}
-                <span className="font-bold text-white">
+                <span className="font-bold text-stone-900">
                   "Aggiungi alla schermata Home"
                 </span>
                 .
@@ -97,7 +97,7 @@ export function InstallBanner() {
             </div>
             <button
               onClick={handleDismiss}
-              className="shrink-0 rounded-xl p-1.5 text-ocean-200 hover:bg-ocean-800/60 hover:text-white transition"
+              className="shrink-0 rounded-xl p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition"
               aria-label="Chiudi"
             >
               <X className="size-4.5" />
@@ -112,21 +112,21 @@ export function InstallBanner() {
   if (!deferredPrompt) return null;
 
   return (
-    <div className="landing-ocean fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-4 duration-300 md:left-auto md:right-6 md:w-[26rem]">
-      <div className="rounded-3xl border border-ocean-300/40 bg-ocean-950/90 p-4.5 text-white shadow-ocean backdrop-blur-md ring-1 ring-ocean-300/30">
+    <div className="landing-light fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-4 duration-300 md:left-auto md:right-6 md:w-[26rem]">
+      <div className="rounded-3xl border border-stone-200/80 bg-white/95 p-4.5 text-stone-800 shadow-lg backdrop-blur-md ring-1 ring-emerald-800/10">
         <div className="flex items-start gap-3">
-          <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ocean-300/20 text-ocean-300">
+          <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-emerald-800/10 text-emerald-800">
             <Download className="size-5.5" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-base font-bold text-white tracking-tight">Installa FamilyMed</p>
-            <p className="mt-0.5 text-xs sm:text-sm text-ocean-100 font-normal">
+            <p className="text-base font-bold text-stone-900 tracking-tight">Installa FamilyMed</p>
+            <p className="mt-0.5 text-xs sm:text-sm text-stone-600 font-normal">
               Accesso rapido con un tap, funziona anche offline.
             </p>
           </div>
           <button
             onClick={handleDismiss}
-            className="shrink-0 rounded-xl p-1.5 text-ocean-200 hover:bg-ocean-800/60 hover:text-white transition"
+            className="shrink-0 rounded-xl p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition"
             aria-label="Chiudi"
           >
             <X className="size-4.5" />
@@ -135,7 +135,7 @@ export function InstallBanner() {
         <div className="mt-4 flex gap-2.5">
           <Button
             size="sm"
-            className="flex-1 h-10 text-xs sm:text-sm font-extrabold bg-ocean-300 text-ocean-950 hover:bg-ocean-200 rounded-xl shadow-ocean transition-all"
+            className="flex-1 h-10 text-xs sm:text-sm font-extrabold bg-emerald-800 text-white hover:bg-emerald-900 rounded-xl shadow-sm transition-all"
             onClick={handleInstall}
           >
             <Download className="mr-1.5 size-4" /> Aggiungi a Home
@@ -143,7 +143,7 @@ export function InstallBanner() {
           <Button
             size="sm"
             variant="ghost"
-            className="h-10 text-xs sm:text-sm font-semibold text-ocean-200 hover:text-white hover:bg-ocean-800/60 rounded-xl"
+            className="h-10 text-xs sm:text-sm font-semibold text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-xl"
             onClick={handleDismiss}
           >
             Non ora

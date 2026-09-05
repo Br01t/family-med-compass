@@ -247,8 +247,8 @@ function LoginPage() {
     <div className="landing-light min-h-screen w-full flex flex-col items-center justify-center bg-[#FAF8F5] px-4 py-10 text-stone-800 selection:bg-emerald-100 selection:text-emerald-900 relative overflow-hidden">
       {/* Blob organici di sfondo */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="animate-fluid-blob absolute -top-24 -left-16 h-96 w-96 bg-gradient-to-tr from-emerald-100 via-teal-50 to-emerald-50 opacity-70 blur-3xl" />
-        <div className="animate-fluid-blob absolute -bottom-20 -right-16 h-96 w-96 bg-gradient-to-bl from-amber-100 via-orange-50 to-stone-100 opacity-60 blur-3xl" style={{ animationDelay: "-6s" }} />
+        <div className="animate-fluid-blob absolute -top-24 -left-16 h-96 w-96 rounded-full bg-emerald-200/70 blur-2xl" />
+        <div className="animate-fluid-blob absolute -bottom-20 -right-16 h-96 w-96 rounded-full bg-amber-200/60 blur-2xl" style={{ animationDelay: "-6s" }} />
       </div>
 
       <div className="w-full max-w-sm relative z-10">

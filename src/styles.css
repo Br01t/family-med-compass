@@ -260,9 +260,21 @@
   animation: pulse-soft 8s ease-in-out infinite;
 }
 
+/* Rispetta la preferenza di sistema per movimento ridotto: fermiamo le
+   animazioni decorative (non essenziali alla comprensione dei contenuti) */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fluid-blob,
+  .animate-gentle-float,
+  .animate-pulse-soft,
+  .animate-pulse,
+  .animate-ping {
+    animation: none !important;
+  }
+}
+
 /* Pagine pubbliche "Light & Organic Care" */
 .landing-light {
-  font-family: "Nunito Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   color-scheme: light;
   --background: #faf8f5;
   --foreground: #1e293b;
@@ -292,7 +304,7 @@
 
 /* Pagine pubbliche "Ocean Deep" */
 .landing-ocean {
-  font-family: "Nunito Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   color-scheme: dark;
   --background: oklch(0.24 0.055 255);
   --foreground: oklch(0.98 0.01 200);
@@ -321,7 +333,7 @@
 
 .landing-ocean .prose {
   color: oklch(0.93 0.03 205);
-  font-family: "Nunito Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   font-size: 1.0625rem;
   line-height: 1.75;
 }
