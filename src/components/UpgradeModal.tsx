@@ -9,7 +9,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Mascot } from "@/components/mascot/Mascot";
 import { PLAN_LIMITS, formatPrice, type SubscriptionPlan } from "@/lib/subscription";
 
 interface UpgradeModalProps {
@@ -47,13 +46,9 @@ export function UpgradeModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mt-4">
-          <Mascot
-            mood="happy"
-            size="sm"
-            message={`Con il piano ${targetPlan.name} posso aiutarti a seguire più persone e più caregiver insieme.`}
-          />
-        </div>
+        <p className="mt-4 rounded-2xl border border-border/60 bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
+          {`Con il piano ${targetPlan.name} puoi seguire più persone e più caregiver insieme.`}
+        </p>
 
         <div className="mt-4 rounded-2xl bg-secondary/50 p-4 border border-border/60 space-y-3">
           <div className="flex items-baseline justify-between">

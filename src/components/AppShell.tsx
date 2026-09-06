@@ -191,7 +191,11 @@ export function AppShell({
             <div className="min-w-0 flex-1">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
                 <div className="min-w-0">
-                  <h1 className={cn("truncate text-lg font-black tracking-tight md:text-xl")}>
+                  <h1
+                    className={cn(
+                      "truncate font-display text-lg font-semibold tracking-tight md:text-xl",
+                    )}
+                  >
                     {title}
                   </h1>
                   {subtitle && (
