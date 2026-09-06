@@ -64,7 +64,7 @@ export function PatientShell({
         </Button>
       </header>
 
-      <main className="mx-auto max-w-xl sm:max-w-2xl px-4 sm:px-5 pt-6">
+      <main key={title} className="fm-page mx-auto max-w-xl sm:max-w-2xl px-4 sm:px-5 pt-6">
         <div className="mb-6">
           <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
             {title}
