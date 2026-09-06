@@ -34,13 +34,41 @@ const buttonVariants = cva(
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /** Mostra lo spinner e blocca il pulsante mentre l'azione è in corso. */
+  loading?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, loading = false, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
+    if (asChild) {
+      return (
+        <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props}>
+          {children}
+        </Comp>
+      );
+    }
     return (
-      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        disabled={loading || props.disabled}
+        aria-busy={loading || undefined}
+        {...props}
+      >
+        {loading && (
+          <span aria-hidden="true" className="inline-flex items-center gap-0.5">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="fm-dot h-3 w-1 rounded-full bg-current"
+                style={{ animationDelay: `${i * 0.14}s` }}
+              />
+            ))}
+          </span>
+        )}
+        {children}
+      </Comp>
     );
   },
 );
