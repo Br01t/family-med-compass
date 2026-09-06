@@ -804,7 +804,7 @@ function PhotoField({
       console.warn(e);
       toast.custom(() => (
         <div className="flex items-start gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3 shadow-lg">
-          <Mascot mood="concerned" size="sm" />
+          
           <div>
             <p className="text-sm font-bold">La foto non è stata caricata</p>
             <p className="text-xs text-muted-foreground">
