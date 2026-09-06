@@ -219,7 +219,10 @@ export function AppShell({
             </div>
           </header>
           {/* Corretto qui: impedisce l'overflow orizzontale ed espansioni anomale su mobile */}
-          <main className="flex-1 w-full max-w-full min-w-0 px-4 py-6 md:px-8 md:py-8 overflow-x-hidden block">
+          <main
+            key={title}
+            className="fm-page flex-1 w-full max-w-full min-w-0 px-4 py-6 md:px-8 md:py-8 overflow-x-hidden block"
+          >
             {children}
           </main>
           <AppFooter />
