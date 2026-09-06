@@ -9,7 +9,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Mascot } from "@/components/mascot/Mascot";
 import { PLAN_LIMITS, formatPrice, type SubscriptionPlan } from "@/lib/subscription";
 
 interface UpgradeModalProps {

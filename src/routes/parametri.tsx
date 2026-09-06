@@ -14,7 +14,6 @@ import {
 } from "recharts";
 
 import { AppShell } from "@/components/AppShell";
-import { Mascot } from "@/components/mascot/Mascot";
 import { PatientShell } from "@/components/PatientShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

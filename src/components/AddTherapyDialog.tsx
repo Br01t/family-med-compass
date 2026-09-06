@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Camera, Plus, Trash2, PillIcon, X } from "lucide-react";
 import { toast } from "sonner";
-import { Mascot } from "@/components/mascot/Mascot";
 import { Button } from "@/components/ui/button";
 import { fileToCompressedDataUrl } from "@/lib/image-utils";
 import { ensureTherapyPhotoUrl } from "@/lib/supabase-service";

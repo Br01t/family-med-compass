@@ -4,7 +4,6 @@ import { useFamilyMed } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { getPrimedAlarmAudioContext } from "@/lib/alarm-audio";
 import { toast } from "sonner";
-import { Mascot } from "@/components/mascot/Mascot";
 
 function formatMMSS(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return "00:00";
