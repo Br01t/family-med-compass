@@ -1,6 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import { FullPageLoader } from "./components/ui/loader";
 
 export const getRouter = () => {
   const queryClient = new QueryClient();
@@ -10,6 +11,9 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    defaultPendingMs: 250,
+    defaultPendingMinMs: 400,
+    defaultPendingComponent: () => <FullPageLoader label="Stiamo preparando la pagina…" />,
   });
 
   return router;
