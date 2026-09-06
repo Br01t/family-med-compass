@@ -52,9 +52,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        {...props}
         disabled={loading || props.disabled}
         aria-busy={loading || undefined}
-        {...props}
       >
         {loading && (
           <span aria-hidden="true" className="inline-flex items-center gap-0.5">
