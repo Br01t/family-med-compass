@@ -708,13 +708,10 @@ function VitalSignsPage() {
         {loading ? (
           <p className="text-sm text-muted-foreground">Caricamento…</p>
         ) : filtered.length === 0 ? (
-          <div className="py-4">
-            <Mascot
-              mood="encouraging"
-              size="md"
-              message="Registra la prima misurazione: bastano pochi secondi e potrai vedere subito l'andamento."
-            />
-          </div>
+          <p className="py-4 text-sm text-muted-foreground">
+            Registra la prima misurazione: bastano pochi secondi e potrai vedere
+            subito l'andamento.
+          </p>
         ) : (
           <ul className="divide-y">
             {filtered.map((r) => {
