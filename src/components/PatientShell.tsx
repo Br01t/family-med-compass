@@ -66,7 +66,9 @@ export function PatientShell({
 
       <main className="mx-auto max-w-xl sm:max-w-2xl px-4 sm:px-5 pt-6">
         <div className="mb-6">
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight">{title}</h1>
+          <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+            {title}
+          </h1>
           {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
         </div>
         {children}
