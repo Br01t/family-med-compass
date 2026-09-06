@@ -302,7 +302,7 @@ export function AlarmRinger() {
             });
             toast.custom(() => (
               <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3 shadow-lg">
-                <Mascot mood="celebrating" size="sm" />
+                
                 <div>
                   <p className="text-sm font-bold">Dose registrata</p>
                   <p className="text-xs text-muted-foreground">
