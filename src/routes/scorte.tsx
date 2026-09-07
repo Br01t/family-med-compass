@@ -302,6 +302,7 @@ type TherapyLike = {
   startDate: string;
   endDate?: string;
   pillsRemaining: number;
+  pillsPerPack: number;
   lowStockThreshold: number;
   active: boolean;
   suspended: boolean;
