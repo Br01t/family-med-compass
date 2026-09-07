@@ -240,8 +240,8 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
               >
                 Annulla
               </Button>
-              <Button type="submit" id="save-patient-btn" className="w-full sm:w-auto">
-                Salva paziente
+              <Button type="submit" id="save-patient-btn" className="w-full sm:w-auto" loading={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? "Salvataggio…" : "Salva paziente"}
               </Button>
             </div>
           </form>

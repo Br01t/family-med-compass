@@ -163,7 +163,7 @@ function CaregiverHome() {
           icon={TrendingUp}
           tone="primary"
         />
-        <Link to="/dose-da-confermare" className="block rounded-3xl transition hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        <Link to="/dose-da-confermare" className="fm-interactive block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
           <MetricCard
             label="Alert attivi"
             value={String(activeAlerts)}
@@ -173,7 +173,7 @@ function CaregiverHome() {
             clickable
           />
         </Link>
-        <Link to="/scorte" className="block rounded-3xl transition hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning">
+        <Link to="/scorte" className="fm-interactive block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning">
           <MetricCard
             label="Scorte in esaurimento"
             value={String(lowStockCount)}
@@ -329,7 +329,7 @@ function PatientCard({ patientId }: { patientId: string }) {
     <Link
       to="/pazienti/$id"
       params={{ id: patientId }}
-      className="block rounded-3xl border border-border/60 bg-card p-4 shadow-card transition hover:shadow-lift sm:p-6"
+      className="fm-interactive block rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6"
     >
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 sm:gap-4">
         <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary-soft text-lg font-black text-primary sm:size-14">

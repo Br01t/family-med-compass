@@ -761,8 +761,8 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
           >
             Annulla
           </Button>
-          <Button type="submit" form="therapy-form" id="save-therapy-btn" className="w-full sm:w-auto" disabled={data.patients.length === 0}>
-            {isEdit ? "Salva modifiche" : "Aggiungi terapia"}
+          <Button type="submit" form="therapy-form" id="save-therapy-btn" className="w-full sm:w-auto" loading={form.formState.isSubmitting} disabled={data.patients.length === 0}>
+            {form.formState.isSubmitting ? "Salvataggio…" : isEdit ? "Salva modifiche" : "Aggiungi terapia"}
           </Button>
         </div>
       </DialogContent>
