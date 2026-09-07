@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Package, Plus } from "lucide-react";
+import { CalendarClock, Package, Plus, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { SecondaryCaregiverNotice } from "@/components/SecondaryCaregiverNotice";
@@ -244,22 +244,24 @@ function InventoryPage() {
           </section>
         ))}
 
-        {/* Sezione Previsione & Storico Movimenti (Pro / Max) */}
+        {/* Sezione Previsione & Riordino (Pro / Max) */}
         <PlanGate
           feature="stockDepletionPrediction"
-          title="Storico movimenti & Previsione avanzata esaurimento"
-          description="L'analisi predittiva con data stimata di esaurimento scorte e la tracciabilità di ogni movimentazione di confezioni sono disponibili con i piani Pro e Max."
+          title="Previsioni di consumo & riordino"
+          description="La data stimata di esaurimento scorte per ogni terapia, con il giorno consigliato per l'acquisto, è disponibile con i piani Pro e Max."
         >
-          <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm space-y-4">
+          <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm space-y-5">
             <div className="flex items-center gap-2">
-              <Package className="size-5 text-primary" />
+              <CalendarClock className="size-5 text-primary" />
               <h3 className="font-bold text-lg tracking-tight text-foreground">
-                Previsioni di consumo e riordino automatico
+                Previsioni di consumo e riordino
               </h3>
             </div>
             <p className="text-sm text-muted-foreground">
-              Con i piani Pro e Max, FamilyMed calcola automaticamente la data esatta in cui il paziente rimarrà sprovvisto di ciascun farmaco in base alle assunzioni reali dei giorni precedenti, inviando un promemoria di riordino prima della chiusura della farmacia.
+              Quando finiscono davvero le scorte: data stimata di esaurimento e giorno
+              consigliato per acquistare, calcolati su consumo e ricorrenza di ogni terapia.
             </p>
+            <StockPredictions therapies={data.therapies} />
           </div>
         </PlanGate>
 
@@ -280,5 +282,152 @@ function InventoryPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+// ---------- Previsioni esaurimento scorte ----------
+
+type TherapyLike = {
+  id: string;
+  patientId: string;
+  name: string;
+  dosage: string;
+  quantity: number;
+  times: string[];
+  recurrence:
+    | { kind: "daily" }
+    | { kind: "weekdays" }
+    | { kind: "weekend" }
+    | { kind: "every_x_days"; x: number }
+    | { kind: "specific_days"; days: number[] };
+  startDate: string;
+  endDate?: string;
+  pillsRemaining: number;
+  lowStockThreshold: number;
+  active: boolean;
+  suspended: boolean;
+};
+
+function scheduledOnDate(t: TherapyLike, date: Date): boolean {
+  const start = new Date(t.startDate + "T00:00:00");
+  const day = new Date(date);
+  day.setHours(0, 0, 0, 0);
+  if (day < start) return false;
+  if (t.endDate && day > new Date(t.endDate + "T23:59:59")) return false;
+  const dow = day.getDay();
+  switch (t.recurrence.kind) {
+    case "daily":
+      return true;
+    case "weekdays":
+      return dow >= 1 && dow <= 5;
+    case "weekend":
+      return dow === 0 || dow === 6;
+    case "every_x_days": {
+      const diff = Math.floor((day.getTime() - start.getTime()) / 86_400_000);
+      return diff % t.recurrence.x === 0;
+    }
+    case "specific_days":
+      return t.recurrence.days.includes(dow);
+  }
+}
+
+/** Compresse consumate in media al giorno, stimata sui prossimi 30 giorni di calendario. */
+function avgDailyConsumption(t: TherapyLike): number {
+  const perDoseDay = t.quantity * Math.max(t.times.length, 1);
+  if (perDoseDay <= 0) return 0;
+  let doseDays = 0;
+  const today = new Date();
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    if (scheduledOnDate(t, d)) doseDays++;
+  }
+  return (doseDays * perDoseDay) / 30;
+}
+
+const dayFmt = new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long" });
+
+function addDays(base: Date, days: number): Date {
+  const d = new Date(base);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+type Prediction = {
+  therapy: TherapyLike;
+  daysLeft: number; // arrotondato per difetto
+  depletionDate: Date;
+  purchaseBy: Date; // esaurimento - 2 giorni di margine
+};
+
+function buildPredictions(therapies: TherapyLike[]): Prediction[] {
+  const today = new Date();
+  return therapies
+    .filter((t) => t.active && !t.suspended)
+    .map((t) => {
+      const perDay = avgDailyConsumption(t);
+      const daysLeft = perDay > 0 ? Math.floor(t.pillsRemaining / perDay) : Number.POSITIVE_INFINITY;
+      const depletionDate = addDays(today, Number.isFinite(daysLeft) ? daysLeft : 3650);
+      const purchaseBy = addDays(depletionDate, -2);
+      return { therapy: t, daysLeft, depletionDate, purchaseBy };
+    })
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+}
+
+function StockPredictions({ therapies }: { therapies: TherapyLike[] }) {
+  const { data } = useFamilyMed();
+  const patientName = (id: string) => data.patients.find((p) => p.id === id)?.name ?? "Paziente";
+  const predictions = buildPredictions(therapies);
+
+  if (predictions.length === 0) {
+    return <p className="text-sm text-muted-foreground">Nessuna terapia attiva da analizzare.</p>;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return (
+    <ul className="space-y-3">
+      {predictions.map(({ therapy: t, daysLeft, depletionDate, purchaseBy }) => {
+        const buyDate = purchaseBy < today ? today : purchaseBy;
+        const urgent = daysLeft <= 5;
+        const warning = !urgent && daysLeft <= 10;
+        return (
+          <li
+            key={t.id}
+            className={cn(
+              "flex flex-col gap-2 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between",
+              urgent
+                ? "border-accent/40 bg-accent-soft"
+                : warning
+                  ? "border-warning/40 bg-warning/10"
+                  : "border-border/60 bg-surface-muted",
+            )}
+          >
+            <div className="min-w-0">
+              <p className="truncate font-bold text-sm">
+                {t.name} <span className="font-normal text-muted-foreground">· {t.dosage}</span>
+              </p>
+              <p className="text-xs text-muted-foreground">{patientName(t.patientId)}</p>
+            </div>
+            <div className="text-sm sm:text-right">
+              <p className="font-bold">
+                ≈ {Number.isFinite(daysLeft) ? `${daysLeft} ${daysLeft === 1 ? "giorno rimasto" : "giorni rimasti"}` : "scorta non stimabile"}
+                {Number.isFinite(daysLeft) && (
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    fino a {dayFmt.format(depletionDate)}
+                  </span>
+                )}
+              </p>
+              {(urgent || warning) && Number.isFinite(daysLeft) && (
+                <p className={cn("mt-1 flex items-center gap-1 text-xs font-bold sm:justify-end", urgent ? "text-accent" : "text-warning-foreground")}>
+                  <TriangleAlert className="size-3.5 shrink-0" />
+                  Acquista entro {buyDate.getTime() === today.getTime() ? "oggi" : dayFmt.format(buyDate)}
+                </p>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
