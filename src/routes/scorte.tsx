@@ -431,3 +431,97 @@ function StockPredictions({ therapies }: { therapies: TherapyLike[] }) {
     </ul>
   );
 }
+
+// ---------- Lista della spesa farmaci ----------
+
+type ShoppingItem = {
+  name: string;
+  dosage: string;
+  patient: string;
+  packs: number;
+  daysLeft: number;
+};
+
+/** Margine: una terapia entra in lista se finisce entro 10 giorni; si coprono 30 giorni. */
+function buildShoppingList(predictions: Prediction[], patientName: (id: string) => string): ShoppingItem[] {
+  return predictions
+    .filter(({ therapy: t, daysLeft }) => Number.isFinite(daysLeft) && daysLeft <= 10)
+    .map(({ therapy: t, daysLeft }) => {
+      const perDay = avgDailyConsumption(t);
+      const target = perDay * 30; // copertura 30 giorni
+      const missing = Math.max(target - t.pillsRemaining, 0);
+      const packs = Math.max(1, Math.ceil(missing / Math.max(t.pillsPerPack, 1)));
+      return {
+        name: t.name,
+        dosage: t.dosage,
+        patient: patientName(t.patientId),
+        packs,
+        daysLeft,
+      };
+    });
+}
+
+function shoppingListText(items: ShoppingItem[]): string {
+  const lines = items.map(
+    (i) => `• ${i.name} ${i.dosage} — ${i.packs} ${i.packs === 1 ? "confezione" : "confezioni"} (${i.patient})`,
+  );
+  return ["🛒 Lista della spesa farmaci — FamilyMed", "", ...lines].join("\n");
+}
+
+function ShoppingList({
+  predictions,
+  patientName,
+}: {
+  predictions: Prediction[];
+  patientName: (id: string) => string;
+}) {
+  const items = buildShoppingList(predictions, patientName);
+  if (items.length === 0) return null;
+
+  const text = shoppingListText(items);
+
+  const shareWhatsApp = () => {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+  };
+
+  const copyList = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Lista copiata", { description: "Puoi incollarla dove vuoi." });
+    } catch {
+      toast.error("Copia non riuscita", { description: "Il browser non consente l'accesso agli appunti." });
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 space-y-4">
+      <div className="flex items-center gap-2">
+        <ShoppingCart className="size-5 text-primary" />
+        <h4 className="font-bold tracking-tight">Lista della spesa</h4>
+      </div>
+      <ul className="space-y-2">
+        {items.map((i) => (
+          <li key={`${i.name}-${i.patient}`} className="flex items-center justify-between gap-3 text-sm">
+            <span className="min-w-0 truncate">
+              <b>{i.name}</b> <span className="text-muted-foreground">{i.dosage} · {i.patient}</span>
+            </span>
+            <span className="shrink-0 rounded-full bg-primary-soft px-2.5 py-0.5 text-xs font-bold text-primary">
+              {i.packs} {i.packs === 1 ? "confezione" : "confezioni"}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button className="flex-1" onClick={shareWhatsApp}>
+          <Share2 className="mr-2 size-4" /> Condividi via WhatsApp
+        </Button>
+        <Button variant="outline" className="flex-1" onClick={copyList}>
+          <Copy className="mr-2 size-4" /> Copia lista
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Utile da mandare a un familiare che passa in farmacia o da mostrare al medico.
+      </p>
+    </div>
+  );
+}
