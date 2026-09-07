@@ -8,6 +8,7 @@ import { useFamilyMed } from "@/lib/store";
 import { CAREGIVER_ACK_TAG, formatTime, isDoseAcknowledged } from "@/lib/therapy";
 import type { MedicationEvent } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { hapticTap } from "@/lib/feedback";
 
 export const Route = createFileRoute("/dose-da-confermare")({
   head: () => ({
@@ -57,6 +58,7 @@ function DoseDaConfermarePage() {
         scheduledAt: new Date(e.scheduledAt),
         confirmedBy: user?.id ?? "caregiver",
       });
+      hapticTap();
       toast.success("Dose confermata", {
         description: "La scorta è stata scalata di conseguenza.",
       });
@@ -77,6 +79,7 @@ function DoseDaConfermarePage() {
         scheduledAt: new Date(e.scheduledAt),
         note: ACK_TAG,
       });
+      hapticTap();
       toast.success("Segnata come gestita");
     } catch (err) {
       console.error(err);
@@ -181,7 +184,7 @@ function DoseDaConfermarePage() {
                   <Button
                     size="sm"
                     onClick={() => handleConfirm(e)}
-                    disabled={busy === e.id}
+                    loading={busy === e.id}
                     className="w-full gap-2 sm:w-auto"
                   >
                     <Check className="size-4" />
@@ -191,7 +194,7 @@ function DoseDaConfermarePage() {
                     size="sm"
                     variant="outline"
                     onClick={() => handleAcknowledge(e)}
-                    disabled={busy === e.id}
+                    loading={busy === e.id}
                     className="w-full gap-2 sm:w-auto"
                   >
                     <XCircle className="size-4" />
