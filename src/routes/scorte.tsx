@@ -387,6 +387,7 @@ function StockPredictions({ therapies }: { therapies: TherapyLike[] }) {
   today.setHours(0, 0, 0, 0);
 
   return (
+    <>
     <ul className="space-y-3">
       {predictions.map(({ therapy: t, daysLeft, depletionDate, purchaseBy }) => {
         const buyDate = purchaseBy < today ? today : purchaseBy;
