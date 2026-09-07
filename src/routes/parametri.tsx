@@ -624,7 +624,7 @@ function VitalSignsPage() {
         </div>
 
         <div className="mt-4 flex justify-end">
-          <Button onClick={submit} disabled={saving || !patientId}>
+          <Button onClick={submit} loading={saving} disabled={!patientId}>
             {saving ? "Salvataggio…" : "Registra misurazione"}
           </Button>
         </div>
