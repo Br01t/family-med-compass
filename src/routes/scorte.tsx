@@ -430,6 +430,8 @@ function StockPredictions({ therapies }: { therapies: TherapyLike[] }) {
         );
       })}
     </ul>
+    <ShoppingList predictions={predictions} patientName={patientName} />
+    </>
   );
 }
 
