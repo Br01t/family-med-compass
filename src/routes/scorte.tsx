@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarClock, Package, Plus, TriangleAlert } from "lucide-react";
+import { CalendarClock, Copy, Package, Plus, Share2, ShoppingCart, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { SecondaryCaregiverNotice } from "@/components/SecondaryCaregiverNotice";
