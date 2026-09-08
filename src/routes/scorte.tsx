@@ -309,11 +309,20 @@ type TherapyLike = {
 };
 
 function scheduledOnDate(t: TherapyLike, date: Date): boolean {
+  // Difensivo: terapie con dati incompleti/legacy (start date mancante o non
+  // valida, recurrence assente) non devono far crashare l'intera card delle
+  // previsioni — vengono semplicemente considerate "non programmabili" quel giorno.
+  if (!t.startDate) return false;
   const start = new Date(t.startDate + "T00:00:00");
+  if (Number.isNaN(start.getTime())) return false;
+
   const day = new Date(date);
   day.setHours(0, 0, 0, 0);
   if (day < start) return false;
   if (t.endDate && day > new Date(t.endDate + "T23:59:59")) return false;
+
+  if (!t.recurrence || !t.recurrence.kind) return false;
+
   const dow = day.getDay();
   switch (t.recurrence.kind) {
     case "daily":
@@ -323,17 +332,23 @@ function scheduledOnDate(t: TherapyLike, date: Date): boolean {
     case "weekend":
       return dow === 0 || dow === 6;
     case "every_x_days": {
+      const x = t.recurrence.x;
+      if (!x || x <= 0) return false;
       const diff = Math.floor((day.getTime() - start.getTime()) / 86_400_000);
-      return diff % t.recurrence.x === 0;
+      return diff % x === 0;
     }
     case "specific_days":
-      return t.recurrence.days.includes(dow);
+      return Array.isArray(t.recurrence.days) && t.recurrence.days.includes(dow);
+    default:
+      return false;
   }
 }
 
 /** Compresse consumate in media al giorno, stimata sui prossimi 30 giorni di calendario. */
 function avgDailyConsumption(t: TherapyLike): number {
-  const perDoseDay = t.quantity * Math.max(t.times.length, 1);
+  const timesCount = Array.isArray(t.times) ? t.times.length : 0;
+  const quantity = Number(t.quantity) || 0;
+  const perDoseDay = quantity * Math.max(timesCount, 1);
   if (perDoseDay <= 0) return 0;
   let doseDays = 0;
   const today = new Date();
@@ -361,12 +376,19 @@ type Prediction = {
 };
 
 function buildPredictions(therapies: TherapyLike[]): Prediction[] {
+  // Normalizzata a mezzanotte: così i confronti con "oggi" fatti più sotto
+  // (es. l'etichetta "Acquista entro oggi") funzionano correttamente invece
+  // di fallire per la componente ora/minuti dell'orario corrente.
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
   return therapies
-    .filter((t) => t.active && !t.suspended)
+    // Le terapie sospese restano visibili in previsione (utile se dovessero
+    // riprendere): vengono escluse solo quelle disattivate definitivamente.
+    .filter((t) => t.active)
     .map((t) => {
+      const pillsRemaining = Number(t.pillsRemaining) || 0;
       const perDay = avgDailyConsumption(t);
-      const daysLeft = perDay > 0 ? Math.floor(t.pillsRemaining / perDay) : Number.POSITIVE_INFINITY;
+      const daysLeft = perDay > 0 ? Math.floor(pillsRemaining / perDay) : Number.POSITIVE_INFINITY;
       const depletionDate = addDays(today, Number.isFinite(daysLeft) ? daysLeft : 3650);
       const purchaseBy = addDays(depletionDate, -2);
       return { therapy: t, daysLeft, depletionDate, purchaseBy };
@@ -391,23 +413,33 @@ function StockPredictions({ therapies }: { therapies: TherapyLike[] }) {
     <ul className="space-y-3">
       {predictions.map(({ therapy: t, daysLeft, depletionDate, purchaseBy }) => {
         const buyDate = purchaseBy < today ? today : purchaseBy;
-        const urgent = daysLeft <= 5;
-        const warning = !urgent && daysLeft <= 10;
+        // Per le terapie sospese non mostriamo l'urgenza di acquisto: la
+        // stima resta visibile "per quando riprende", ma non deve sembrare
+        // un'emergenza dato che al momento non viene consumata.
+        const urgent = !t.suspended && daysLeft <= 5;
+        const warning = !t.suspended && !urgent && daysLeft <= 10;
         return (
           <li
             key={t.id}
             className={cn(
               "flex flex-col gap-2 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between",
-              urgent
-                ? "border-accent/40 bg-accent-soft"
-                : warning
-                  ? "border-warning/40 bg-warning/10"
-                  : "border-border/60 bg-surface-muted",
+              t.suspended
+                ? "border-border/60 bg-surface-muted opacity-70"
+                : urgent
+                  ? "border-accent/40 bg-accent-soft"
+                  : warning
+                    ? "border-warning/40 bg-warning/10"
+                    : "border-border/60 bg-surface-muted",
             )}
           >
             <div className="min-w-0">
-              <p className="truncate font-bold text-sm">
+              <p className="truncate font-bold text-sm flex items-center gap-2">
                 {t.name} <span className="font-normal text-muted-foreground">· {t.dosage}</span>
+                {t.suspended && (
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Sospesa
+                  </span>
+                )}
               </p>
               <p className="text-xs text-muted-foreground">{patientName(t.patientId)}</p>
             </div>
@@ -416,7 +448,7 @@ function StockPredictions({ therapies }: { therapies: TherapyLike[] }) {
                 ≈ {Number.isFinite(daysLeft) ? `${daysLeft} ${daysLeft === 1 ? "giorno rimasto" : "giorni rimasti"}` : "scorta non stimabile"}
                 {Number.isFinite(daysLeft) && (
                   <span className="block text-xs font-normal text-muted-foreground">
-                    fino a {dayFmt.format(depletionDate)}
+                    fino a {dayFmt.format(depletionDate)}{t.suspended && " se riprende ora"}
                   </span>
                 )}
               </p>
@@ -444,30 +476,35 @@ type ShoppingItem = {
   patient: string;
   packs: number;
   daysLeft: number;
+  suspended: boolean;
 };
 
 /** Margine: una terapia entra in lista se finisce entro 10 giorni; si coprono 30 giorni. */
 function buildShoppingList(predictions: Prediction[], patientName: (id: string) => string): ShoppingItem[] {
   return predictions
-    .filter(({ therapy: t, daysLeft }) => Number.isFinite(daysLeft) && daysLeft <= 10)
+    .filter(({ daysLeft }) => Number.isFinite(daysLeft) && daysLeft <= 10)
     .map(({ therapy: t, daysLeft }) => {
       const perDay = avgDailyConsumption(t);
+      const pillsRemaining = Number(t.pillsRemaining) || 0;
+      const pillsPerPack = Number(t.pillsPerPack) || 0;
       const target = perDay * 30; // copertura 30 giorni
-      const missing = Math.max(target - t.pillsRemaining, 0);
-      const packs = Math.max(1, Math.ceil(missing / Math.max(t.pillsPerPack, 1)));
+      const missing = Math.max(target - pillsRemaining, 0);
+      const packs = Math.max(1, Math.ceil(missing / Math.max(pillsPerPack, 1)));
       return {
         name: t.name,
         dosage: t.dosage,
         patient: patientName(t.patientId),
         packs,
         daysLeft,
+        suspended: t.suspended,
       };
     });
 }
 
 function shoppingListText(items: ShoppingItem[]): string {
   const lines = items.map(
-    (i) => `• ${i.name} ${i.dosage} — ${i.packs} ${i.packs === 1 ? "confezione" : "confezioni"} (${i.patient})`,
+    (i) =>
+      `• ${i.name} ${i.dosage} — ${i.packs} ${i.packs === 1 ? "confezione" : "confezioni"} (${i.patient})${i.suspended ? " [terapia sospesa]" : ""}`,
   );
   return ["🛒 Lista della spesa farmaci — FamilyMed", "", ...lines].join("\n");
 }
@@ -508,6 +545,11 @@ function ShoppingList({
           <li key={`${i.name}-${i.patient}`} className="flex items-center justify-between gap-3 text-sm">
             <span className="min-w-0 truncate">
               <b>{i.name}</b> <span className="text-muted-foreground">{i.dosage} · {i.patient}</span>
+              {i.suspended && (
+                <span className="ml-2 inline-block shrink-0 rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground align-middle">
+                  Sospesa
+                </span>
+              )}
             </span>
             <span className="shrink-0 rounded-full bg-primary-soft px-2.5 py-0.5 text-xs font-bold text-primary">
               {i.packs} {i.packs === 1 ? "confezione" : "confezioni"}

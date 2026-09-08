@@ -74,7 +74,7 @@ export function OnboardingTour({
 
   return (
     <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : handleClose("none"))}>
-      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
+      <DialogContent hideClose className="sm:max-w-lg p-0 gap-0 overflow-hidden">
         {/* Header */}
         <DialogHeader className="px-6 pt-6 pb-2">
           <div className="flex items-center gap-3">

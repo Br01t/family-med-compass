@@ -245,8 +245,10 @@ function ExceptionsPage() {
   const canManage = patient ? isPrimaryCaregiverOf(patient.id) : false;
   const hasSecondaryRole = patients.some((p) => isSecondaryCaregiverOf(p.id));
 
+  // Si possono scalare le quantità solo per le terapie effettivamente in corso:
+  // attive E non sospese. Una terapia sospesa non deve essere selezionabile qui.
   const activeTherapies = useMemo(
-    () => data.therapies.filter((t) => t.patientId === selectedPatientId && t.active),
+    () => data.therapies.filter((t) => t.patientId === selectedPatientId && t.active && !t.suspended),
     [data.therapies, selectedPatientId],
   );
 

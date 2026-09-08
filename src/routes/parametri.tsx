@@ -404,8 +404,17 @@ function VitalSignsPage() {
     toast.success("Report PDF generato");
   };
 
+  const retentionLabel = subscriptionPlan === "max" ? "5 anni" : "24 mesi";
+
   const body = (
     <div className="space-y-6">
+      {/* Nota conservazione dati: coerente con il testo già usato per il Registro attività */}
+      <p className="text-xs text-muted-foreground">
+        Le misurazioni recenti (ultimi 90 giorni) restano intatte; oltre i 90 giorni ne
+        conserviamo una al giorno per mantenere il trend nel tempo. Storico conservato per{" "}
+        {retentionLabel} (piano {subscriptionPlan === "max" ? "Max" : "Pro"}).
+      </p>
+
       {/* Selettore paziente (solo caregiver con più pazienti) */}
       {!isPatient && data.patients.length > 1 && (
         <div className="rounded-2xl border bg-card p-4">

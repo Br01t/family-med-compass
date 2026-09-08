@@ -84,8 +84,6 @@ function actionTone(action: string): { label: string; className: string } {
     return { label: "Permessi", className: "bg-warning/15 text-warning" };
   if (action.startsWith("member_"))
     return { label: "Gruppo", className: "bg-primary/10 text-primary" };
-  if (action.startsWith("invite_"))
-    return { label: "Invito", className: "bg-muted text-muted-foreground" };
   if (action === "patient_viewed")
     return { label: "Accesso", className: "bg-muted text-muted-foreground" };
   if (action === "data_exported" || action === "account_deleted")

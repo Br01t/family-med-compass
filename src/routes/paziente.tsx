@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Bell,
   Check,
+  ChevronDown,
   ChevronRight,
   Clock,
   LogOut,
@@ -16,6 +17,7 @@ import {
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { TherapyPhoto } from "@/components/TherapyPhoto";
 import { useFamilyMed } from "@/lib/store";
 import {
   formatDateLong,
@@ -32,6 +34,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 export const Route = createFileRoute("/paziente")({
   head: () => ({
@@ -192,6 +199,22 @@ function PatientPage() {
   });
 
 
+  const isDoneStatus = (d: ScheduledDose) =>
+    d.status === "taken" || d.status === "skipped" || d.status === "missed";
+  const isActiveIshStatus = (d: ScheduledDose) =>
+    d.status === "reminder" || d.status === "due" || d.status === "snoozed" || d.status === "late";
+
+  // DOPO: tutto ciò che oggi non è ancora dovuto e non è la dose attiva —
+  // una semplice lista "ora — nome", niente altro.
+  const upcomingDoses = doses
+    .filter((d) => !isDoneStatus(d) && !isActiveIshStatus(d) && d.id !== activeDose?.id)
+    .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
+
+  // Storico di oggi (già preso / saltato): secondario, dietro un "mostra dettagli".
+  const pastDosesToday = doses
+    .filter((d) => isDoneStatus(d))
+    .sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime());
+
   const handleLogout = async () => {
     await logout();
     navigate({ to: "/login" });
@@ -222,44 +245,23 @@ function PatientPage() {
       </header>
 
       <main className="mx-auto max-w-xl sm:max-w-2xl px-4 sm:px-5 pb-24 pt-4">
-        {/* Hero */}
+        {/* Hero minimale: solo saluto e data, niente statistiche in primo piano */}
         <section className="fm-reveal">
           <p className="text-xl sm:text-2xl text-muted-foreground">{greeting},</p>
           <h1 className="truncate text-4xl sm:text-5xl font-black tracking-tight">{firstName}</h1>
           <p className="mt-2 text-base capitalize text-muted-foreground">
             {formatDateLong(now)} · {formatTime(now)}
           </p>
-
-          {totalToday > 0 && (
-            <div className="mt-5 rounded-2xl border border-border/60 bg-surface-muted p-4">
-              <div className="flex items-baseline justify-between">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                    Progresso di oggi
-                  </p>
-                  <InfoPopover>
-                    Mostra quante medicine hai già confermato rispetto al totale previsto
-                    per oggi.
-                  </InfoPopover>
-                </div>
-                <p className="font-mono text-sm font-bold">
-                  {takenToday}/{totalToday}
-                </p>
-              </div>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-            </div>
-          )}
         </section>
 
-        {/* Azione attiva ora */}
-        {activeDose && (
-          <ActiveDoseCard
-            dose={activeDose}
+        {/* ADESSO — l'unica azione che conta in questo momento */}
+        {activeDose ? (
+          <section className="mt-8">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+              Adesso
+            </h2>
+            <ActiveDoseCard
+              dose={activeDose}
             now={now}
             onConfirm={() => {
               confirmDose({
@@ -286,97 +288,150 @@ function PatientPage() {
               });
               toast(`Dose saltata`, { description: activeDose.therapy.name });
             }}
-          />
+            />
+          </section>
+        ) : activeTherapies.length > 0 && doses.length > 0 ? (
+          <section className="fm-reveal mt-8 rounded-3xl border border-dashed border-border/60 bg-surface-muted p-6 text-center [animation-delay:60ms]">
+            <div className="mx-auto grid size-12 place-items-center rounded-full bg-success/15 text-success">
+              <Check className="size-6" />
+            </div>
+            <p className="mt-3 text-base font-bold">Nessuna medicina da prendere ora</p>
+            <p className="mt-1 text-sm text-muted-foreground">Ti avviseremo quando sarà il momento.</p>
+          </section>
+        ) : null}
+
+        {/* DOPO — solo ora e nome, e basta */}
+        {upcomingDoses.length > 0 && (
+          <section className="mt-10 fm-reveal [animation-delay:120ms]">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+              Dopo
+            </h2>
+            <ul className="mt-3 divide-y divide-border/50">
+              {upcomingDoses.map((d) => (
+                <li key={d.id} className="flex items-center gap-3 py-3 text-lg">
+                  <span className="font-mono font-bold tabular-nums">{formatTime(d.scheduledAt)}</span>
+                  <span className="text-muted-foreground">—</span>
+                  <span className="truncate font-semibold">{d.therapy.name}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
-        {/* Timeline giornaliera */}
-        <section className="mt-10 fm-reveal [animation-delay:120ms]">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-              Timeline di oggi
-            </h2>
-            <InfoPopover>
-              Qui puoi vedere tutte le cure previste nella giornata, ordinate per orario.
-              Ogni elemento indica se una dose è stata presa, rimandata, saltata o deve
-              ancora essere assunta.
-            </InfoPopover>
+        {activeTherapies.length === 0 && <EmptyTherapies name={firstName} />}
+
+        {activeTherapies.length > 0 && doses.length === 0 && (
+          <div className="mt-8 rounded-3xl border border-border/60 bg-surface-muted p-8 text-center">
+            <div className="mx-auto grid size-14 place-items-center rounded-full bg-success/15 text-success">
+              <Sparkles className="size-7" />
+            </div>
+            <p className="mt-4 text-xl font-black">Oggi niente medicine</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Le tue terapie non prevedono dosi per oggi. Goditi la giornata.
+            </p>
           </div>
+        )}
 
-          {activeTherapies.length === 0 ? (
-            <EmptyTherapies name={firstName} />
-          ) : doses.length === 0 ? (
-            <div className="mt-4 rounded-3xl border border-border/60 bg-surface-muted p-8 text-center">
-              <div className="mx-auto grid size-14 place-items-center rounded-full bg-success/15 text-success">
-                <Sparkles className="size-7" />
-              </div>
-              <p className="mt-4 text-xl font-black">Oggi niente medicine</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Le tue terapie non prevedono dosi per oggi. Goditi la giornata.
-              </p>
-            </div>
-          ) : (
-            <ol className="mt-4 space-y-3">
-              {doses.map((dose, idx) => (
-                <TimelineItem
-                  key={dose.id}
-                  dose={dose}
-                  isLast={idx === doses.length - 1}
-                  isActive={dose.id === activeDose?.id}
-                />
-              ))}
-            </ol>
-          )}
-        </section>
-
-        {/* Riassunto terapie */}
+        {/* Tutto il resto: secondario, nascosto finché non lo chiedi tu */}
         {activeTherapies.length > 0 && (
-          <section className="mt-10 fm-reveal [animation-delay:200ms]">
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                Le mie terapie
-              </h2>
-              <Link
-                to="/le-mie-terapie"
-                className="text-xs font-semibold text-primary hover:underline"
-              >
-                Vedi tutto
-              </Link>
-            </div>
-            <div className="mt-4 space-y-3">
-              {activeTherapies.map((t) => {
-                const low = t.pillsRemaining <= t.lowStockThreshold;
-                return (
+          <Collapsible className="mt-10 fm-reveal [animation-delay:200ms]">
+            <CollapsibleTrigger className="group flex w-full items-center justify-center gap-1.5 py-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground transition hover:text-foreground">
+              Altri dettagli
+              <ChevronDown className="size-3.5 transition-transform group-data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-8 pt-4">
+              {totalToday > 0 && (
+                <div className="rounded-2xl border border-border/60 bg-surface-muted p-4">
+                  <div className="flex items-baseline justify-between">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                        Progresso di oggi
+                      </p>
+                      <InfoPopover>
+                        Mostra quante medicine hai già confermato rispetto al totale previsto
+                        per oggi.
+                      </InfoPopover>
+                    </div>
+                    <p className="font-mono text-sm font-bold">
+                      {takenToday}/{totalToday}
+                    </p>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {pastDosesToday.length > 0 && (
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                    Storico di oggi
+                  </h2>
+                  <ol className="mt-4 space-y-3">
+                    {pastDosesToday.map((dose, idx) => (
+                      <TimelineItem
+                        key={dose.id}
+                        dose={dose}
+                        isLast={idx === pastDosesToday.length - 1}
+                        isActive={false}
+                      />
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              <div>
+                <div className="flex items-baseline justify-between">
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                    Le mie terapie
+                  </h2>
                   <Link
-                    key={t.id}
                     to="/le-mie-terapie"
-                    className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-card transition hover:border-primary/60"
+                    className="text-xs font-semibold text-primary hover:underline"
                   >
-                    <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary">
-                      <Pill className="size-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-black">{t.name}</p>
-                      <p className="truncate text-sm text-muted-foreground">
-                        {t.dosage} · {recurrenceLabel(t.recurrence)} ·{" "}
-                        {t.times.join(", ")}
-                      </p>
-                      <p
-                        className={cn(
-                          "mt-1 flex items-center gap-1 text-xs",
-                          low ? "font-semibold text-accent" : "text-muted-foreground",
-                        )}
-                      >
-                        <Package className="size-3" />
-                        {t.pillsRemaining} pillole rimanenti
-                        {low && " · scorta bassa"}
-                      </p>
-                    </div>
-                    <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+                    Vedi tutto
                   </Link>
-                );
-              })}
-            </div>
-          </section>
+                </div>
+                <div className="mt-4 space-y-3">
+                  {activeTherapies.map((t) => {
+                    const low = t.pillsRemaining <= t.lowStockThreshold;
+                    return (
+                      <Link
+                        key={t.id}
+                        to="/le-mie-terapie"
+                        className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-card transition hover:border-primary/60"
+                      >
+                        <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary">
+                          <Pill className="size-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-black">{t.name}</p>
+                          <p className="truncate text-sm text-muted-foreground">
+                            {t.dosage} · {recurrenceLabel(t.recurrence)} ·{" "}
+                            {t.times.join(", ")}
+                          </p>
+                          <p
+                            className={cn(
+                              "mt-1 flex items-center gap-1 text-xs",
+                              low ? "font-semibold text-accent" : "text-muted-foreground",
+                            )}
+                          >
+                            <Package className="size-3" />
+                            {t.pillsRemaining} pillole rimanenti
+                            {low && " · scorta bassa"}
+                          </p>
+                        </div>
+                        <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
         <div className="mt-12 flex items-center justify-center gap-2 text-xs text-muted-foreground">
@@ -443,7 +498,7 @@ void secondTick;
   return (
     <section
       className={cn(
-        "fm-reveal mt-8 rounded-3xl border-l-8 bg-card p-4 sm:p-6 shadow-lift ring-1 ring-border [animation-delay:60ms]",
+        "fm-reveal mt-3 rounded-3xl border-l-8 bg-card p-4 sm:p-6 shadow-lift ring-1 ring-border [animation-delay:60ms]",
         isLate ? "border-accent" : isSnoozed ? "border-warning" : isReminder ? "border-warning" : "border-primary",
       )}
     >
@@ -497,17 +552,16 @@ void secondTick;
       )}
 
       <div className="mt-4 flex items-start gap-4">
-        {dose.therapy.photoPackage ? (
-          <img
-            src={dose.therapy.photoPackage}
-            alt={dose.therapy.name}
-            className="size-20 shrink-0 rounded-2xl object-cover ring-1 ring-border"
-          />
-        ) : (
-          <div className="grid size-20 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary">
-            <Pill className="size-8" />
-          </div>
-        )}
+        <TherapyPhoto
+          src={dose.therapy.photoPackage}
+          alt={dose.therapy.name}
+          className="size-20 shrink-0 rounded-2xl object-cover ring-1 ring-border"
+          fallbackIcon={
+            <div className="grid size-20 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary">
+              <Pill className="size-8" />
+            </div>
+          }
+        />
         <div className="min-w-0">
           <h3 className="truncate text-2xl sm:text-3xl font-black leading-tight">
             {dose.therapy.name}

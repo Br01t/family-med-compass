@@ -20,7 +20,7 @@ import { primeAlarmAudio } from "../lib/alarm-audio";
 import { MaintenancePage } from "../components/MaintenancePage";
 
 // 🔒 MODALITÀ MANUTENZIONE — metti a false per riattivare il sito
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 function NotFoundComponent() {
   return (

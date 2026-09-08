@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Bell, CalendarPlus, Clock, FileDown, Info, Package, Pill, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { TherapyPhoto } from "@/components/TherapyPhoto";
 import { useFamilyMed } from "@/lib/store";
 import { recurrenceLabel } from "@/lib/therapy";
 import { addTherapyToCalendar } from "@/lib/ics";
@@ -159,17 +160,16 @@ function MyTherapiesPage() {
                   className="rounded-3xl border border-border/60 bg-card p-4 sm:p-5 shadow-card fm-reveal"
                 >
                   <div className="flex items-start gap-4">
-                    {t.photoPackage || t.photoDrug ? (
-                      <img
-                        src={t.photoPackage ?? t.photoDrug}
-                        alt={t.name}
-                        className="size-16 sm:size-24 shrink-0 rounded-2xl object-cover ring-1 ring-border"
-                      />
-                    ) : (
-                      <div className="grid size-16 sm:size-24 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary">
-                        <Pill className="size-7 sm:size-10" />
-                      </div>
-                    )}
+                    <TherapyPhoto
+                      src={t.photoPackage ?? t.photoDrug}
+                      alt={t.name}
+                      className="size-16 sm:size-24 shrink-0 rounded-2xl object-cover ring-1 ring-border"
+                      fallbackIcon={
+                        <div className="grid size-16 sm:size-24 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary">
+                          <Pill className="size-7 sm:size-10" />
+                        </div>
+                      }
+                    />
                     <div className="min-w-0 flex-1">
                       <h2 className="truncate text-xl sm:text-2xl font-black leading-tight">
                         {t.name}
@@ -189,7 +189,7 @@ function MyTherapiesPage() {
                         <p className="mb-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                           Farmaco
                         </p>
-                        <img
+                        <TherapyPhoto
                           src={t.photoDrug}
                           alt={`${t.name} farmaco`}
                           className="h-24 w-full rounded-xl object-cover ring-1 ring-border"
@@ -199,7 +199,7 @@ function MyTherapiesPage() {
                         <p className="mb-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                           Confezione
                         </p>
-                        <img
+                        <TherapyPhoto
                           src={t.photoPackage}
                           alt={`${t.name} confezione`}
                           className="h-24 w-full rounded-xl object-cover ring-1 ring-border"

@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowRight, Package, Pill, RefreshCw, TrendingUp } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Bell,
+  CheckCircle2,
+  ClipboardList,
+  Package,
+  Pill,
+  RefreshCw,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
@@ -10,6 +21,8 @@ import {
   type CaregiverDashboardStats,
 } from "@/lib/supabase-service";
 import {
+  actorName,
+  formatRelativeDay,
   formatTime,
   getAdherenceForPatient,
   getDosesForPatientOnDate,
@@ -20,6 +33,7 @@ import {
   statusTone,
 } from "@/lib/therapy";
 import type { ScheduledDose } from "@/lib/therapy";
+import type { FamilyMedData } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 

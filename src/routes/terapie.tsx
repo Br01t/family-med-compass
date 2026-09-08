@@ -3,6 +3,7 @@ import { CalendarPlus, FileDown, Pill, Plus, Power, PowerOff } from "lucide-reac
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { AddTherapyDialog } from "@/components/AddTherapyDialog";
+import { TherapyPhoto } from "@/components/TherapyPhoto";
 import { SecondaryCaregiverNotice } from "@/components/SecondaryCaregiverNotice";
 import { Button } from "@/components/ui/button";
 import { useFamilyMed } from "@/lib/store";
@@ -112,17 +113,16 @@ function TherapiesPage() {
                     )}
                   >
                     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3">
-                      {t.photoDrug ? (
-                        <img
-                          src={t.photoDrug}
-                          alt={t.name}
-                          className="size-11 shrink-0 rounded-xl object-cover"
-                        />
-                      ) : (
-                        <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-                          <Pill className="size-5" />
-                        </div>
-                      )}
+                      <TherapyPhoto
+                        src={t.photoDrug}
+                        alt={t.name}
+                        className="size-11 shrink-0 rounded-xl object-cover"
+                        fallbackIcon={
+                          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                            <Pill className="size-5" />
+                          </div>
+                        }
+                      />
                       <div className="min-w-0">
                         <p className="truncate text-lg font-black">{t.name}</p>
                         <p className="text-xs text-muted-foreground">
@@ -185,7 +185,7 @@ function TherapiesPage() {
                         <p className="mb-1.5 text-xs uppercase tracking-widest text-muted-foreground">
                           Confezione
                         </p>
-                        <img
+                        <TherapyPhoto
                           src={t.photoPackage}
                           alt={`Confezione di ${t.name}`}
                           className="h-24 w-full rounded-lg border border-border/50 object-cover"

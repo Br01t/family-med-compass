@@ -7,7 +7,7 @@ import type {
 } from "./mock-data";
 
 export type ScheduledDose = {
-  id: string; // stable id (therapyId + iso)
+  id: string;
   therapy: Therapy;
   scheduledAt: Date;
   event?: MedicationEvent;
@@ -270,4 +270,30 @@ export function formatDateLong(d: Date) {
     day: "numeric",
     month: "long",
   });
+}
+
+/**
+ * Nome di chi ha compiuto un'azione (conferma dose, ecc.), a partire
+ * dall'id salvato in `confirmedBy` — che può essere un caregiver
+ * (`caregivers.id`, coincide con lo user id di auth) o il paziente stesso
+ * (conferma da /paziente, `confirmedBy` = `patients.id`). Alla base del
+ * concetto "chi ha fatto cosa": senza un nome leggibile la fiducia che la
+ * famiglia ripone nell'app cala.
+ */
+export function actorName(data: FamilyMedData, id?: string | null): string | null {
+  if (!id) return null;
+  const caregiver = data.caregivers.find((c) => c.id === id);
+  if (caregiver) return caregiver.name.split(" ")[0]; // primo nome: più naturale, meno "gestionale"
+  const patient = data.patients.find((p) => p.id === id);
+  if (patient) return `${patient.name.split(" ")[0]} (paziente)`;
+  return null;
+}
+
+/** "oggi" / "ieri" / "12 set" — per etichette compatte in liste di attività. */
+export function formatRelativeDay(d: Date, now: Date): string {
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000);
+  if (diffDays === 0) return "oggi";
+  if (diffDays === 1) return "ieri";
+  return d.toLocaleDateString("it-IT", { day: "numeric", month: "short" });
 }

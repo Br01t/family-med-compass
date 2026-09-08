@@ -712,19 +712,45 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
                 </div>
               </div>
 
-              {/* Foto farmaco + confezione */}
-              <PhotoField
-                label="Foto del farmaco (pastiglia)"
-                value={photoDrug}
-                onChange={setPhotoDrug}
-                inputId="therapy-photo-drug"
-              />
-              <PhotoField
-                label="Foto della confezione"
-                value={photoPackage}
-                onChange={setPhotoPackage}
-                inputId="therapy-photo-package"
-              />
+              {/* Foto farmaco + confezione — solo Pro/Max (upload e visualizzazione) */}
+              {limits.medicationPhoto ? (
+                <>
+                  <PhotoField
+                    label="Foto del farmaco (pastiglia)"
+                    value={photoDrug}
+                    onChange={setPhotoDrug}
+                    inputId="therapy-photo-drug"
+                  />
+                  <PhotoField
+                    label="Foto della confezione"
+                    value={photoPackage}
+                    onChange={setPhotoPackage}
+                    inputId="therapy-photo-package"
+                  />
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUpgradeReason({
+                      title: "Foto dei farmaci",
+                      desc: "Carica la foto del farmaco e della confezione passando a un piano Pro o Max: aiuta chi assiste il paziente a riconoscere subito la terapia giusta.",
+                    });
+                    setUpgradeModalOpen(true);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-border bg-surface-muted p-4 text-left transition hover:border-primary/50"
+                >
+                  <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <Camera className="size-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold">Foto del farmaco e della confezione</p>
+                    <p className="text-xs text-muted-foreground">
+                      Disponibile con piano Pro o Max — tocca per scoprire di più.
+                    </p>
+                  </div>
+                </button>
+              )}
 
               {/* Notes */}
               <FormField
