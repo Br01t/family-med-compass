@@ -19,26 +19,95 @@ import { Badge } from "@/components/ui/badge";
 import { useFamilyMed } from "@/lib/store";
 import { PLAN_LIMITS, formatPrice, type SubscriptionPlan } from "@/lib/subscription";
 import { toast } from "sonner";
+import { DowngradeConfirmDialog } from "@/components/DowngradeConfirmDialog";
+import {
+  checkDowngradeImpact,
+  performDowngrade,
+  type DowngradeImpact,
+} from "@/lib/supabase-service";
+
+const PLAN_ORDER: Record<SubscriptionPlan, number> = {
+  free: 0,
+  pro: 1,
+  max: 2,
+};
 
 export const Route = createFileRoute("/abbonamento")({
   component: AbbonamentoPage,
 });
 
 function AbbonamentoPage() {
-  const { subscriptionPlan, updateSubscriptionPlan, userProfile } = useFamilyMed();
+  const { subscriptionPlan, updateSubscriptionPlan, retryDataLoad } = useFamilyMed();
   const [isAnnual, setIsAnnual] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [downgradeImpact, setDowngradeImpact] = useState<DowngradeImpact | null>(null);
+  const [targetDowngradePlan, setTargetDowngradePlan] = useState<SubscriptionPlan | null>(null);
+  const [downgradeLoading, setDowngradeLoading] = useState(false);
 
   const handleSwitchPlan = async (plan: SubscriptionPlan) => {
     if (plan === subscriptionPlan) return;
+
+    // Controllo se è un DOWNGRADE
+    if (PLAN_ORDER[plan] < PLAN_ORDER[subscriptionPlan]) {
+      setUpdating(true);
+      try {
+        const impact = await checkDowngradeImpact(plan);
+        if (!impact) {
+          toast.error("Impossibile verificare l'impatto del downgrade. Riprova più tardi.");
+          return;
+        }
+        setDowngradeImpact(impact);
+        setTargetDowngradePlan(plan);
+      } catch (err) {
+        toast.error("Errore durante il controllo del piano.");
+      } finally {
+        setUpdating(false);
+      }
+      return;
+    }
+
+    // Altrimenti è un UPGRADE (o cambio su stesso livello)
     setUpdating(true);
     try {
       await updateSubscriptionPlan(plan);
-      toast.success(`Piano aggiornato con successo a ${PLAN_LIMITS[plan].name}!`);
+      if (retryDataLoad) retryDataLoad();
+      toast.success(`Complimenti! Piano aggiornato con successo a ${PLAN_LIMITS[plan].name}!`);
     } catch (err: any) {
       toast.error("Errore durante l'aggiornamento del piano. Riprova.");
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleConfirmDowngrade = async (
+    keepPatientIds: string[],
+    keepTherapyIds: Record<string, string[]>,
+    keepCaregiverIds: Record<string, string[]>
+  ) => {
+    if (!targetDowngradePlan) return;
+    setDowngradeLoading(true);
+    try {
+      const res = await performDowngrade(
+        targetDowngradePlan,
+        keepPatientIds,
+        keepTherapyIds,
+        keepCaregiverIds
+      );
+      if (!res.ok) {
+        toast.error(res.error || "Errore durante il downgrade del piano.");
+        return;
+      }
+      await updateSubscriptionPlan(targetDowngradePlan);
+      if (retryDataLoad) retryDataLoad();
+      toast.success(
+        `Piano modificato in ${PLAN_LIMITS[targetDowngradePlan].name}. I dati in eccesso rimangono conservati per 30 giorni.`
+      );
+      setDowngradeImpact(null);
+      setTargetDowngradePlan(null);
+    } catch (err: any) {
+      toast.error("Errore imprevisto durante l'operazione.");
+    } finally {
+      setDowngradeLoading(false);
     }
   };
 
@@ -200,6 +269,19 @@ function AbbonamentoPage() {
           </div>
         </div>
       </div>
+
+      {downgradeImpact && targetDowngradePlan && (
+        <DowngradeConfirmDialog
+          impact={downgradeImpact}
+          targetPlan={targetDowngradePlan}
+          loading={downgradeLoading}
+          onConfirm={handleConfirmDowngrade}
+          onCancel={() => {
+            setDowngradeImpact(null);
+            setTargetDowngradePlan(null);
+          }}
+        />
+      )}
     </AppShell>
   );
 }

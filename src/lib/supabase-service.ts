@@ -1736,3 +1736,90 @@ export async function resetPatientHistory(patientId: string): Promise<ResetPatie
     error: null,
   };
 }
+
+/* =========================================================
+   DOWNGRADE PIANO DI ABBONAMENTO
+========================================================= */
+
+export interface DowngradePatient {
+  id: string;
+  name: string;
+  birth_year?: number | null;
+}
+
+export interface DowngradeTherapy {
+  id: string;
+  name: string;
+  active: boolean;
+}
+
+export interface DowngradeCaregiver {
+  id: string;
+  name: string;
+}
+
+export interface DowngradeImpact {
+  current_plan: string;
+  new_plan: string;
+  patient_limit: number;
+  therapy_limit: number;        // -1 = illimitato
+  caregiver_extra_limit: number;
+  patients: DowngradePatient[];
+  therapies_per_patient: Record<string, DowngradeTherapy[]>;
+  caregivers_per_patient: Record<string, DowngradeCaregiver[]>;
+}
+
+export interface DowngradeResult {
+  ok: boolean;
+  new_plan: string;
+  suspended_patients: number;
+  suspended_therapies: number;
+  suspended_caregivers: number;
+  cleanup_after_days: number;
+  error?: string;
+}
+
+/**
+ * Recupera l'impatto di un downgrade (solo lettura).
+ * Una singola RPC STABLE → 1 round-trip Supabase.
+ */
+export async function checkDowngradeImpact(
+  newPlan: string
+): Promise<DowngradeImpact | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc("check_downgrade_impact", {
+    _new_plan: newPlan,
+  });
+  if (error) {
+    console.error("[checkDowngradeImpact]", error);
+    return null;
+  }
+  return data as DowngradeImpact;
+}
+
+/**
+ * Esegue il downgrade in una singola transazione DB:
+ * sospende dati in eccesso e aggiorna il piano.
+ * Il trigger DB propagherà il piano a tutto il gruppo.
+ */
+export async function performDowngrade(
+  newPlan: string,
+  keepPatientIds: string[],
+  keepTherapyIds: Record<string, string[]>, // { patientId: [therapyId, ...] }
+  keepCaregiverIds?: Record<string, string[]> // { patientId: [caregiverId, ...] }
+): Promise<DowngradeResult> {
+  if (!supabase) {
+    return { ok: false, new_plan: newPlan, suspended_patients: 0, suspended_therapies: 0, suspended_caregivers: 0, cleanup_after_days: 30, error: "Non autenticato" };
+  }
+  const { data, error } = await supabase.rpc("perform_downgrade", {
+    _new_plan: newPlan,
+    _keep_patient_ids: keepPatientIds,
+    _keep_therapy_ids: keepTherapyIds,
+    _keep_caregiver_ids: keepCaregiverIds ?? {},
+  });
+  if (error) {
+    console.error("[performDowngrade]", error);
+    return { ok: false, new_plan: newPlan, suspended_patients: 0, suspended_therapies: 0, suspended_caregivers: 0, cleanup_after_days: 30, error: error.message };
+  }
+  return data as DowngradeResult;
+}
