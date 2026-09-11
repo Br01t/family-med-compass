@@ -26,20 +26,27 @@ function makeTTLCache<K, V>(ttlMs: number) {
     get(key: K): V | undefined {
       const entry = store.get(key);
       if (!entry) return undefined;
-      if (Date.now() > entry.expiresAt) { store.delete(key); return undefined; }
+      if (Date.now() > entry.expiresAt) {
+        store.delete(key);
+        return undefined;
+      }
       return entry.value;
     },
     set(key: K, value: V) {
       store.set(key, { value, expiresAt: Date.now() + ttlMs });
     },
-    delete(key: K) { store.delete(key); },
-    clear() { store.clear(); },
+    delete(key: K) {
+      store.delete(key);
+    },
+    clear() {
+      store.clear();
+    },
   };
 }
 
 // 5 minuti — i caregiver collegati a un paziente cambiano raramente
 const caregiverIdsCache = makeTTLCache<string, string[]>(5 * 60 * 1000);
-const caregiverListCache = makeTTLCache<string, import('./mock-data').Patient[]>(5 * 60 * 1000);
+const caregiverListCache = makeTTLCache<string, import("./mock-data").Patient[]>(5 * 60 * 1000);
 
 // 60 secondi — dati della pagina "Gruppo di cura" (membri+inviti+audit).
 // TTL più corto degli altri perché include gli inviti attivi (hanno una
@@ -112,11 +119,12 @@ function mapTherapyRow(t: any): Therapy {
     timeoutMinutes: t.timeout_minutes,
     snoozeMinutes: t.snooze_minutes,
     postReminderMinutes: t.post_reminder_minutes,
-    reminderIntervals: Array.isArray(t.reminder_intervals) && t.reminder_intervals.length > 0
-      ? (t.reminder_intervals as unknown[])
-          .map((value) => Math.abs(Number(value)))
-          .filter((value) => value > 0)
-      : [10],
+    reminderIntervals:
+      Array.isArray(t.reminder_intervals) && t.reminder_intervals.length > 0
+        ? (t.reminder_intervals as unknown[])
+            .map((value) => Math.abs(Number(value)))
+            .filter((value) => value > 0)
+        : [10],
     packs: t.packs,
     pillsPerPack: t.pills_per_pack,
     pillsRemaining: t.pills_remaining,
@@ -161,14 +169,21 @@ export async function fetchPatientsOnce(userId: string, role: string): Promise<P
     }));
   } catch (err) {
     console.error("Errore fetch pazienti:", err);
-    return [];
+    // NON restituire [] silenziosamente: un errore di rete/RPC verrebbe
+    // interpretato dalla UI come "questo utente non ha pazienti", cancellando
+    // la lista che l'utente vedeva un attimo prima. Propaghiamo l'errore:
+    // il chiamante (subscribePatients) decide se tenere i dati in cache.
+    throw err;
   }
 }
 
 /** Fallback a 2 query separate — usato se la RPC non è ancora stata deployata. */
+/** Fallback a 2 query separate — usato se la RPC non è ancora stata deployata. */
 async function fetchPatientsOnceFallback(userId: string, role: string): Promise<Patient[]> {
   try {
-    let query = supabase!.from("patients").select("id, name, birth_year, photo, user_id, owner_user_id, primary_caregiver_id");
+    let query = supabase!
+      .from("patients")
+      .select("id, name, birth_year, photo, user_id, owner_user_id, primary_caregiver_id");
 
     if (role === "caregiver") {
       const { data: relations, error } = await supabase!
@@ -176,7 +191,7 @@ async function fetchPatientsOnceFallback(userId: string, role: string): Promise<
         .select("patient_id")
         .eq("caregiver_id", userId);
 
-      if (error) { console.error("caregiver relation error:", error); return []; }
+      if (error) throw error;
       const patientIds = relations?.map((r) => r.patient_id) || [];
       if (patientIds.length === 0) return [];
       query = query.in("id", patientIds);
@@ -198,7 +213,7 @@ async function fetchPatientsOnceFallback(userId: string, role: string): Promise<
     }));
   } catch (err) {
     console.error("Errore fetch pazienti (fallback):", err);
-    return [];
+    throw err;
   }
 }
 
@@ -212,10 +227,19 @@ async function fetchPatientsOnceFallback(userId: string, role: string): Promise<
 export function subscribePatients(
   userId: string,
   role: string,
-  onUpdate: (patients: Patient[]) => void
+  onUpdate: (patients: Patient[]) => void,
+  onError?: (err: unknown) => void,
 ): () => void {
   if (!supabase || !userId) return () => {};
-  fetchPatientsOnce(userId, role).then(onUpdate);
+  fetchPatientsOnce(userId, role)
+    .then(onUpdate)
+    .catch((err) => {
+      // Errore infrastrutturale: NON chiamare onUpdate([]). Lo stato React
+      // resta quello precedente (dati in cache), la UI mostra un banner di
+      // errore invece di una lista vuota fuorviante.
+      console.error("[subscribePatients] fetch fallito, mantengo i dati in cache:", err);
+      onError?.(err);
+    });
   return () => {};
 }
 
@@ -249,7 +273,7 @@ export async function fetchCaregiversOnce(userId: string, role: string): Promise
     }));
   } catch (err) {
     console.error("Errore fetch caregiver:", err);
-    return [];
+    throw err;
   }
 }
 
@@ -263,7 +287,7 @@ async function fetchCaregiversOnceFallback(userId: string, role: string): Promis
         .from("caregiver_patients")
         .select("caregiver_id")
         .eq("patient_id", userId);
-      if (error) { console.error(error); return []; }
+      if (error) throw error;
       const caregiverIds = relations?.map((r) => r.caregiver_id) || [];
       if (caregiverIds.length === 0) return [];
       query = query.in("id", caregiverIds);
@@ -283,7 +307,7 @@ async function fetchCaregiversOnceFallback(userId: string, role: string): Promis
     }));
   } catch (err) {
     console.error("Errore fetch caregiver (fallback):", err);
-    return [];
+    throw err;
   }
 }
 
@@ -294,17 +318,22 @@ async function fetchCaregiversOnceFallback(userId: string, role: string): Promis
 export function subscribeCaregivers(
   userId: string,
   role: string,
-  onUpdate: (caregivers: Caregiver[]) => void
+  onUpdate: (caregivers: Caregiver[]) => void,
+  onError?: (err: unknown) => void,
 ): () => void {
   if (!supabase || !userId) return () => {};
-  fetchCaregiversOnce(userId, role).then(onUpdate);
+  fetchCaregiversOnce(userId, role)
+    .then(onUpdate)
+    .catch((err) => {
+      console.error("[subscribeCaregivers] fetch fallito, mantengo i dati in cache:", err);
+      onError?.(err);
+    });
   return () => {};
 }
 
 /* =========================================================
    THERAPIES (single-patient wrapper defined below)
 ========================================================= */
-
 
 /* =========================================================
    THERAPIES (multi-patient)
@@ -315,13 +344,15 @@ export async function fetchTherapiesOnce(patientIds: string[]): Promise<Therapy[
   try {
     const { data, error } = await supabase
       .from("therapies")
-      .select("id, patient_id, name, dosage, quantity, category, color, icon, notes, start_date, end_date, times, recurrence, timeout_minutes, snooze_minutes, post_reminder_minutes, reminder_intervals, packs, pills_per_pack, pills_remaining, low_stock_threshold, active, suspended, photo_drug, photo_package")
+      .select(
+        "id, patient_id, name, dosage, quantity, category, color, icon, notes, start_date, end_date, times, recurrence, timeout_minutes, snooze_minutes, post_reminder_minutes, reminder_intervals, packs, pills_per_pack, pills_remaining, low_stock_threshold, active, suspended, photo_drug, photo_package",
+      )
       .in("patient_id", patientIds);
     if (error) throw error;
     return (data || []).map(mapTherapyRow);
   } catch (err) {
     console.error("Errore fetch terapie:", err);
-    return [];
+    throw err;
   }
 }
 
@@ -334,6 +365,7 @@ export async function fetchTherapiesOnce(patientIds: string[]): Promise<Therapy[
 export function subscribeTherapiesForPatients(
   patientIds: string[],
   onUpdate: (therapies: Therapy[]) => void,
+  onError?: (err: unknown) => void,
 ): () => void {
   if (!supabase) return () => {};
   if (!patientIds || patientIds.length === 0) {
@@ -341,15 +373,24 @@ export function subscribeTherapiesForPatients(
     return () => {};
   }
   const ids = [...patientIds].sort();
-  fetchTherapiesOnce(ids).then(onUpdate);
+  fetchTherapiesOnce(ids)
+    .then(onUpdate)
+    .catch((err) => {
+      console.error(
+        "[subscribeTherapiesForPatients] fetch fallito, mantengo i dati in cache:",
+        err,
+      );
+      onError?.(err);
+    });
   return () => {};
 }
 
 export function subscribeTherapies(
   patientId: string,
   onUpdate: (therapies: Therapy[]) => void,
+  onError?: (err: unknown) => void,
 ): () => void {
-  return subscribeTherapiesForPatients(patientId ? [patientId] : [], onUpdate);
+  return subscribeTherapiesForPatients(patientId ? [patientId] : [], onUpdate, onError);
 }
 
 /* =========================================================
@@ -360,6 +401,7 @@ export function subscribeEventsForPatients(
   patientIds: string[],
   onUpdate: (events: MedicationEvent[]) => void,
   plan: SubscriptionPlan = "free",
+  onError?: (err: unknown) => void,
 ): () => void {
   if (!supabase) return () => {};
   if (!patientIds || patientIds.length === 0) {
@@ -390,7 +432,9 @@ export function subscribeEventsForPatients(
       // 1. Fetch eventi recenti
       const recentPromise = supabase!
         .from("events")
-        .select("id, therapy_id, patient_id, scheduled_at, status, confirmed_at, confirmed_by, snoozed_until, note, timeline")
+        .select(
+          "id, therapy_id, patient_id, scheduled_at, status, confirmed_at, confirmed_by, snoozed_until, note, timeline",
+        )
         .in("patient_id", ids)
         .gte("scheduled_at", sinceRecent);
 
@@ -399,7 +443,9 @@ export function subscribeEventsForPatients(
       const pendingOlderPromise = !isFree
         ? supabase!
             .from("events")
-            .select("id, therapy_id, patient_id, scheduled_at, status, confirmed_at, confirmed_by, snoozed_until, note, timeline")
+            .select(
+              "id, therapy_id, patient_id, scheduled_at, status, confirmed_at, confirmed_by, snoozed_until, note, timeline",
+            )
             .in("patient_id", ids)
             .lt("scheduled_at", sinceRecent)
             .gte("scheduled_at", new Date(Date.now() - maxRetentionMs).toISOString())
@@ -423,8 +469,11 @@ export function subscribeEventsForPatients(
       ready = true;
       onUpdate(cache);
     } catch (err) {
-      console.error("Errore fetch eventi:", err);
-      onUpdate([]);
+      // NON chiamare onUpdate([]): resta lo stato precedente (dati in
+      // cache) e `ready` resta false, così il canale realtime aperto qui
+      // sotto non applica delta su una cache vuota/incompleta.
+      console.error("[subscribeEventsForPatients] fetch fallito, mantengo i dati in cache:", err);
+      onError?.(err);
     }
   };
 
@@ -435,24 +484,32 @@ export function subscribeEventsForPatients(
   const channel = supabase
     .channel(`events-multi-${ids.join(",")}`)
     // INSERT: aggiungi alla cache locale se rientra nelle finestre consentite dal piano
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "events", filter }, (payload) => {
-      if (!ready) return;
-      const e = payload.new as any;
-      if (!ids.includes(e.patient_id)) return;
-      const ageMs = Date.now() - new Date(e.scheduled_at).getTime();
-      if (isFree && ageMs > recentMs) return;
-      if (!isFree && ageMs > maxRetentionMs) return;
-      cache = [...cache.filter((ev) => ev.id !== e.id), mapEventRow(e)];
-      onUpdate(cache);
-    })
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "events", filter },
+      (payload) => {
+        if (!ready) return;
+        const e = payload.new as any;
+        if (!ids.includes(e.patient_id)) return;
+        const ageMs = Date.now() - new Date(e.scheduled_at).getTime();
+        if (isFree && ageMs > recentMs) return;
+        if (!isFree && ageMs > maxRetentionMs) return;
+        cache = [...cache.filter((ev) => ev.id !== e.id), mapEventRow(e)];
+        onUpdate(cache);
+      },
+    )
     // UPDATE: aggiorna solo la riga cambiata (dose confermata, saltata, snoozata…)
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "events", filter }, (payload) => {
-      if (!ready) return;
-      const e = payload.new as any;
-      if (!ids.includes(e.patient_id)) return;
-      cache = cache.map((ev) => (ev.id === e.id ? mapEventRow(e) : ev));
-      onUpdate(cache);
-    })
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "events", filter },
+      (payload) => {
+        if (!ready) return;
+        const e = payload.new as any;
+        if (!ids.includes(e.patient_id)) return;
+        cache = cache.map((ev) => (ev.id === e.id ? mapEventRow(e) : ev));
+        onUpdate(cache);
+      },
+    )
     // DELETE: rimuovi dalla cache locale
     .on("postgres_changes", { event: "DELETE", schema: "public", table: "events" }, (payload) => {
       if (!ready) return;
@@ -463,7 +520,9 @@ export function subscribeEventsForPatients(
     })
     .subscribe();
 
-  return () => { supabase!.removeChannel(channel); };
+  return () => {
+    supabase!.removeChannel(channel);
+  };
 }
 
 export function subscribeEvents(
@@ -491,7 +550,9 @@ export async function fetchEventsForPatientRange(
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabase
       .from("events")
-      .select("id, therapy_id, patient_id, scheduled_at, status, confirmed_at, confirmed_by, snoozed_until, note, timeline")
+      .select(
+        "id, therapy_id, patient_id, scheduled_at, status, confirmed_at, confirmed_by, snoozed_until, note, timeline",
+      )
       .eq("patient_id", patientId)
       .gte("scheduled_at", since);
     if (error) throw error;
@@ -502,7 +563,6 @@ export async function fetchEventsForPatientRange(
   }
 }
 
-
 /* =========================================================
    NOTIFICATIONS
 ========================================================= */
@@ -510,7 +570,8 @@ export async function fetchEventsForPatientRange(
 export function subscribeNotifications(
   userId: string,
   onUpdate: (notifications: Notification[]) => void,
-  role: "paziente" | "caregiver" = "paziente"
+  role: "paziente" | "caregiver" = "paziente",
+  onError?: (err: unknown) => void,
 ): () => void {
   if (!supabase) return () => {};
   if (!userId) return () => {};
@@ -530,7 +591,9 @@ export function subscribeNotifications(
       const notifSince = new Date(Date.now() - sinceMs).toISOString();
       const { data, error } = await supabase
         .from("notifications")
-        .select("id, target_user_id, created_at, kind, patient_id, therapy_id, event_id, dose_key, severity, title, message, read")
+        .select(
+          "id, target_user_id, created_at, kind, patient_id, therapy_id, event_id, dose_key, severity, title, message, read",
+        )
         .eq("target_user_id", userId)
         .gte("created_at", notifSince)
         .order("created_at", { ascending: false })
@@ -540,8 +603,8 @@ export function subscribeNotifications(
       ready = true;
       onUpdate(cache);
     } catch (err) {
-      console.error("Errore fetch notifiche:", err);
-      onUpdate([]);
+      console.error("[subscribeNotifications] fetch fallito, mantengo i dati in cache:", err);
+      onError?.(err);
     }
   };
 
@@ -553,31 +616,43 @@ export function subscribeNotifications(
     .channel(`notifications-${role}-${userId}`)
     // INSERT: nuova notifica (dose confermata, saltata, dimenticata…)
     // → prependi alla cache senza ri-scaricare tutto
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter }, (payload) => {
-      if (!ready) return;
-      const n = payload.new as any;
-      if (n.target_user_id !== userId) return;
-      // Fuori dalla finestra temporale? Ignora
-      if (Date.now() - new Date(n.created_at).getTime() > sinceMs) return;
-      cache = [mapNotificationRow(n), ...cache].slice(0, MAX);
-      onUpdate(cache);
-    })
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "notifications", filter },
+      (payload) => {
+        if (!ready) return;
+        const n = payload.new as any;
+        if (n.target_user_id !== userId) return;
+        // Fuori dalla finestra temporale? Ignora
+        if (Date.now() - new Date(n.created_at).getTime() > sinceMs) return;
+        cache = [mapNotificationRow(n), ...cache].slice(0, MAX);
+        onUpdate(cache);
+      },
+    )
     // UPDATE: cambio di stato "letta" → aggiorna solo quella riga
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications", filter }, (payload) => {
-      if (!ready) return;
-      const n = payload.new as any;
-      if (n.target_user_id !== userId) return;
-      cache = cache.map((notif) => (notif.id === n.id ? mapNotificationRow(n) : notif));
-      onUpdate(cache);
-    })
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "notifications", filter },
+      (payload) => {
+        if (!ready) return;
+        const n = payload.new as any;
+        if (n.target_user_id !== userId) return;
+        cache = cache.map((notif) => (notif.id === n.id ? mapNotificationRow(n) : notif));
+        onUpdate(cache);
+      },
+    )
     // DELETE: rimuovi dalla cache
-    .on("postgres_changes", { event: "DELETE", schema: "public", table: "notifications" }, (payload) => {
-      if (!ready) return;
-      const id = (payload.old as any)?.id;
-      if (!id) return;
-      cache = cache.filter((n) => n.id !== id);
-      onUpdate(cache);
-    })
+    .on(
+      "postgres_changes",
+      { event: "DELETE", schema: "public", table: "notifications" },
+      (payload) => {
+        if (!ready) return;
+        const id = (payload.old as any)?.id;
+        if (!id) return;
+        cache = cache.filter((n) => n.id !== id);
+        onUpdate(cache);
+      },
+    )
     .subscribe();
 
   return () => {
@@ -667,9 +742,7 @@ export async function fetchNotificationsPage(
     )
     .eq("target_user_id", userId);
   if (opts?.patientId) q = q.eq("patient_id", opts.patientId);
-  const { data, error, count } = await q
-    .order("created_at", { ascending: false })
-    .range(from, to);
+  const { data, error, count } = await q.order("created_at", { ascending: false }).range(from, to);
   if (error) {
     console.error("fetchNotificationsPage:", error);
     return { items: [], total: 0 };
@@ -679,7 +752,6 @@ export async function fetchNotificationsPage(
     total: count ?? 0,
   };
 }
-
 
 /* =========================================================
    WRITE OPS (UNCHANGED BUT SAFE)
@@ -732,13 +804,13 @@ export type MonthlyAdherence = {
   adherence_pct: number | null;
 };
 
-export async function fetchPatientAdherenceHistory(
-  patientId: string,
-): Promise<MonthlyAdherence[]> {
+export async function fetchPatientAdherenceHistory(patientId: string): Promise<MonthlyAdherence[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("adherence_monthly")
-    .select("therapy_id, therapy_name, year, month, doses_scheduled, doses_taken, doses_missed, doses_skipped, adherence_pct")
+    .select(
+      "therapy_id, therapy_name, year, month, doses_scheduled, doses_taken, doses_missed, doses_skipped, adherence_pct",
+    )
     .eq("patient_id", patientId)
     .order("year", { ascending: false })
     .order("month", { ascending: false });
@@ -759,10 +831,7 @@ export async function addPatientDoc(patient: Patient): Promise<void> {
     created_at: new Date().toISOString(),
   };
 
-
-  const { error: patientError } = await supabase
-    .from("patients")
-    .insert(patientPayload);
+  const { error: patientError } = await supabase.from("patients").insert(patientPayload);
 
   if (patientError) {
     // Se il record esiste già (conflict su PK), prova con update
@@ -787,9 +856,7 @@ export async function addPatientDoc(patient: Patient): Promise<void> {
       patient_id: patient.id,
     }));
 
-    const { error: relationError } = await supabase
-      .from("caregiver_patients")
-      .insert(relationRows);
+    const { error: relationError } = await supabase.from("caregiver_patients").insert(relationRows);
 
     if (relationError) {
       console.error("[addPatientDoc] Errore salvataggio relazioni:", relationError);
@@ -885,10 +952,7 @@ export async function updateNotificationReadState(id: string, read: boolean): Pr
  */
 export async function markAllNotificationsRead(ids: string[]): Promise<void> {
   if (!supabase || ids.length === 0) return;
-  const { error } = await supabase
-    .from("notifications")
-    .update({ read: true })
-    .in("id", ids);
+  const { error } = await supabase.from("notifications").update({ read: true }).in("id", ids);
   if (error) throw error;
 }
 
@@ -975,7 +1039,9 @@ export async function listFamilyInvites(patientId: string): Promise<FamilyInvite
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("family_invites")
-    .select("id, code, patient_id, created_by, expires_at, max_uses, uses, used_by, used_at, created_at")
+    .select(
+      "id, code, patient_id, created_by, expires_at, max_uses, uses, used_by, used_at, created_at",
+    )
     .eq("patient_id", patientId)
     .order("created_at", { ascending: false });
   if (error) {
@@ -1031,7 +1097,6 @@ function mapAuditEntry(row: any): AuditLogEntry {
   };
 }
 
-
 // Dedup client-side allineato al DB: una sola registrazione di accesso per
 // paziente ogni 24h. Evita del tutto la round-trip quando non serve (0 egress).
 // Lo stesso guard esiste lato DB (log_patient_view) come rete di sicurezza.
@@ -1061,7 +1126,9 @@ export async function fetchPatientAuditLog(
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("audit_log")
-    .select("id, patient_id, actor_id, actor_name, action, entity_type, entity_id, summary, meta, created_at")
+    .select(
+      "id, patient_id, actor_id, actor_name, action, entity_type, entity_id, summary, meta, created_at",
+    )
     .eq("patient_id", patientId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -1127,8 +1194,6 @@ export async function removeCaregiverFromPatient(
   invalidateCaregiverCaches(patientId);
 }
 
-
-
 /* =========================================================
    MANUAL STOCK ADJUSTMENT (eccezioni e imprevisti)
    Protetto da RLS "therapies: update primary" e "stock: insert primary":
@@ -1136,11 +1201,11 @@ export async function removeCaregiverFromPatient(
 ========================================================= */
 
 export type StockAdjustmentReason =
-  | "breakage"         // fiala/compressa rotta
-  | "expired"          // farmaco scaduto o deteriorato
-  | "double_dose"      // dose doppia accidentale
-  | "hospital"         // sospensione per ricovero/intervento
-  | "manual_loss";     // perdita generica / altro
+  | "breakage" // fiala/compressa rotta
+  | "expired" // farmaco scaduto o deteriorato
+  | "double_dose" // dose doppia accidentale
+  | "hospital" // sospensione per ricovero/intervento
+  | "manual_loss"; // perdita generica / altro
 
 /**
  * Scala manualmente le scorte di una terapia senza registrare un evento
@@ -1389,7 +1454,14 @@ function dataUrlToBlob(dataUrl: string): { blob: Blob; ext: string } {
   const bin = atob(match[2]);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  const ext = mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "bin";
+  const ext =
+    mime === "image/jpeg"
+      ? "jpg"
+      : mime === "image/png"
+        ? "png"
+        : mime === "image/webp"
+          ? "webp"
+          : "bin";
   return { blob: new Blob([bytes], { type: mime }), ext };
 }
 
@@ -1434,25 +1506,36 @@ export async function ensureTherapyPhotoUrl(
  * è un dataURL lo carica su Storage e sostituisce con l'URL pubblico.
  * Ritorna il conteggio di righe aggiornate.
  */
-export async function migrateAllTherapyPhotosToStorage(): Promise<{ migrated: number; skipped: number; errors: number }> {
+export async function migrateAllTherapyPhotosToStorage(): Promise<{
+  migrated: number;
+  skipped: number;
+  errors: number;
+}> {
   if (!supabase) throw new Error("Supabase non configurato");
-  const { data, error } = await supabase
-    .from("therapies")
-    .select("id, photo_drug, photo_package");
+  const { data, error } = await supabase.from("therapies").select("id, photo_drug, photo_package");
   if (error) throw error;
 
-  let migrated = 0, skipped = 0, errors = 0;
+  let migrated = 0,
+    skipped = 0,
+    errors = 0;
   for (const row of data ?? []) {
     const hasDrugData = row.photo_drug?.startsWith("data:");
     const hasPkgData = row.photo_package?.startsWith("data:");
-    if (!hasDrugData && !hasPkgData) { skipped++; continue; }
+    if (!hasDrugData && !hasPkgData) {
+      skipped++;
+      continue;
+    }
     try {
       const patch: Record<string, string> = {};
       if (hasDrugData) {
         patch.photo_drug = await uploadTherapyPhotoFromDataUrl(row.id, "drug", row.photo_drug!);
       }
       if (hasPkgData) {
-        patch.photo_package = await uploadTherapyPhotoFromDataUrl(row.id, "package", row.photo_package!);
+        patch.photo_package = await uploadTherapyPhotoFromDataUrl(
+          row.id,
+          "package",
+          row.photo_package!,
+        );
       }
       const { error: upErr } = await supabase.from("therapies").update(patch).eq("id", row.id);
       if (upErr) throw upErr;
@@ -1474,7 +1557,7 @@ export async function migrateAllTherapyPhotosToStorage(): Promise<{ migrated: nu
 
 export type EmergencyContact = {
   name: string;
-  role: string;  // es. "Medico di Base", "Cardiologo", "Familiare"
+  role: string; // es. "Medico di Base", "Cardiologo", "Familiare"
   phone: string;
 };
 
@@ -1516,11 +1599,13 @@ export async function fetchMedicalProfile(patientId: string): Promise<MedicalPro
   if (!isReady(patientId)) return null;
 
   const cached = medicalProfileCache.get(patientId);
-  if (cached !== undefined) return cached;  // null incluso (profilo vuoto già verificato)
+  if (cached !== undefined) return cached; // null incluso (profilo vuoto già verificato)
 
   const { data, error } = await supabase!
     .from("patient_medical_profiles")
-    .select("patient_id, blood_type, allergies, diagnoses, emergency_contacts, notes, updated_at, updated_by")
+    .select(
+      "patient_id, blood_type, allergies, diagnoses, emergency_contacts, notes, updated_at, updated_by",
+    )
     .eq("patient_id", patientId)
     .maybeSingle();
 
@@ -1544,19 +1629,17 @@ export async function saveMedicalProfile(
 ): Promise<{ error: string | null }> {
   if (!isReady(patientId)) return { error: "Non autenticato" };
 
-  const { error } = await supabase!
-    .from("patient_medical_profiles")
-    .upsert(
-      {
-        patient_id: patientId,
-        blood_type: profile.bloodType || null,
-        allergies: profile.allergies,
-        diagnoses: profile.diagnoses || null,
-        emergency_contacts: profile.emergencyContacts,
-        notes: profile.notes || null,
-      },
-      { onConflict: "patient_id" },
-    );
+  const { error } = await supabase!.from("patient_medical_profiles").upsert(
+    {
+      patient_id: patientId,
+      blood_type: profile.bloodType || null,
+      allergies: profile.allergies,
+      diagnoses: profile.diagnoses || null,
+      emergency_contacts: profile.emergencyContacts,
+      notes: profile.notes || null,
+    },
+    { onConflict: "patient_id" },
+  );
 
   if (error) {
     console.error("[saveMedicalProfile] errore:", error);
@@ -1618,11 +1701,15 @@ export type ResetPatientHistoryResult = {
  * Mantiene intatti: anagrafica, terapie (configurazione), caregiver, scheda medica.
  * L'autorizzazione è verificata lato DB — genera errore se non si è il primario.
  */
-export async function resetPatientHistory(
-  patientId: string,
-): Promise<ResetPatientHistoryResult> {
+export async function resetPatientHistory(patientId: string): Promise<ResetPatientHistoryResult> {
   if (!isReady(patientId)) {
-    return { ok: false, eventsDeleted: 0, notifDeleted: 0, stockDeleted: 0, error: "Non autenticato" };
+    return {
+      ok: false,
+      eventsDeleted: 0,
+      notifDeleted: 0,
+      stockDeleted: 0,
+      error: "Non autenticato",
+    };
   }
 
   const { data, error } = await supabase!.rpc("reset_patient_history", {

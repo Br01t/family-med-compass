@@ -161,7 +161,7 @@ function PublicPricingPage() {
             Confronto dettagliato delle funzionalità
           </h2>
           <p className="text-base text-stone-600 mt-2 max-w-xl mx-auto">
-            Ogni dettaglio pensato per garantire la massima aderenza alle cure e la serenità della tua famiglia.
+            Ogni dettaglio pensato per garantire una migliore aderenza alle cure e la serenità della tua famiglia.
           </p>
         </div>
 
@@ -221,7 +221,7 @@ function PublicPricingPage() {
               Privacy e Dati Sanitari Protetti al 100% (GDPR)
             </h3>
             <p className="text-base text-stone-600 leading-relaxed font-normal">
-              La salute dei tuoi cari è preziosa. I dati inseriti su FamilyMed sono protetti da crittografia end-to-end e non verranno mai venduti o condivisi con terzi. Il diritto di esportare o cancellare tutti i dati personali è garantito gratuitamente su tutti i piani.
+              La salute dei tuoi cari è preziosa. I dati inseriti su FamilyMed sono protetti da crittografia at rest e non verranno mai venduti o condivisi con terzi. Il diritto di esportare o cancellare tutti i dati personali è garantito gratuitamente su tutti i piani.
             </p>
           </div>
         </div>

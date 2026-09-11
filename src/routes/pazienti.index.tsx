@@ -97,10 +97,6 @@ function PatientsListPage() {
               {redeeming ? "Verifica…" : "Usa codice"}
             </Button>
           </form>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Per motivi di privacy non esiste più un elenco pubblico dei pazienti: solo chi possiede
-            un codice valido può collegarsi a una famiglia.
-          </p>
         </section>
       )}
 

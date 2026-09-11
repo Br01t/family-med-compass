@@ -1,5 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Bell, CalendarPlus, Clock, FileDown, Info, Package, Pill, Settings } from "lucide-react";
+import {
+  ArrowLeft,
+  Bell,
+  CalendarPlus,
+  Clock,
+  FileDown,
+  Info,
+  Package,
+  Pill,
+  Settings,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { TherapyPhoto } from "@/components/TherapyPhoto";
@@ -72,9 +82,7 @@ function MyTherapiesPage() {
   );
   // Il resoconto include TUTTE le terapie del paziente (anche sospese), non
   // solo quelle attive mostrate in questa pagina.
-  const allTherapiesCount = data.therapies.filter(
-    (t) => t.patientId === patient.id,
-  ).length;
+  const allTherapiesCount = data.therapies.filter((t) => t.patientId === patient.id).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -93,7 +101,9 @@ function MyTherapiesPage() {
             FamilyMed
           </span>
           <Button variant="ghost" size="icon" asChild aria-label="Impostazioni">
-            <Link to="/impostazioni"><Settings className="size-5" /></Link>
+            <Link to="/impostazioni">
+              <Settings className="size-5" />
+            </Link>
           </Button>
         </div>
       </header>
@@ -101,7 +111,9 @@ function MyTherapiesPage() {
       <main className="mx-auto max-w-xl sm:max-w-2xl px-4 sm:px-5 pb-24 pt-4">
         <section className="fm-reveal">
           <p className="text-xl sm:text-2xl text-muted-foreground">Le terapie di</p>
-          <h1 className="truncate text-3xl sm:text-4xl font-black tracking-tight">{patient.name}</h1>
+          <h1 className="truncate text-3xl sm:text-4xl font-black tracking-tight">
+            {patient.name}
+          </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {therapies.length === 0
               ? "Nessuna terapia attualmente assegnata."
@@ -131,8 +143,8 @@ function MyTherapiesPage() {
               <TooltipContent className="max-w-xs text-center">
                 <p className="font-semibold">Resoconto completo delle terapie</p>
                 <p className="mt-1 text-xs">
-                  Un PDF con tutte le tue terapie e la timeline delle dosi di
-                  oggi (orari, stato, conferme), da stampare o condividere.
+                  Un PDF con tutte le tue terapie e la timeline delle dosi di oggi (orari, stato,
+                  conferme), da stampare o condividere.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -262,7 +274,7 @@ function MyTherapiesPage() {
                               if (method === "google") {
                                 toast.success("Apri Google Calendar per salvare l'evento", {
                                   description:
-                                    "Si è aperta una nuova scheda per ogni orario: tocca \"Salva\" per confermare.",
+                                    'Si è aperta una nuova scheda per ogni orario: tocca "Salva" per confermare.',
                                 });
                               } else {
                                 toast.success("Evento calendario esportato", {
@@ -278,13 +290,11 @@ function MyTherapiesPage() {
                         </TooltipTrigger>
 
                         <TooltipContent className="max-w-xs text-center">
-                          <p className="font-semibold">
-                            Aggiungi la terapia al calendario
-                          </p>
+                          <p className="font-semibold">Aggiungi la terapia al calendario</p>
                           <p className="mt-1 text-xs">
                             Verrà scaricato un file calendario. Aprendolo verrà creato
-                            automaticamente l'evento all'orario della cura con un promemoria
-                            30 minuti prima.
+                            automaticamente l'evento all'orario della cura con un promemoria 30
+                            minuti prima.
                           </p>
                         </TooltipContent>
                       </Tooltip>

@@ -13,14 +13,20 @@ import { downloadTherapyReportPdf } from "@/lib/therapy-report";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-
 export const Route = createFileRoute("/terapie")({
   head: () => ({ meta: [{ title: "Terapie — FamilyMed" }] }),
   component: TherapiesPage,
 });
 
 function TherapiesPage() {
-  const { data, updateTherapy, deleteTherapy, isPrimaryCaregiverOf, isSecondaryCaregiverOf, userProfile } = useFamilyMed();
+  const {
+    data,
+    updateTherapy,
+    deleteTherapy,
+    isPrimaryCaregiverOf,
+    isSecondaryCaregiverOf,
+    userProfile,
+  } = useFamilyMed();
   const isPatientUser = userProfile?.role === "paziente";
   const hasSecondaryRole = data.patients.some((p) => isSecondaryCaregiverOf(p.id));
 
@@ -28,7 +34,11 @@ function TherapiesPage() {
     <AppShell
       title="Gestione terapie"
       subtitle="Modifica piani, orari e reminder per ogni paziente"
-      actions={!isPatientUser && data.patients.some((p) => isPrimaryCaregiverOf(p.id)) ? <AddTherapyDialog /> : undefined}
+      actions={
+        !isPatientUser && data.patients.some((p) => isPrimaryCaregiverOf(p.id)) ? (
+          <AddTherapyDialog />
+        ) : undefined
+      }
     >
       <div className="space-y-8">
         {hasSecondaryRole && <SecondaryCaregiverNotice context="terapie" />}
@@ -40,13 +50,15 @@ function TherapiesPage() {
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft font-black text-primary">
-                    {p.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                    {p.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)}
                   </div>
                   <div className="min-w-0">
                     <h2 className="truncate text-xl font-black tracking-tight">{p.name}</h2>
-                    <p className="text-xs text-muted-foreground">
-                      {therapies.length} terapie
-                    </p>
+                    <p className="text-xs text-muted-foreground">{therapies.length} terapie</p>
                   </div>
                 </div>
                 <div className="flex w-full flex-wrap gap-2 sm:w-auto">
@@ -73,12 +85,10 @@ function TherapiesPage() {
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs text-center">
-                        <p className="font-semibold">
-                          Scarica il resoconto completo
-                        </p>
+                        <p className="font-semibold">Scarica il resoconto completo</p>
                         <p className="mt-1 text-xs">
-                          Un PDF con tutte le terapie di {p.name} e la timeline
-                          delle dosi di oggi (orari, stato, conferme).
+                          Un PDF con tutte le terapie di {p.name} e la timeline delle dosi di oggi
+                          (orari, stato, conferme).
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -87,7 +97,12 @@ function TherapiesPage() {
                     <AddTherapyDialog
                       initialPatientId={p.id}
                       trigger={
-                        <Button variant="outline" size="sm" className="w-full sm:w-auto" id={`add-therapy-${p.id}`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full sm:w-auto"
+                          id={`add-therapy-${p.id}`}
+                        >
                           <Plus className="mr-1.5 size-3.5" /> Terapia
                         </Button>
                       }
@@ -98,8 +113,7 @@ function TherapiesPage() {
               {therapies.length === 0 && (
                 <div className="rounded-3xl border border-dashed border-border/60 bg-card p-6 sm:p-8">
                   <p className="text-center text-sm text-muted-foreground sm:text-left">
-                    Aggiungi la prima terapia per iniziare a tenere tutto sotto
-                    controllo.
+                    Aggiungi la prima terapia per iniziare a tenere tutto sotto controllo.
                   </p>
                 </div>
               )}
@@ -156,9 +170,7 @@ function TherapiesPage() {
 
                     <dl className="mt-4 space-y-2 text-sm">
                       <Row label="Orari">
-                        <span className="font-mono font-semibold">
-                          {t.times.join(" · ")}
-                        </span>
+                        <span className="font-mono font-semibold">{t.times.join(" · ")}</span>
                       </Row>
                       <Row label="Ricorrenza">{recurrenceLabel(t.recurrence)}</Row>
                       <Row label="Categoria">{t.category}</Row>
@@ -204,7 +216,11 @@ function TherapiesPage() {
                         <AddTherapyDialog
                           editTherapy={t}
                           trigger={
-                            <Button variant="outline" size="sm" className="w-full sm:w-auto sm:flex-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full sm:w-auto sm:flex-1"
+                            >
                               Modifica
                             </Button>
                           }
@@ -222,11 +238,12 @@ function TherapiesPage() {
                                 if (method === "google") {
                                   toast.success("Apri Google Calendar per salvare l'evento", {
                                     description:
-                                      "Si è aperta una nuova scheda per ogni orario: tocca \"Salva\" per confermare.",
+                                      'Si è aperta una nuova scheda per ogni orario: tocca "Salva" per confermare.',
                                   });
                                 } else {
                                   toast.success("Evento calendario esportato", {
-                                    description: "Apri il file per aggiungerlo al calendario del telefono.",
+                                    description:
+                                      "Apri il file per aggiungerlo al calendario del telefono.",
                                   });
                                 }
                               }}
@@ -237,12 +254,11 @@ function TherapiesPage() {
                           </TooltipTrigger>
 
                           <TooltipContent className="max-w-xs text-center">
-                            <p className="font-semibold">
-                              Aggiungi questa terapia al calendario
-                            </p>
+                            <p className="font-semibold">Aggiungi questa terapia al calendario</p>
                             <p className="mt-1 text-xs">
                               Verrà scaricato un file calendario. Aprendolo verrà creato l'evento
-                              all'orario esatto della cura con un promemoria automatico 30 minuti prima.
+                              all'orario esatto della cura con un promemoria automatico 30 minuti
+                              prima.
                             </p>
                           </TooltipContent>
                         </Tooltip>
@@ -277,9 +293,7 @@ function TherapiesPage() {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-3">
-      <dt className="text-xs uppercase tracking-widest text-muted-foreground">
-        {label}
-      </dt>
+      <dt className="text-xs uppercase tracking-widest text-muted-foreground">{label}</dt>
       <dd className="truncate text-right">{children}</dd>
     </div>
   );

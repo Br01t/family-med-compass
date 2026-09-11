@@ -1,5 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarClock, Copy, Package, Plus, Share2, ShoppingCart, TriangleAlert } from "lucide-react";
+import {
+  CalendarClock,
+  Copy,
+  Package,
+  Plus,
+  Share2,
+  ShoppingCart,
+  TriangleAlert,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { SecondaryCaregiverNotice } from "@/components/SecondaryCaregiverNotice";
@@ -51,7 +59,7 @@ function InventoryPage() {
         {grouped.map(({ patient, items, canManage }) => (
           <section key={patient.id} className="block w-full min-w-0">
             <h2 className="mb-4 text-base sm:text-lg font-black tracking-tight">{patient.name}</h2>
-            
+
             {/* VISTA MOBILE: Lista di Card (nascosta da md: in su) */}
             <div className="space-y-3 md:hidden">
               {items.map((t) => {
@@ -73,7 +81,10 @@ function InventoryPage() {
                           : "Pieno";
 
                 return (
-                  <div key={t.id} className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm space-y-3">
+                  <div
+                    key={t.id}
+                    className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm space-y-3"
+                  >
                     {/* Header farmaco */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-3 min-w-0">
@@ -102,14 +113,21 @@ function InventoryPage() {
                     {/* Info pillole e autonomia */}
                     <div className="grid grid-cols-2 gap-2 border-t border-b border-border/40 py-2.5 text-xs">
                       <div>
-                        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider">Compresse</p>
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider">
+                          Compresse
+                        </p>
                         <p className="font-mono font-bold mt-0.5">
                           {t.pillsRemaining}
-                          <span className="text-muted-foreground font-normal"> / {t.pillsPerPack * Math.max(t.packs, 1)}</span>
+                          <span className="text-muted-foreground font-normal">
+                            {" "}
+                            / {t.pillsPerPack * Math.max(t.packs, 1)}
+                          </span>
                         </p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider">Autonomia</p>
+                        <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider">
+                          Autonomia
+                        </p>
                         <p className="font-semibold mt-0.5">~{daysLeft} giorni</p>
                       </div>
                     </div>
@@ -134,7 +152,12 @@ function InventoryPage() {
                         />
                       </div>
                       {canManage && (
-                        <Button size="sm" variant="outline" className="h-8 text-xs shrink-0" onClick={() => addPack(t.id)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs shrink-0"
+                          onClick={() => addPack(t.id)}
+                        >
                           <Plus className="mr-1 size-3.5" /> Confezione
                         </Button>
                       )}
@@ -162,7 +185,9 @@ function InventoryPage() {
                     const daysLeft = Math.floor(t.pillsRemaining / Math.max(perDay, 1));
                     const pct = Math.min(
                       100,
-                      Math.round((t.pillsRemaining / (t.pillsPerPack * Math.max(t.packs, 1))) * 100),
+                      Math.round(
+                        (t.pillsRemaining / (t.pillsPerPack * Math.max(t.packs, 1))) * 100,
+                      ),
                     );
                     const level =
                       pct <= 10
@@ -258,8 +283,8 @@ function InventoryPage() {
               </h3>
             </div>
             <p className="text-sm text-muted-foreground">
-              Quando finiscono davvero le scorte: data stimata di esaurimento e giorno
-              consigliato per acquistare, calcolati su consumo e ricorrenza di ogni terapia.
+              Quando finiscono davvero le scorte: data stimata di esaurimento e giorno consigliato
+              per acquistare, calcolati su consumo e ricorrenza di ogni terapia.
             </p>
             <StockPredictions therapies={data.therapies} />
           </div>
@@ -271,8 +296,10 @@ function InventoryPage() {
             Verifica scorte con il paziente
           </h3>
           <p className="mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">
-            Questa sezione può essere utilizzata come <b>controllo aggiuntivo</b> insieme al paziente.
-            Quando arriva un avviso di scorte in esaurimento (ad esempio quando rimangono 10 pillole), puoi contattare il paziente e chiedere conferma della quantità realmente disponibile.
+            Questa sezione può essere utilizzata come <b>controllo aggiuntivo</b> insieme al
+            paziente. Quando arriva un avviso di scorte in esaurimento (ad esempio quando rimangono
+            10 pillole), puoi contattare il paziente e chiedere conferma della quantità realmente
+            disponibile.
           </p>
           <p className="mt-3 text-xs sm:text-sm leading-relaxed text-muted-foreground">
             Questo doppio controllo permette di individuare eventuali differenze tra le scorte
@@ -381,19 +408,22 @@ function buildPredictions(therapies: TherapyLike[]): Prediction[] {
   // di fallire per la componente ora/minuti dell'orario corrente.
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return therapies
-    // Le terapie sospese restano visibili in previsione (utile se dovessero
-    // riprendere): vengono escluse solo quelle disattivate definitivamente.
-    .filter((t) => t.active)
-    .map((t) => {
-      const pillsRemaining = Number(t.pillsRemaining) || 0;
-      const perDay = avgDailyConsumption(t);
-      const daysLeft = perDay > 0 ? Math.floor(pillsRemaining / perDay) : Number.POSITIVE_INFINITY;
-      const depletionDate = addDays(today, Number.isFinite(daysLeft) ? daysLeft : 3650);
-      const purchaseBy = addDays(depletionDate, -2);
-      return { therapy: t, daysLeft, depletionDate, purchaseBy };
-    })
-    .sort((a, b) => a.daysLeft - b.daysLeft);
+  return (
+    therapies
+      // Le terapie sospese restano visibili in previsione (utile se dovessero
+      // riprendere): vengono escluse solo quelle disattivate definitivamente.
+      .filter((t) => t.active)
+      .map((t) => {
+        const pillsRemaining = Number(t.pillsRemaining) || 0;
+        const perDay = avgDailyConsumption(t);
+        const daysLeft =
+          perDay > 0 ? Math.floor(pillsRemaining / perDay) : Number.POSITIVE_INFINITY;
+        const depletionDate = addDays(today, Number.isFinite(daysLeft) ? daysLeft : 3650);
+        const purchaseBy = addDays(depletionDate, -2);
+        return { therapy: t, daysLeft, depletionDate, purchaseBy };
+      })
+      .sort((a, b) => a.daysLeft - b.daysLeft)
+  );
 }
 
 function StockPredictions({ therapies }: { therapies: TherapyLike[] }) {
@@ -410,60 +440,70 @@ function StockPredictions({ therapies }: { therapies: TherapyLike[] }) {
 
   return (
     <>
-    <ul className="space-y-3">
-      {predictions.map(({ therapy: t, daysLeft, depletionDate, purchaseBy }) => {
-        const buyDate = purchaseBy < today ? today : purchaseBy;
-        // Per le terapie sospese non mostriamo l'urgenza di acquisto: la
-        // stima resta visibile "per quando riprende", ma non deve sembrare
-        // un'emergenza dato che al momento non viene consumata.
-        const urgent = !t.suspended && daysLeft <= 5;
-        const warning = !t.suspended && !urgent && daysLeft <= 10;
-        return (
-          <li
-            key={t.id}
-            className={cn(
-              "flex flex-col gap-2 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between",
-              t.suspended
-                ? "border-border/60 bg-surface-muted opacity-70"
-                : urgent
-                  ? "border-accent/40 bg-accent-soft"
-                  : warning
-                    ? "border-warning/40 bg-warning/10"
-                    : "border-border/60 bg-surface-muted",
-            )}
-          >
-            <div className="min-w-0">
-              <p className="truncate font-bold text-sm flex items-center gap-2">
-                {t.name} <span className="font-normal text-muted-foreground">· {t.dosage}</span>
-                {t.suspended && (
-                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Sospesa
-                  </span>
-                )}
-              </p>
-              <p className="text-xs text-muted-foreground">{patientName(t.patientId)}</p>
-            </div>
-            <div className="text-sm sm:text-right">
-              <p className="font-bold">
-                ≈ {Number.isFinite(daysLeft) ? `${daysLeft} ${daysLeft === 1 ? "giorno rimasto" : "giorni rimasti"}` : "scorta non stimabile"}
-                {Number.isFinite(daysLeft) && (
-                  <span className="block text-xs font-normal text-muted-foreground">
-                    fino a {dayFmt.format(depletionDate)}{t.suspended && " se riprende ora"}
-                  </span>
-                )}
-              </p>
-              {(urgent || warning) && Number.isFinite(daysLeft) && (
-                <p className={cn("mt-1 flex items-center gap-1 text-xs font-bold sm:justify-end", urgent ? "text-accent" : "text-warning-foreground")}>
-                  <TriangleAlert className="size-3.5 shrink-0" />
-                  Acquista entro {buyDate.getTime() === today.getTime() ? "oggi" : dayFmt.format(buyDate)}
-                </p>
+      <ul className="space-y-3">
+        {predictions.map(({ therapy: t, daysLeft, depletionDate, purchaseBy }) => {
+          const buyDate = purchaseBy < today ? today : purchaseBy;
+          // Per le terapie sospese non mostriamo l'urgenza di acquisto: la
+          // stima resta visibile "per quando riprende", ma non deve sembrare
+          // un'emergenza dato che al momento non viene consumata.
+          const urgent = !t.suspended && daysLeft <= 5;
+          const warning = !t.suspended && !urgent && daysLeft <= 10;
+          return (
+            <li
+              key={t.id}
+              className={cn(
+                "flex flex-col gap-2 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between",
+                t.suspended
+                  ? "border-border/60 bg-surface-muted opacity-70"
+                  : urgent
+                    ? "border-accent/40 bg-accent-soft"
+                    : warning
+                      ? "border-warning/40 bg-warning/10"
+                      : "border-border/60 bg-surface-muted",
               )}
-            </div>
-          </li>
-        );
-      })}
-    </ul>
-    <ShoppingList predictions={predictions} patientName={patientName} />
+            >
+              <div className="min-w-0">
+                <p className="truncate font-bold text-sm flex items-center gap-2">
+                  {t.name} <span className="font-normal text-muted-foreground">· {t.dosage}</span>
+                  {t.suspended && (
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Sospesa
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">{patientName(t.patientId)}</p>
+              </div>
+              <div className="text-sm sm:text-right">
+                <p className="font-bold">
+                  ≈{" "}
+                  {Number.isFinite(daysLeft)
+                    ? `${daysLeft} ${daysLeft === 1 ? "giorno rimasto" : "giorni rimasti"}`
+                    : "scorta non stimabile"}
+                  {Number.isFinite(daysLeft) && (
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      fino a {dayFmt.format(depletionDate)}
+                      {t.suspended && " se riprende ora"}
+                    </span>
+                  )}
+                </p>
+                {(urgent || warning) && Number.isFinite(daysLeft) && (
+                  <p
+                    className={cn(
+                      "mt-1 flex items-center gap-1 text-xs font-bold sm:justify-end",
+                      urgent ? "text-accent" : "text-warning-foreground",
+                    )}
+                  >
+                    <TriangleAlert className="size-3.5 shrink-0" />
+                    Acquista entro{" "}
+                    {buyDate.getTime() === today.getTime() ? "oggi" : dayFmt.format(buyDate)}
+                  </p>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <ShoppingList predictions={predictions} patientName={patientName} />
     </>
   );
 }
@@ -480,7 +520,10 @@ type ShoppingItem = {
 };
 
 /** Margine: una terapia entra in lista se finisce entro 10 giorni; si coprono 30 giorni. */
-function buildShoppingList(predictions: Prediction[], patientName: (id: string) => string): ShoppingItem[] {
+function buildShoppingList(
+  predictions: Prediction[],
+  patientName: (id: string) => string,
+): ShoppingItem[] {
   return predictions
     .filter(({ daysLeft }) => Number.isFinite(daysLeft) && daysLeft <= 10)
     .map(({ therapy: t, daysLeft }) => {
@@ -530,7 +573,9 @@ function ShoppingList({
       await navigator.clipboard.writeText(text);
       toast.success("Lista copiata", { description: "Puoi incollarla dove vuoi." });
     } catch {
-      toast.error("Copia non riuscita", { description: "Il browser non consente l'accesso agli appunti." });
+      toast.error("Copia non riuscita", {
+        description: "Il browser non consente l'accesso agli appunti.",
+      });
     }
   };
 
@@ -542,9 +587,15 @@ function ShoppingList({
       </div>
       <ul className="space-y-2">
         {items.map((i) => (
-          <li key={`${i.name}-${i.patient}`} className="flex items-center justify-between gap-3 text-sm">
+          <li
+            key={`${i.name}-${i.patient}`}
+            className="flex items-center justify-between gap-3 text-sm"
+          >
             <span className="min-w-0 truncate">
-              <b>{i.name}</b> <span className="text-muted-foreground">{i.dosage} · {i.patient}</span>
+              <b>{i.name}</b>{" "}
+              <span className="text-muted-foreground">
+                {i.dosage} · {i.patient}
+              </span>
               {i.suspended && (
                 <span className="ml-2 inline-block shrink-0 rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground align-middle">
                   Sospesa

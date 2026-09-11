@@ -148,7 +148,7 @@ const PLANS = [
     cta: "Scegli Max",
     highlight: false,
     features: [
-      "Persone seguite illimitate",
+      "Persone seguite 10",
       "Tutto del piano Pro",
       "Ruoli e permessi avanzati",
       "Inviti con link e QR Code",

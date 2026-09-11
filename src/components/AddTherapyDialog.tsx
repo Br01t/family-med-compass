@@ -62,7 +62,9 @@ const schema = z.object({
   dosage: z.string().min(1, "Inserisci il dosaggio (es. 100mg)"),
   quantity: z.number({ message: "Quantità obbligatoria" }).min(1).max(20),
   category: z.string().min(1, "Seleziona una categoria"),
-  times: z.array(z.object({ value: z.string().regex(/^\d{2}:\d{2}$/, "Formato HH:MM") })).min(1, "Aggiungi almeno un orario"),
+  times: z
+    .array(z.object({ value: z.string().regex(/^\d{2}:\d{2}$/, "Formato HH:MM") }))
+    .min(1, "Aggiungi almeno un orario"),
   recurrenceKind: z.enum(["daily", "weekdays", "weekend", "every_x_days"]),
   everyXDays: z.number().optional(),
   startDate: z.string().min(1, "Data inizio obbligatoria"),
@@ -90,10 +92,18 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClose }: AddTherapyDialogProps) {
+export function AddTherapyDialog({
+  trigger,
+  initialPatientId,
+  editTherapy,
+  onClose,
+}: AddTherapyDialogProps) {
   const [open, setOpen] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
-  const [upgradeReason, setUpgradeReason] = useState<{ title: string; desc: string }>({ title: "", desc: "" });
+  const [upgradeReason, setUpgradeReason] = useState<{ title: string; desc: string }>({
+    title: "",
+    desc: "",
+  });
   const { data, addTherapy, updateTherapy, subscriptionPlan } = useFamilyMed();
   const limits = getPlanLimits(subscriptionPlan);
   const isEdit = Boolean(editTherapy);
@@ -114,9 +124,7 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
             ? "every_x_days"
             : (editTherapy.recurrence.kind as "daily" | "weekdays" | "weekend"),
         everyXDays:
-          editTherapy.recurrence.kind === "every_x_days"
-            ? editTherapy.recurrence.x
-            : undefined,
+          editTherapy.recurrence.kind === "every_x_days" ? editTherapy.recurrence.x : undefined,
         startDate: editTherapy.startDate,
         endDate: editTherapy.endDate ?? "",
         noEndDate: !editTherapy.endDate,
@@ -151,7 +159,11 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
     defaultValues,
   });
 
-  const { fields: timeFields, append: appendTime, remove: removeTime } = useFieldArray({
+  const {
+    fields: timeFields,
+    append: appendTime,
+    remove: removeTime,
+  } = useFieldArray({
     control: form.control,
     name: "times",
   });
@@ -178,7 +190,7 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
     // Verifica limite terapie attive per il piano Free (max 3 per paziente)
     if (!isEdit) {
       const activeCount = data.therapies.filter(
-        (t) => t.patientId === values.patientId && t.active
+        (t) => t.patientId === values.patientId && t.active,
       ).length;
       if (activeCount >= limits.maxActiveTherapiesPerPatient) {
         setUpgradeReason({
@@ -221,7 +233,7 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
           times: values.times.map((t) => t.value),
           recurrence,
           startDate: values.startDate,
-          endDate: values.noEndDate ? undefined : (values.endDate || undefined),
+          endDate: values.noEndDate ? undefined : values.endDate || undefined,
           timeoutMinutes: values.timeoutMinutes,
           snoozeMinutes: editTherapy.snoozeMinutes ?? 10,
           postReminderMinutes: editTherapy.postReminderMinutes ?? 5,
@@ -254,7 +266,7 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
           times: values.times.map((t) => t.value),
           recurrence,
           startDate: values.startDate,
-          endDate: values.noEndDate ? undefined : (values.endDate || undefined),
+          endDate: values.noEndDate ? undefined : values.endDate || undefined,
           timeoutMinutes: values.timeoutMinutes,
           snoozeMinutes: 10,
           postReminderMinutes: 5,
@@ -272,7 +284,6 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
         toast.success("Terapia aggiunta", { description: values.name });
       }
 
-
       form.reset();
       setOpen(false);
       onClose?.();
@@ -287,7 +298,6 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
     }
   }
 
-
   const handleOpenChange = (v: boolean) => {
     setOpen(v);
     if (!v) onClose?.();
@@ -296,375 +306,84 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button size="sm" id="add-therapy-btn">
-            <PillIcon className="mr-2 size-4" />
-            {isEdit ? "Modifica terapia" : "Nuova terapia"}
-          </Button>
-        )}
-      </DialogTrigger>
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button size="sm" id="add-therapy-btn">
+              <PillIcon className="mr-2 size-4" />
+              {isEdit ? "Modifica terapia" : "Nuova terapia"}
+            </Button>
+          )}
+        </DialogTrigger>
 
-      <DialogContent
-        aria-describedby="therapy-dialog-description"
-        className="flex max-h-[90vh] w-full max-w-[calc(100vw-2rem)] flex-col sm:max-w-2xl"
-      >
-        <DialogHeader className="shrink-0">
-          <DialogTitle className="text-xl font-black tracking-tight">
-            {isEdit ? `Modifica: ${editTherapy?.name}` : "Nuova terapia"}
-          </DialogTitle>
-          <DialogDescription id="therapy-dialog-description">
-            Assegna paziente, terapia, foto, frequenza, durata e avvisi.
-          </DialogDescription>
-        </DialogHeader>
+        <DialogContent
+          aria-describedby="therapy-dialog-description"
+          className="flex max-h-[90vh] w-full max-w-[calc(100vw-2rem)] flex-col sm:max-w-2xl"
+        >
+          <DialogHeader className="shrink-0">
+            <DialogTitle className="text-xl font-black tracking-tight">
+              {isEdit ? `Modifica: ${editTherapy?.name}` : "Nuova terapia"}
+            </DialogTitle>
+            <DialogDescription id="therapy-dialog-description">
+              Assegna paziente, terapia, foto, frequenza, durata e avvisi.
+            </DialogDescription>
+          </DialogHeader>
 
-        <ScrollArea className="flex-1 overflow-auto pr-3">
-          <Form {...form}>
-            <form
-              id="therapy-form"
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="mt-2 space-y-5 pb-4"
-            >
-              {/* Patient */}
-              {data.patients.length === 0 && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                  Non hai ancora pazienti assegnati: collega un paziente prima di creare una terapia.
-                </div>
-              )}
-              <FormField
-                control={form.control}
-                name="patientId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Paziente</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={data.patients.length === 0}>
-                      <FormControl>
-                        <SelectTrigger id="therapy-patient-select">
-                          <SelectValue placeholder="Seleziona paziente" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {data.patients.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
+          <ScrollArea className="flex-1 overflow-auto pr-3">
+            <Form {...form}>
+              <form
+                id="therapy-form"
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="mt-2 space-y-5 pb-4"
+              >
+                {/* Patient */}
+                {data.patients.length === 0 && (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    Non hai ancora pazienti assegnati: collega un paziente prima di creare una
+                    terapia.
+                  </div>
                 )}
-              />
-
-              {/* Name + Dosage */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="name"
+                  name="patientId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nome farmaco</FormLabel>
-                      <FormControl>
-                        <Input id="therapy-name-input" placeholder="es. Cardioaspirina" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="dosage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Dosaggio</FormLabel>
-                      <FormControl>
-                        <Input id="therapy-dosage-input" placeholder="es. 100mg" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Category + Quantity */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Categoria</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger id="therapy-category-select">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {CATEGORIES.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {c}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="quantity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Unità per dose</FormLabel>
-                      <FormControl>
-                        <Input
-                          id="therapy-quantity-input"
-                          type="number"
-                          min={1}
-                          max={20}
-                          {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Times */}
-              <FormItem>
-                <p className="text-sm font-medium text-foreground">Orari di assunzione</p>
-                <div className="space-y-2">
-                  {timeFields.map((timeField, index) => (
-                    <div key={timeField.id} className="flex items-center gap-2">
-                      <FormField
-                        control={form.control}
-                        name={`times.${index}.value`}
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormControl>
-                              <Input
-                                id={`therapy-time-${index}`}
-                                type="time"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      {timeFields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => removeTime(index)}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => appendTime({ value: "12:00" })}
-                    id="add-time-btn"
-                  >
-                    <Plus className="mr-1.5 size-3.5" /> Aggiungi orario
-                  </Button>
-                </div>
-              </FormItem>
-
-              {/* Recurrence */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="recurrenceKind"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ricorrenza</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger id="therapy-recurrence-select">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {RECURRENCE_OPTIONS.map((r) => (
-                            <SelectItem key={r.value} value={r.value}>
-                              {r.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {recurrenceKind === "every_x_days" && (
-                  <FormField
-                    control={form.control}
-                    name="everyXDays"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ogni quanti giorni</FormLabel>
-                        <FormControl>
-                          <Input
-                            id="therapy-every-x-days-input"
-                            type="number"
-                            min={2}
-                            max={365}
-                            placeholder="2"
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                            value={field.value ?? ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                <FormField
-                  control={form.control}
-                  name="timeoutMinutes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Avviso post se non confermata dopo</FormLabel>
-                      <FormControl>
-                        <Input
-                          id="therapy-timeout-input"
-                          type="number"
-                          min={5}
-                          max={480}
-                          placeholder="60"
-                          {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="reminderBeforeMinutes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Avviso prima della dose</FormLabel>
+                      <FormLabel>Paziente</FormLabel>
                       <Select
-                        onValueChange={(value) => field.onChange(Number(value))}
-                        value={String(field.value)}
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={data.patients.length === 0}
                       >
                         <FormControl>
-                          <SelectTrigger id="therapy-reminder-before-select">
-                            <SelectValue />
+                          <SelectTrigger id="therapy-patient-select">
+                            <SelectValue placeholder="Seleziona paziente" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="5">5 minuti prima</SelectItem>
-                          <SelectItem value="10">10 minuti prima</SelectItem>
-                          <SelectItem value="15">15 minuti prima</SelectItem>
-                          <SelectItem value="30">30 minuti prima</SelectItem>
-                          <SelectItem value="60">1 ora prima</SelectItem>
+                          {data.patients.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
 
-              {/* Dates */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="startDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data inizio</FormLabel>
-                      <FormControl>
-                        <Input id="therapy-start-date-input" type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="endDate"
-                  render={({ field }) => {
-                    const noEnd = form.watch("noEndDate");
-                    return (
-                      <FormItem>
-                        <FormLabel>Data fine (opzionale)</FormLabel>
-                        <FormControl>
-                          <Input
-                            id="therapy-end-date-input"
-                            type="date"
-                            {...field}
-                            value={field.value ?? ""}
-                            disabled={noEnd}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
-              </div>
-              <FormField
-                control={form.control}
-                name="noEndDate"
-                render={({ field }) => (
-                  <label className="flex cursor-pointer items-center gap-2 text-sm">
-                    <input
-                      id="therapy-no-end-date"
-                      type="checkbox"
-                      className="size-4 accent-primary"
-                      checked={!!field.value}
-                      onChange={(e) => {
-                        field.onChange(e.target.checked);
-                        if (e.target.checked) form.setValue("endDate", "");
-                      }}
-                    />
-                    <span className="font-medium">
-                      Terapia senza scadenza (a tempo indeterminato)
-                    </span>
-                  </label>
-                )}
-              />
-
-
-              {/* Stock */}
-              <div className="rounded-xl border border-border/60 bg-surface-muted p-4">
-                <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                  Scorte
-                </p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {/* Name + Dosage */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
-                    name="pillsPerPack"
+                    name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Pillole/confezione</FormLabel>
+                        <FormLabel>Nome farmaco</FormLabel>
                         <FormControl>
                           <Input
-                            id="therapy-pills-per-pack-input"
-                            type="number"
-                            min={1}
+                            id="therapy-name-input"
+                            placeholder="es. Cardioaspirina"
                             {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
                           />
                         </FormControl>
                         <FormMessage />
@@ -673,34 +392,57 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
                   />
                   <FormField
                     control={form.control}
-                    name="packs"
+                    name="dosage"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>N° confezioni</FormLabel>
+                        <FormLabel>Dosaggio</FormLabel>
                         <FormControl>
-                          <Input
-                            id="therapy-packs-input"
-                            type="number"
-                            min={1}
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                          />
+                          <Input id="therapy-dosage-input" placeholder="es. 100mg" {...field} />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Category + Quantity */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categoria</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger id="therapy-category-select">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {CATEGORIES.map((c) => (
+                              <SelectItem key={c} value={c}>
+                                {c}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   <FormField
                     control={form.control}
-                    name="lowStockThreshold"
+                    name="quantity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Soglia allerta</FormLabel>
+                        <FormLabel>Unità per dose</FormLabel>
                         <FormControl>
                           <Input
-                            id="therapy-low-stock-input"
+                            id="therapy-quantity-input"
                             type="number"
                             min={1}
+                            max={20}
                             {...field}
                             onChange={(e) => field.onChange(Number(e.target.value))}
                           />
@@ -710,97 +452,380 @@ export function AddTherapyDialog({ trigger, initialPatientId, editTherapy, onClo
                     )}
                   />
                 </div>
-              </div>
 
-              {/* Foto farmaco + confezione — solo Pro/Max (upload e visualizzazione) */}
-              {limits.medicationPhoto ? (
-                <>
-                  <PhotoField
-                    label="Foto del farmaco (pastiglia)"
-                    value={photoDrug}
-                    onChange={setPhotoDrug}
-                    inputId="therapy-photo-drug"
-                  />
-                  <PhotoField
-                    label="Foto della confezione"
-                    value={photoPackage}
-                    onChange={setPhotoPackage}
-                    inputId="therapy-photo-package"
-                  />
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUpgradeReason({
-                      title: "Foto dei farmaci",
-                      desc: "Carica la foto del farmaco e della confezione passando a un piano Pro o Max: aiuta chi assiste il paziente a riconoscere subito la terapia giusta.",
-                    });
-                    setUpgradeModalOpen(true);
-                  }}
-                  className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-border bg-surface-muted p-4 text-left transition hover:border-primary/50"
-                >
-                  <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                    <Camera className="size-5" />
+                {/* Times */}
+                <FormItem>
+                  <p className="text-sm font-medium text-foreground">Orari di assunzione</p>
+                  <div className="space-y-2">
+                    {timeFields.map((timeField, index) => (
+                      <div key={timeField.id} className="flex items-center gap-2">
+                        <FormField
+                          control={form.control}
+                          name={`times.${index}.value`}
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormControl>
+                                <Input id={`therapy-time-${index}`} type="time" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        {timeFields.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => removeTime(index)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => appendTime({ value: "12:00" })}
+                      id="add-time-btn"
+                    >
+                      <Plus className="mr-1.5 size-3.5" /> Aggiungi orario
+                    </Button>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold">Foto del farmaco e della confezione</p>
-                    <p className="text-xs text-muted-foreground">
-                      Disponibile con piano Pro o Max — tocca per scoprire di più.
-                    </p>
-                  </div>
-                </button>
-              )}
+                </FormItem>
 
-              {/* Notes */}
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descrizione e istruzioni</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        id="therapy-notes-input"
-                        placeholder="es. Assumere dopo i pasti, non con il caffè..."
-                        className="resize-none"
-                        rows={3}
-                        {...field}
-                        value={field.value ?? ""}
+                {/* Recurrence */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="recurrenceKind"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ricorrenza</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger id="therapy-recurrence-select">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {RECURRENCE_OPTIONS.map((r) => (
+                              <SelectItem key={r.value} value={r.value}>
+                                {r.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {recurrenceKind === "every_x_days" && (
+                    <FormField
+                      control={form.control}
+                      name="everyXDays"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ogni quanti giorni</FormLabel>
+                          <FormControl>
+                            <Input
+                              id="therapy-every-x-days-input"
+                              type="number"
+                              min={2}
+                              max={365}
+                              placeholder="2"
+                              {...field}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  <FormField
+                    control={form.control}
+                    name="timeoutMinutes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Avviso post se non confermata dopo</FormLabel>
+                        <FormControl>
+                          <Input
+                            id="therapy-timeout-input"
+                            type="number"
+                            min={5}
+                            max={480}
+                            placeholder="60"
+                            {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="reminderBeforeMinutes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Avviso prima della dose</FormLabel>
+                        <Select
+                          onValueChange={(value) => field.onChange(Number(value))}
+                          value={String(field.value)}
+                        >
+                          <FormControl>
+                            <SelectTrigger id="therapy-reminder-before-select">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="5">5 minuti prima</SelectItem>
+                            <SelectItem value="10">10 minuti prima</SelectItem>
+                            <SelectItem value="15">15 minuti prima</SelectItem>
+                            <SelectItem value="30">30 minuti prima</SelectItem>
+                            <SelectItem value="60">1 ora prima</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Dates */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="startDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data inizio</FormLabel>
+                        <FormControl>
+                          <Input id="therapy-start-date-input" type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="endDate"
+                    render={({ field }) => {
+                      const noEnd = form.watch("noEndDate");
+                      return (
+                        <FormItem>
+                          <FormLabel>Data fine (opzionale)</FormLabel>
+                          <FormControl>
+                            <Input
+                              id="therapy-end-date-input"
+                              type="date"
+                              {...field}
+                              value={field.value ?? ""}
+                              disabled={noEnd}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="noEndDate"
+                  render={({ field }) => (
+                    <label className="flex cursor-pointer items-center gap-2 text-sm">
+                      <input
+                        id="therapy-no-end-date"
+                        type="checkbox"
+                        className="size-4 accent-primary"
+                        checked={!!field.value}
+                        onChange={(e) => {
+                          field.onChange(e.target.checked);
+                          if (e.target.checked) form.setValue("endDate", "");
+                        }}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                      <span className="font-medium">
+                        Terapia senza scadenza (a tempo indeterminato)
+                      </span>
+                    </label>
+                  )}
+                />
+
+                {/* Stock */}
+                <div className="rounded-xl border border-border/60 bg-surface-muted p-4">
+                  <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    Scorte
+                  </p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <FormField
+                      control={form.control}
+                      name="pillsPerPack"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Pillole/confezione</FormLabel>
+                          <FormControl>
+                            <Input
+                              id="therapy-pills-per-pack-input"
+                              type="number"
+                              min={1}
+                              {...field}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="packs"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>N° confezioni</FormLabel>
+                          <FormControl>
+                            <Input
+                              id="therapy-packs-input"
+                              type="number"
+                              min={1}
+                              {...field}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="lowStockThreshold"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Soglia allerta</FormLabel>
+                          <FormControl>
+                            <Input
+                              id="therapy-low-stock-input"
+                              type="number"
+                              min={1}
+                              {...field}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {/* Foto farmaco + confezione — solo Pro/Max (upload e visualizzazione) */}
+                {limits.medicationPhoto ? (
+                  <>
+                    <PhotoField
+                      label="Foto del farmaco (pastiglia)"
+                      value={photoDrug}
+                      onChange={setPhotoDrug}
+                      inputId="therapy-photo-drug"
+                    />
+                    <PhotoField
+                      label="Foto della confezione"
+                      value={photoPackage}
+                      onChange={setPhotoPackage}
+                      inputId="therapy-photo-package"
+                    />
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUpgradeReason({
+                        title: "Foto dei farmaci",
+                        desc: "Carica la foto del farmaco e della confezione passando a un piano Pro o Max: aiuta chi assiste il paziente a riconoscere subito la terapia giusta.",
+                      });
+                      setUpgradeModalOpen(true);
+                    }}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-border bg-surface-muted p-4 text-left transition hover:border-primary/50"
+                  >
+                    <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                      <Camera className="size-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold">Foto del farmaco e della confezione</p>
+                      <p className="text-xs text-muted-foreground">
+                        Disponibile con piano Pro o Max — tocca per scoprire di più.
+                      </p>
+                    </div>
+                  </button>
                 )}
-              />
-            </form>
-          </Form>
-        </ScrollArea>
 
-        {/* Footer actions outside scroll */}
-        <div className="mt-4 flex shrink-0 flex-col-reverse gap-3 border-t border-border/60 pt-4 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full sm:w-auto"
-            onClick={() => handleOpenChange(false)}
-          >
-            Annulla
-          </Button>
-          <Button type="submit" form="therapy-form" id="save-therapy-btn" className="w-full sm:w-auto" loading={form.formState.isSubmitting} disabled={data.patients.length === 0}>
-            {form.formState.isSubmitting ? "Salvataggio…" : isEdit ? "Salva modifiche" : "Aggiungi terapia"}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+                {/* Notes */}
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Descrizione e istruzioni</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          id="therapy-notes-input"
+                          placeholder="es. Assumere dopo i pasti, non con il caffè..."
+                          className="resize-none"
+                          rows={3}
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </form>
+            </Form>
+          </ScrollArea>
 
-    <UpgradeModal
-      open={upgradeModalOpen}
-      onOpenChange={setUpgradeModalOpen}
-      requiredPlan="pro"
-      featureTitle={upgradeReason.title}
-      featureDescription={upgradeReason.desc}
-    />
+          {/* Footer actions outside scroll */}
+          <div className="mt-4 flex shrink-0 flex-col-reverse gap-3 border-t border-border/60 pt-4 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => handleOpenChange(false)}
+            >
+              Annulla
+            </Button>
+            <Button
+              type="submit"
+              form="therapy-form"
+              id="save-therapy-btn"
+              className="w-full sm:w-auto"
+              loading={form.formState.isSubmitting}
+              disabled={data.patients.length === 0}
+            >
+              {form.formState.isSubmitting
+                ? "Salvataggio…"
+                : isEdit
+                  ? "Salva modifiche"
+                  : "Aggiungi terapia"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <UpgradeModal
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+        requiredPlan="pro"
+        featureTitle={upgradeReason.title}
+        featureDescription={upgradeReason.desc}
+      />
     </>
   );
 }
@@ -829,12 +854,11 @@ function PhotoField({
       console.warn(e);
       toast.custom(() => (
         <div className="flex items-start gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3 shadow-lg">
-          
           <div>
             <p className="text-sm font-bold">La foto non è stata caricata</p>
             <p className="text-xs text-muted-foreground">
-              Nessun problema: riprova con un'altra immagine o continua senza foto,
-              puoi aggiungerla più tardi.
+              Nessun problema: riprova con un'altra immagine o continua senza foto, puoi aggiungerla
+              più tardi.
             </p>
           </div>
         </div>

@@ -24,6 +24,8 @@ export function TherapyPhoto({
   className?: string;
   fallbackIcon?: ReactNode;
 }) {
+  // subscriptionPlan è già il piano EFFETTIVO (sincronizzato lato DB col
+  // piano della famiglia/gruppo, come Spotify Family).
   const { subscriptionPlan } = useFamilyMed();
   const [open, setOpen] = useState(false);
   const hasAccess = canAccessFeature(subscriptionPlan, "medicationPhoto");

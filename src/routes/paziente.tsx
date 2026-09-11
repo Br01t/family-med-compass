@@ -29,16 +29,8 @@ import {
   type ScheduledDose,
 } from "@/lib/therapy";
 import { cn } from "@/lib/utils";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export const Route = createFileRoute("/paziente")({
   head: () => ({
@@ -46,7 +38,8 @@ export const Route = createFileRoute("/paziente")({
       { title: "La tua giornata — FamilyMed" },
       {
         name: "description",
-        content: "Vista paziente: timeline delle cure, azioni in tempo reale e riassunto delle terapie.",
+        content:
+          "Vista paziente: timeline delle cure, azioni in tempo reale e riassunto delle terapie.",
       },
     ],
   }),
@@ -55,16 +48,8 @@ export const Route = createFileRoute("/paziente")({
 
 function PatientPage() {
   const navigate = useNavigate();
-  const {
-    data,
-    user,
-    userProfile,
-    loadingAuth,
-    confirmDose,
-    skipDose,
-    snoozeDose,
-    logout,
-  } = useFamilyMed();
+  const { data, user, userProfile, loadingAuth, confirmDose, skipDose, snoozeDose, logout } =
+    useFamilyMed();
 
   const patient =
     (user && data?.patients?.find((p) => p.userId === user.id)) ??
@@ -80,6 +65,29 @@ function PatientPage() {
   const now = new Date();
   void tick;
 
+  // "Chi ha fatto cosa" vale anche al contrario: sappiamo per certo (trigger
+  // DB handle_dose_taken) che confermando una dose i caregiver collegati
+  // ricevono davvero una notifica — quindi possiamo dirlo con sicurezza,
+  // senza inventare un dato che non è vero.
+  const informedWho =
+    data.caregivers.length === 1
+      ? data.caregivers[0].name.split(" ")[0]
+      : data.caregivers.length > 1
+        ? "i tuoi caregiver"
+        : null;
+
+  // Micro-interazione di conferma: tiene visibile per un paio di secondi
+  // un feedback "fisico" (spunta grande + chi è stato avvisato) prima di
+  // lasciare che la pagina torni al layout normale (prossima dose o riposo).
+  const [justConfirmed, setJustConfirmed] = useState<{ therapyName: string; at: Date } | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!justConfirmed) return;
+    const id = setTimeout(() => setJustConfirmed(null), 2200);
+    return () => clearTimeout(id);
+  }, [justConfirmed]);
+
   // Watchdog: se una dose "rimandata" (snoozed) supera il suo termine
   // ultimo per confermare (lo stesso calcolo usato per decidere se la card
   // "Ultimo momento per confermare" è ancora attiva, vedi ActiveDoseCard),
@@ -94,9 +102,7 @@ function PatientPage() {
     const list = getDosesForPatientOnDate(data, patient.id, now, now);
     for (const d of list) {
       if (d.status !== "snoozed") continue;
-      const snoozedUntilMs = d.event?.snoozedUntil
-        ? new Date(d.event.snoozedUntil).getTime()
-        : 0;
+      const snoozedUntilMs = d.event?.snoozedUntil ? new Date(d.event.snoozedUntil).getTime() : 0;
       if (!snoozedUntilMs) continue;
       const hardDeadline = snoozedUntilMs + (d.therapy.timeoutMinutes ?? 10) * 60_000;
       if (Date.now() < hardDeadline) continue;
@@ -174,11 +180,7 @@ function PatientPage() {
   const firstName = patient.name.split(" ")[0];
 
   const greeting =
-    now.getHours() < 12
-      ? "Buongiorno"
-      : now.getHours() < 18
-        ? "Buon pomeriggio"
-        : "Buonasera";
+    now.getHours() < 12 ? "Buongiorno" : now.getHours() < 18 ? "Buon pomeriggio" : "Buonasera";
 
   const takenToday = doses.filter((d) => d.status === "taken").length;
   const totalToday = doses.length;
@@ -197,7 +199,6 @@ function PatientPage() {
     const diffMin = (d.scheduledAt.getTime() - now.getTime()) / 60000;
     return diffMin <= preMin && diffMin >= -180;
   });
-
 
   const isDoneStatus = (d: ScheduledDose) =>
     d.status === "taken" || d.status === "skipped" || d.status === "missed";
@@ -236,7 +237,9 @@ function PatientPage() {
             </Link>
           </Button>
           <Button variant="ghost" size="icon" asChild aria-label="Impostazioni">
-            <Link to="/impostazioni"><Settings className="size-5" /></Link>
+            <Link to="/impostazioni">
+              <Settings className="size-5" />
+            </Link>
           </Button>
           <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Esci">
             <LogOut className="size-5" />
@@ -255,39 +258,56 @@ function PatientPage() {
         </section>
 
         {/* ADESSO — l'unica azione che conta in questo momento */}
-        {activeDose ? (
+        {justConfirmed ? (
+          <section className="mt-8">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+              Adesso
+            </h2>
+            <ConfirmedSplash
+              therapyName={justConfirmed.therapyName}
+              at={justConfirmed.at}
+              informedWho={informedWho}
+            />
+          </section>
+        ) : activeDose ? (
           <section className="mt-8">
             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
               Adesso
             </h2>
             <ActiveDoseCard
               dose={activeDose}
-            now={now}
-            onConfirm={() => {
-              confirmDose({
-                therapyId: activeDose.therapy.id,
-                scheduledAt: activeDose.scheduledAt,
-                confirmedBy: patient.id,
-              });
-              toast.success(`${activeDose.therapy.name} confermata`, {
-                description: `Presa alle ${formatTime(new Date())}`,
-              });
-            }}
-            onSnooze={() => {
-              snoozeDose({
-                therapyId: activeDose.therapy.id,
-                scheduledAt: activeDose.scheduledAt,
-                minutes: activeDose.therapy.timeoutMinutes,
-              });
-              toast(`Ritarda`, { description: activeDose.therapy.name });
-            }}
-            onSkip={() => {
-              skipDose({
-                therapyId: activeDose.therapy.id,
-                scheduledAt: activeDose.scheduledAt,
-              });
-              toast(`Dose saltata`, { description: activeDose.therapy.name });
-            }}
+              now={now}
+              onConfirm={() => {
+                const at = new Date();
+                confirmDose({
+                  therapyId: activeDose.therapy.id,
+                  scheduledAt: activeDose.scheduledAt,
+                  confirmedBy: patient.id,
+                });
+                setJustConfirmed({ therapyName: activeDose.therapy.name, at });
+                // Il feedback principale è la card animata qui sopra; il
+                // toast resta solo come annuncio per chi usa uno screen
+                // reader (aria-live), non è pensato per essere notato a video.
+                toast.success(`${activeDose.therapy.name} confermata`, {
+                  description: `Presa alle ${formatTime(at)}`,
+                });
+              }}
+              onSnooze={(minutes) => {
+                snoozeDose({
+                  therapyId: activeDose.therapy.id,
+                  scheduledAt: activeDose.scheduledAt,
+                  minutes,
+                });
+                const label = minutes >= 60 ? "1 ora" : `${minutes} min`;
+                toast(`Ti ricorderemo tra ${label}`, { description: activeDose.therapy.name });
+              }}
+              onSkip={() => {
+                skipDose({
+                  therapyId: activeDose.therapy.id,
+                  scheduledAt: activeDose.scheduledAt,
+                });
+                toast(`Dose saltata`, { description: activeDose.therapy.name });
+              }}
             />
           </section>
         ) : activeTherapies.length > 0 && doses.length > 0 ? (
@@ -296,7 +316,9 @@ function PatientPage() {
               <Check className="size-6" />
             </div>
             <p className="mt-3 text-base font-bold">Nessuna medicina da prendere ora</p>
-            <p className="mt-1 text-sm text-muted-foreground">Ti avviseremo quando sarà il momento.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Ti avviseremo quando sarà il momento.
+            </p>
           </section>
         ) : null}
 
@@ -309,7 +331,9 @@ function PatientPage() {
             <ul className="mt-3 divide-y divide-border/50">
               {upcomingDoses.map((d) => (
                 <li key={d.id} className="flex items-center gap-3 py-3 text-lg">
-                  <span className="font-mono font-bold tabular-nums">{formatTime(d.scheduledAt)}</span>
+                  <span className="font-mono font-bold tabular-nums">
+                    {formatTime(d.scheduledAt)}
+                  </span>
                   <span className="text-muted-foreground">—</span>
                   <span className="truncate font-semibold">{d.therapy.name}</span>
                 </li>
@@ -348,8 +372,8 @@ function PatientPage() {
                         Progresso di oggi
                       </p>
                       <InfoPopover>
-                        Mostra quante medicine hai già confermato rispetto al totale previsto
-                        per oggi.
+                        Mostra quante medicine hai già confermato rispetto al totale previsto per
+                        oggi.
                       </InfoPopover>
                     </div>
                     <p className="font-mono text-sm font-bold">
@@ -410,8 +434,7 @@ function PatientPage() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-black">{t.name}</p>
                           <p className="truncate text-sm text-muted-foreground">
-                            {t.dosage} · {recurrenceLabel(t.recurrence)} ·{" "}
-                            {t.times.join(", ")}
+                            {t.dosage} · {recurrenceLabel(t.recurrence)} · {t.times.join(", ")}
                           </p>
                           <p
                             className={cn(
@@ -452,19 +475,24 @@ function ActiveDoseCard({
   dose: ScheduledDose;
   now: Date;
   onConfirm: () => void;
-  onSnooze: () => void;
+  onSnooze: (minutes: number) => void;
   onSkip: () => void;
 }) {
   const [secondTick, setSecondTick] = useState(0);
-    useEffect(() => {
-      const timer = setInterval(() => {
-        setSecondTick((value) => value + 1);
-      }, 1000);
+  const [snoozePickerOpen, setSnoozePickerOpen] = useState(false);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSecondTick((value) => value + 1);
+    }, 1000);
 
-      return () => clearInterval(timer);
-    }, []);
+    return () => clearInterval(timer);
+  }, []);
 
-void secondTick;  
+  void secondTick;
+  useEffect(() => {
+    setSnoozePickerOpen(false);
+  }, [dose.id]);
+
   const isLate = dose.status === "late";
   const isReminder = dose.status === "reminder";
   const isSnoozed = dose.status === "snoozed";
@@ -477,29 +505,27 @@ void secondTick;
 
   // Countdown "ultimo momento utile" per dose rimandata.
   const timeoutMin = dose.therapy.timeoutMinutes ?? 10;
-  const snoozedUntilMs = dose.event?.snoozedUntil
-    ? new Date(dose.event.snoozedUntil).getTime()
-    : 0;
-  const hardDeadlineMs =
-    dose.scheduledAt.getTime() + timeoutMin * 60_000;
+  const snoozedUntilMs = dose.event?.snoozedUntil ? new Date(dose.event.snoozedUntil).getTime() : 0;
+  const hardDeadlineMs = dose.scheduledAt.getTime() + timeoutMin * 60_000;
 
-  const msToHardDeadline = Math.max(
-    0,
-    hardDeadlineMs - Date.now(),
-  );
+  const msToHardDeadline = Math.max(0, hardDeadlineMs - Date.now());
 
   const hardMM = Math.floor(msToHardDeadline / 60000);
 
-  const hardSS = Math.floor(
-    (msToHardDeadline % 60000) / 1000,
-  );
+  const hardSS = Math.floor((msToHardDeadline % 60000) / 1000);
   const snoozedCritical = msToHardDeadline <= 2 * 60_000;
 
   return (
     <section
       className={cn(
         "fm-reveal mt-3 rounded-3xl border-l-8 bg-card p-4 sm:p-6 shadow-lift ring-1 ring-border [animation-delay:60ms]",
-        isLate ? "border-accent" : isSnoozed ? "border-warning" : isReminder ? "border-warning" : "border-primary",
+        isLate
+          ? "border-accent"
+          : isSnoozed
+            ? "border-warning"
+            : isReminder
+              ? "border-warning"
+              : "border-primary",
       )}
     >
       <div className="flex items-center justify-between">
@@ -545,8 +571,8 @@ void secondTick;
             {String(hardMM).padStart(2, "0")}:{String(hardSS).padStart(2, "0")}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Se non confermi entro questo tempo, la dose sarà segnata come dimenticata
-            e verrai contattato da un familiare.
+            Se non confermi entro questo tempo, la dose sarà segnata come dimenticata e verrai
+            contattato da un familiare.
           </p>
         </div>
       )}
@@ -571,9 +597,7 @@ void secondTick;
             {dose.therapy.quantity > 1 ? "e" : ""}
           </p>
           {dose.therapy.notes && (
-            <p className="mt-1 text-sm italic text-muted-foreground">
-              {dose.therapy.notes}
-            </p>
+            <p className="mt-1 text-sm italic text-muted-foreground">{dose.therapy.notes}</p>
           )}
         </div>
       </div>
@@ -599,12 +623,16 @@ void secondTick;
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
-          onClick={onSnooze}
+          onClick={() => setSnoozePickerOpen((v) => !v)}
           disabled={!canAct}
           aria-disabled={!canAct}
-          className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-sm font-semibold text-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface"
+          aria-expanded={snoozePickerOpen}
+          className={cn(
+            "flex items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-sm font-semibold text-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface",
+            snoozePickerOpen && "border-primary/50 bg-secondary",
+          )}
         >
-          <Clock className="size-4" /> Ritarda
+          <Clock className="size-4" /> Ricordamelo più tardi
         </button>
         <button
           onClick={onSkip}
@@ -615,6 +643,71 @@ void secondTick;
           <X className="size-4" /> Salta
         </button>
       </div>
+
+      {snoozePickerOpen && (
+        <div className="fm-reveal mt-2 rounded-2xl bg-surface-muted p-3">
+          <p className="text-center text-xs font-semibold text-muted-foreground">
+            Quando vuoi che te la ricordi?
+          </p>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {[
+              { minutes: 10, label: "10 min" },
+              { minutes: 30, label: "30 min" },
+              { minutes: 60, label: "1 ora" },
+            ].map((opt) => (
+              <button
+                key={opt.minutes}
+                onClick={() => {
+                  setSnoozePickerOpen(false);
+                  onSnooze(opt.minutes);
+                }}
+                className="rounded-xl border border-border bg-card py-2.5 text-sm font-bold text-foreground transition hover:border-primary hover:text-primary active:scale-95"
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Conferma "fisica": occupa per ~2 secondi lo stesso spazio della card
+ * ADESSO prima che la pagina torni al layout normale (prossima dose o
+ * riposo). Sostituisce il solo toast con un feedback che si sente,
+ * rinforzando la fiducia — soprattutto grazie a "chi è stato avvisato",
+ * che qui è un dato vero, non decorativo (vedi trigger handle_dose_taken).
+ */
+function ConfirmedSplash({
+  therapyName,
+  at,
+  informedWho,
+}: {
+  therapyName: string;
+  at: Date;
+  informedWho: string | null;
+}) {
+  return (
+    <section className="fm-reveal mt-3 rounded-3xl border-l-8 border-success bg-card p-8 text-center shadow-lift ring-1 ring-border">
+      <div className="fm-check mx-auto grid size-20 place-items-center rounded-full bg-success text-white">
+        <Check className="size-10" strokeWidth={3} />
+      </div>
+      <p className="fm-reveal mt-4 text-2xl font-black tracking-tight [animation-delay:120ms]">
+        Fatto!
+      </p>
+      <p className="fm-reveal mt-3 text-lg font-bold [animation-delay:180ms]">{therapyName}</p>
+      <p className="fm-reveal text-sm text-muted-foreground [animation-delay:180ms]">
+        presa alle {formatTime(at)}
+      </p>
+      {informedWho && (
+        <p className="fm-reveal mt-4 text-sm font-semibold text-success [animation-delay:260ms]">
+          {informedWho === "i tuoi caregiver"
+            ? "I tuoi caregiver sono stati informati"
+            : `${informedWho} è stato informato`}
+        </p>
+      )}
     </section>
   );
 }
@@ -628,10 +721,7 @@ function TimelineItem({
   isLast: boolean;
   isActive: boolean;
 }) {
-  const done =
-    dose.status === "taken" ||
-    dose.status === "skipped" ||
-    dose.status === "missed";
+  const done = dose.status === "taken" || dose.status === "skipped" || dose.status === "missed";
 
   return (
     <li className="relative flex gap-4">
@@ -643,9 +733,7 @@ function TimelineItem({
             statusDot[dose.status],
           )}
         >
-          {dose.status === "taken" && (
-            <Check className="size-3.5 text-success-foreground" />
-          )}
+          {dose.status === "taken" && <Check className="size-3.5 text-success-foreground" />}
           {(dose.status === "skipped" || dose.status === "missed") && (
             <X className="size-3.5 text-destructive-foreground" />
           )}
@@ -664,9 +752,7 @@ function TimelineItem({
         )}
       >
         <div className="flex items-baseline justify-between gap-3">
-          <p className="font-mono text-sm font-bold">
-            {formatTime(dose.scheduledAt)}
-          </p>
+          <p className="font-mono text-sm font-bold">{formatTime(dose.scheduledAt)}</p>
           <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             {statusLabel[dose.status]}
           </span>
@@ -696,8 +782,8 @@ function EmptyTherapies({ name }: { name: string }) {
       </div>
       <p className="mt-4 text-xl font-black">Nessuna terapia assegnata</p>
       <p className="mt-2 text-sm text-muted-foreground">
-        Ciao {name}! Quando un caregiver ti assegnerà una cura, la troverai qui con
-        orari, promemoria e istruzioni.
+        Ciao {name}! Quando un caregiver ti assegnerà una cura, la troverai qui con orari,
+        promemoria e istruzioni.
       </p>
       <div className="mt-6 flex items-center justify-center gap-3">
         <Button variant="outline" size="sm" asChild>
@@ -726,9 +812,7 @@ function InfoPopover({ children }: { children: React.ReactNode }) {
         </button>
       </PopoverTrigger>
 
-      <PopoverContent className="max-w-xs text-sm leading-relaxed">
-        {children}
-      </PopoverContent>
+      <PopoverContent className="max-w-xs text-sm leading-relaxed">{children}</PopoverContent>
     </Popover>
   );
 }

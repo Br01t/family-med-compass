@@ -126,7 +126,11 @@ function FamilyPage() {
     try {
       // Un'unica RPC lato DB al posto di 3 query separate — vedi
       // MIGRATION_family_group_rpc.sql e fetchFamilyGroupData.
-      const { members: m, invites: inv, logs: l } = await fetchFamilyGroupData(
+      const {
+        members: m,
+        invites: inv,
+        logs: l,
+      } = await fetchFamilyGroupData(
         patient.id,
         patient.primaryCaregiverId ?? null,
         AUDIT_PAGE + 1,
@@ -316,7 +320,7 @@ function FamilyPage() {
           onOpenChange={setUpgradeModalOpen}
           requiredPlan="pro"
           featureTitle="Limite Caregiver Raggiunto"
-          featureDescription={`Il piano ${limits.name} ti permette di avere fino a ${limits.maxCaregiversPerPatient} ${limits.maxCaregiversPerPatient === 1 ? 'persona' : 'persone'} per paziente. Passa a Pro o Max per invitare altri membri della famiglia.`}
+          featureDescription={`Il piano ${limits.name} ti permette di avere fino a ${limits.maxCaregiversPerPatient} ${limits.maxCaregiversPerPatient === 1 ? "persona" : "persone"} per paziente. Passa a Pro o Max per invitare altri membri della famiglia.`}
         />
       </div>
 
@@ -325,8 +329,8 @@ function FamilyPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Rimuovere dal gruppo?</AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmRemove?.name} non potrà più vedere le terapie, ricevere notifiche o
-              confermare dosi per {patient.name}. Potrai reinvitarlo generando un nuovo codice.
+              {confirmRemove?.name} non potrà più vedere le terapie, ricevere notifiche o confermare
+              dosi per {patient.name}. Potrai reinvitarlo generando un nuovo codice.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -346,9 +350,9 @@ function FamilyPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Promuovere a principale?</AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmPromote?.name} diventerà il caregiver principale e potrà modificare
-              terapie, dosaggi e gestire il gruppo. Tu diventerai un caregiver secondario e non
-              potrai più svolgere queste azioni finché un altro principale non ti riabiliterà.
+              {confirmPromote?.name} diventerà il caregiver principale e potrà modificare terapie,
+              dosaggi e gestire il gruppo. Tu diventerai un caregiver secondario e non potrai più
+              svolgere queste azioni finché un altro principale non ti riabiliterà.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -381,8 +385,19 @@ function MembersCard(props: {
   onRemove: (cg: PatientCaregiver) => void;
 }) {
   const {
-    members, loading, currentUserId, isPrimary, busyMember, editingRel, relValue,
-    onStartEditRel, onCancelEditRel, onChangeRel, onSaveRel, onPromote, onRemove,
+    members,
+    loading,
+    currentUserId,
+    isPrimary,
+    busyMember,
+    editingRel,
+    relValue,
+    onStartEditRel,
+    onCancelEditRel,
+    onChangeRel,
+    onSaveRel,
+    onPromote,
+    onRemove,
   } = props;
 
   return (
@@ -486,7 +501,9 @@ function MembersCard(props: {
                             : "cursor-default text-muted-foreground",
                         )}
                       >
-                        {c.relationship || c.relation || (isMe ? "Aggiungi la tua relazione…" : "Familiare")}
+                        {c.relationship ||
+                          c.relation ||
+                          (isMe ? "Aggiungi la tua relazione…" : "Familiare")}
                         {isMe && <Pencil className="size-3" />}
                       </button>
                     )}
@@ -536,10 +553,10 @@ function MembersCard(props: {
       <div className="mt-4 flex items-start gap-2 rounded-2xl bg-muted/40 p-3 text-xs text-muted-foreground">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
         <p>
-          <strong className="text-foreground">Ruoli:</strong> il{" "}
-          <em>caregiver principale</em> può modificare terapie, dosaggi, scorte e gestire i membri.
-          I <em>caregiver secondari</em> visualizzano tutto, ricevono notifiche e possono
-          confermare le dosi, ma non modificare la terapia.
+          <strong className="text-foreground">Ruoli:</strong> il <em>caregiver principale</em> può
+          modificare terapie, dosaggi, scorte e gestire i membri. I <em>caregiver secondari</em>{" "}
+          visualizzano tutto, ricevono notifiche e possono confermare le dosi, ma non modificare la
+          terapia.
         </p>
       </div>
     </section>
@@ -565,13 +582,17 @@ function InvitesCard(props: {
           <div className="min-w-0">
             <h2 className="text-xl font-black tracking-tight">Inviti attivi</h2>
             <p className="text-sm text-muted-foreground">
-              Ogni codice vale 24 ore ed è utilizzabile una sola volta. Chi lo usa entra nel
-              gruppo come caregiver secondario.
+              Ogni codice vale 24 ore ed è utilizzabile una sola volta. Chi lo usa entra nel gruppo
+              come caregiver secondario.
             </p>
           </div>
         </div>
         <Button className="w-full sm:w-auto" onClick={onCreate} disabled={creating}>
-          {creating ? <Loader2 className="mr-2 size-4 animate-spin" /> : <KeyRound className="mr-2 size-4" />}
+          {creating ? (
+            <Loader2 className="mr-2 size-4 animate-spin" />
+          ) : (
+            <KeyRound className="mr-2 size-4" />
+          )}
           Genera codice
         </Button>
       </div>
@@ -600,7 +621,9 @@ function InviteRow({ invite, onRevoke }: { invite: FamilyInvite; onRevoke: () =>
     QRCode.toDataURL(shareUrl, { width: 220, margin: 1 })
       .then((d) => alive && setQr(d))
       .catch(() => alive && setQr(null));
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [shareUrl]);
 
   const expDiff = new Date(invite.expiresAt).getTime() - Date.now();
@@ -614,7 +637,11 @@ function InviteRow({ invite, onRevoke }: { invite: FamilyInvite; onRevoke: () =>
   return (
     <li className="flex flex-wrap gap-4 rounded-2xl border border-border/60 p-4 sm:flex-nowrap">
       <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-muted sm:size-24">
-        {qr ? <img src={qr} alt="QR invito" className="size-full" /> : <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+        {qr ? (
+          <img src={qr} alt="QR invito" className="size-full" />
+        ) : (
+          <Loader2 className="size-4 animate-spin text-muted-foreground" />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <p className="font-mono text-2xl font-black tracking-widest">{invite.code}</p>
@@ -672,8 +699,8 @@ function AuditLogCard(props: {
         <div className="min-w-0">
           <h2 className="text-xl font-black tracking-tight">Registro attività</h2>
           <p className="text-sm text-muted-foreground">
-            Ultime azioni svolte dai membri del gruppo. Trasparenza per evitare equivoci.
-            Conservato per 90 giorni.
+            Ultime azioni svolte dai membri del gruppo. Trasparenza per evitare equivoci. Conservato
+            per 90 giorni.
           </p>
         </div>
       </div>
@@ -696,27 +723,41 @@ function AuditLogCard(props: {
               return (
                 <li key={l.id} className="relative">
                   <span className="absolute -left-[26px] top-1.5 grid size-4 place-items-center rounded-full bg-background ring-2 ring-border">
-                    <span className={cn("size-1.5 rounded-full", tone.className.replace("bg-", "bg-").split(" ")[0])} />
+                    <span
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        tone.className.replace("bg-", "bg-").split(" ")[0],
+                      )}
+                    />
                   </span>
                   <div className="flex flex-wrap items-baseline gap-2">
-                    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest", tone.className)}>
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest",
+                        tone.className,
+                      )}
+                    >
                       {tone.label}
                     </span>
                     <p className="text-sm">{l.summary}</p>
-                    <span className="ml-auto text-xs text-muted-foreground">{relTime(l.createdAt)}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {relTime(l.createdAt)}
+                    </span>
                   </div>
                   {l.meta && Object.keys(l.meta).length > 0 && (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {Object.entries(l.meta as Record<string, [unknown, unknown]>).map(([k, v]) => {
-                        const pair = Array.isArray(v) ? v : [null, v];
-                        return (
-                          <span key={k} className="mr-3">
-                            <strong className="font-semibold text-foreground/80">{k}:</strong>{" "}
-                            <span className="line-through opacity-60">{formatMeta(pair[0])}</span>{" "}
-                            → {formatMeta(pair[1])}
-                          </span>
-                        );
-                      })}
+                      {Object.entries(l.meta as Record<string, [unknown, unknown]>).map(
+                        ([k, v]) => {
+                          const pair = Array.isArray(v) ? v : [null, v];
+                          return (
+                            <span key={k} className="mr-3">
+                              <strong className="font-semibold text-foreground/80">{k}:</strong>{" "}
+                              <span className="line-through opacity-60">{formatMeta(pair[0])}</span>{" "}
+                              → {formatMeta(pair[1])}
+                            </span>
+                          );
+                        },
+                      )}
                     </p>
                   )}
                 </li>

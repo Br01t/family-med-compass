@@ -1,13 +1,7 @@
-import type {
-  DoseStatus,
-  FamilyMedData,
-  MedicationEvent,
-  Recurrence,
-  Therapy,
-} from "./mock-data";
+import type { DoseStatus, FamilyMedData, MedicationEvent, Recurrence, Therapy } from "./mock-data";
 
 export type ScheduledDose = {
-  id: string;
+  id: string; // stable id (therapyId + iso)
   therapy: Therapy;
   scheduledAt: Date;
   event?: MedicationEvent;
@@ -26,9 +20,7 @@ function scheduledOnDate(recurrence: Recurrence, date: Date, startIso: string): 
     case "weekend":
       return dow === 0 || dow === 6;
     case "every_x_days": {
-      const diffDays = Math.floor(
-        (date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
-      );
+      const diffDays = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
       return diffDays % recurrence.x === 0;
     }
     case "specific_days":
@@ -128,10 +120,7 @@ export function getDosesForPatientOnDate(
 // confirmedAt (es. non ancora presa).
 export function doseDelayMinutes(dose: ScheduledDose): number | null {
   if (!dose.event?.confirmedAt) return null;
-  return (
-    (new Date(dose.event.confirmedAt).getTime() - dose.scheduledAt.getTime()) /
-    60000
-  );
+  return (new Date(dose.event.confirmedAt).getTime() - dose.scheduledAt.getTime()) / 60000;
 }
 
 // Una dose "taken" perde lo stato "late" appena viene confermata (vedi
@@ -146,11 +135,7 @@ export function wasTakenLate(dose: ScheduledDose): boolean {
   return delay >= dose.therapy.timeoutMinutes;
 }
 
-export function getAdherenceForPatient(
-  data: FamilyMedData,
-  patientId: string,
-  days = 7,
-): number {
+export function getAdherenceForPatient(data: FamilyMedData, patientId: string, days = 7): number {
   const now = new Date();
   const eventMap = buildEventMap(data.events);
   let total = 0;
@@ -177,10 +162,7 @@ export function getTodayProgress(data: FamilyMedData, patientId: string) {
   return { taken, total: doses.length, doses };
 }
 
-export function getNextDose(
-  data: FamilyMedData,
-  patientId: string,
-): ScheduledDose | undefined {
+export function getNextDose(data: FamilyMedData, patientId: string): ScheduledDose | undefined {
   const now = new Date();
   // Look at today + tomorrow
   for (let i = 0; i < 2; i++) {
@@ -189,9 +171,7 @@ export function getNextDose(
     const doses = getDosesForPatientOnDate(data, patientId, d, now);
     const upcoming = doses.find(
       (dose) =>
-        (dose.status === "scheduled" ||
-          dose.status === "due" ||
-          dose.status === "reminder") &&
+        (dose.status === "scheduled" || dose.status === "due" || dose.status === "reminder") &&
         dose.scheduledAt >= now,
     );
     if (upcoming) return upcoming;

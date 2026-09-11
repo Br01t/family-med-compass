@@ -47,13 +47,9 @@ import {
   type FamilyInvite,
 } from "./supabase-service";
 
-
-
-
 // Notifiche caregiver/paziente: sono generate esclusivamente dai trigger DB
 // (`handle_dose_taken` e `handle_dose_status_change`). Non inserirle dal
 // client per evitare duplicati (chiavi `dose_key` diverse fra client e trigger).
-
 
 import { type SubscriptionPlan, getPlanLimits, PLAN_LIMITS } from "./subscription";
 
@@ -61,22 +57,31 @@ type Ctx = {
   data: FamilyMedData;
   user: User | null;
   userProfile: UserProfile | null;
+  // Piano EFFETTIVO dell'utente loggato — già sincronizzato lato DB col
+  // piano della famiglia/gruppo di cui fa parte (come Spotify Family):
+  // se è stato invitato da un titolare Pro/Max, questo campo È Pro/Max,
+  // non serve risolverlo per-paziente lato client.
   subscriptionPlan: SubscriptionPlan;
   loadingAuth: boolean;
+  // Errore infrastrutturale (rete/Supabase) su uno o più caricamenti dati,
+  // distinto da "nessun dato": la UI lo usa per mostrare un banner invece
+  // di una lista vuota fuorviante. `retryDataLoad` forza un nuovo tentativo.
+  dataLoadError: boolean;
+  retryDataLoad: () => void;
   updateSubscriptionPlan: (plan: SubscriptionPlan) => Promise<void>;
   redeemInvite: (code: string) => Promise<string>;
   createInvite: (patientId: string, ttlMinutes?: number, maxUses?: number) => Promise<FamilyInvite>;
   unfollowPatient: (patientId: string) => Promise<void>;
   setRole: (role: Role) => void;
   setCurrentPatient: (id: string) => void;
-  confirmDose: (params: {
-    therapyId: string;
-    scheduledAt: Date;
-    confirmedBy: string;
-  }) => void;
+  confirmDose: (params: { therapyId: string; scheduledAt: Date; confirmedBy: string }) => void;
   skipDose: (params: { therapyId: string; scheduledAt: Date }) => void;
   snoozeDose: (params: { therapyId: string; scheduledAt: Date; minutes?: number }) => void;
-  acknowledgeDose: (params: { therapyId: string; scheduledAt: Date; note?: string }) => Promise<void>;
+  acknowledgeDose: (params: {
+    therapyId: string;
+    scheduledAt: Date;
+    note?: string;
+  }) => Promise<void>;
   addTherapy: (t: Therapy) => void;
   updateTherapy: (id: string, patch: Partial<Therapy>) => void;
   deleteTherapy: (id: string) => void;
@@ -90,7 +95,6 @@ type Ctx = {
   isPrimaryCaregiverOf: (patientId: string) => boolean;
   isSecondaryCaregiverOf: (patientId: string) => boolean;
 };
-
 
 const FamilyMedContext = createContext<Ctx | null>(null);
 
@@ -108,6 +112,25 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
   const [therapies, setTherapies] = useState<Therapy[]>([]);
   const [events, setEvents] = useState<MedicationEvent[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  // Errore infrastrutturale (rete/Supabase) su uno o più caricamenti dati,
+  // DISTINTO da "nessun dato": la UI deve poter dire "non riusciamo a
+  // caricare i tuoi dati" invece di mostrare liste vuote che sembrano dire
+  // "i tuoi pazienti sono spariti". I dati già in stato restano quelli
+  // dell'ultimo caricamento riuscito (nessuno stato viene azzerato qui).
+  const [loadErrors, setLoadErrors] = useState<{
+    patients?: boolean;
+    caregivers?: boolean;
+    therapies?: boolean;
+    events?: boolean;
+    notifications?: boolean;
+  }>({});
+  const [reloadTick, setReloadTick] = useState(0);
+  const retryDataLoad = useCallback(() => {
+    setLoadErrors({});
+    setReloadTick((t) => t + 1);
+  }, []);
+  const dataLoadError = Object.values(loadErrors).some(Boolean);
   const [currentPatientId, setCurrentPatientId] = useState<string>("");
 
   // Tiene traccia dell'ultimo profilo valido, leggibile in modo sincrono
@@ -154,13 +177,14 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       setLoadingAuth(false);
     };
 
-
     // Nota: niente più supabase.auth.getSession() esplicita qui sotto.
     // onAuthStateChange emette da solo un evento INITIAL_SESSION con la
     // sessione corrente non appena ci si iscrive (comportamento garantito
     // da supabase-js v2+): tenere anche la getSession() duplicava ad ogni
     // avvio il fetch di profilo/pazienti/caregiver/notifiche.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const u = session?.user ?? null;
       if (!u) {
         finalizeAuth(null, null);
@@ -189,33 +213,56 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const unsubPatients = subscribePatients(user.id, userProfile.role, (list) => {
-      setPatients(list);
-      if (list.length > 0) {
-        setCurrentPatientId((prev) => {
-          if (!prev || !list.some((p) => p.id === prev)) {
-            return list[0].id;
-          }
-          return prev;
-        });
-      } else if (userProfile.role === "paziente") {
-        // Recovery: il record paziente non esiste ancora, crealo ora
-        addPatientDoc({
-          id: `p_${user.id}`,
-          name: userProfile.name || user.email || "Paziente",
-          photo: undefined,
-          birthYear: undefined,
-          caregiverIds: [],
-          userId: user.id,
-        }).catch((err) => console.warn("[store] Recovery paziente fallito:", err));
-      }
-    });
+    const unsubPatients = subscribePatients(
+      user.id,
+      userProfile.role,
+      (list) => {
+        setPatients(list);
+        setLoadErrors((prev) => (prev.patients ? { ...prev, patients: false } : prev));
+        if (list.length > 0) {
+          setCurrentPatientId((prev) => {
+            if (!prev || !list.some((p) => p.id === prev)) {
+              return list[0].id;
+            }
+            return prev;
+          });
+        } else if (userProfile.role === "paziente") {
+          // Recovery: il record paziente non esiste ancora, crealo ora.
+          // Sicuro per costruzione: questo ramo esegue solo se il fetch è
+          // andato a buon fine E ha restituito zero pazienti (non se è
+          // fallito — in quel caso onUpdate non viene proprio chiamato,
+          // vedi onError sotto), quindi non rischia di creare un paziente
+          // duplicato a causa di un errore di rete transitorio.
+          addPatientDoc({
+            id: `p_${user.id}`,
+            name: userProfile.name || user.email || "Paziente",
+            photo: undefined,
+            birthYear: undefined,
+            caregiverIds: [],
+            userId: user.id,
+          }).catch((err) => console.warn("[store] Recovery paziente fallito:", err));
+        }
+      },
+      () => setLoadErrors((prev) => ({ ...prev, patients: true })),
+    );
 
-    const unsubCaregivers = subscribeCaregivers(user.id, userProfile.role, setCaregivers);
+    const unsubCaregivers = subscribeCaregivers(
+      user.id,
+      userProfile.role,
+      (list) => {
+        setCaregivers(list);
+        setLoadErrors((prev) => (prev.caregivers ? { ...prev, caregivers: false } : prev));
+      },
+      () => setLoadErrors((prev) => ({ ...prev, caregivers: true })),
+    );
     const unsubNotifications = subscribeNotifications(
       user.id,
-      setNotifications,
+      (list) => {
+        setNotifications(list);
+        setLoadErrors((prev) => (prev.notifications ? { ...prev, notifications: false } : prev));
+      },
       userProfile.role === "paziente" ? "paziente" : "caregiver",
+      () => setLoadErrors((prev) => ({ ...prev, notifications: true })),
     );
 
     return () => {
@@ -223,7 +270,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       unsubCaregivers();
       unsubNotifications();
     };
-  }, [user, userProfile]);
+  }, [user, userProfile, reloadTick]);
 
   // Subscribe to Therapies and Events. Caregiver: tutti i pazienti seguiti.
   // Paziente: solo il suo record.
@@ -245,14 +292,28 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       return;
     }
     const plan = userProfile.subscriptionPlan ?? "free";
-    const unsubTherapies = subscribeTherapiesForPatients(ids, setTherapies);
-    const unsubEvents = subscribeEventsForPatients(ids, setEvents, plan);
+    const unsubTherapies = subscribeTherapiesForPatients(
+      ids,
+      (list) => {
+        setTherapies(list);
+        setLoadErrors((prev) => (prev.therapies ? { ...prev, therapies: false } : prev));
+      },
+      () => setLoadErrors((prev) => ({ ...prev, therapies: true })),
+    );
+    const unsubEvents = subscribeEventsForPatients(
+      ids,
+      (list) => {
+        setEvents(list);
+        setLoadErrors((prev) => (prev.events ? { ...prev, events: false } : prev));
+      },
+      plan,
+      () => setLoadErrors((prev) => ({ ...prev, events: true })),
+    );
     return () => {
       unsubTherapies();
       unsubEvents();
     };
-  }, [user, userProfile, currentPatientId, patients]);
-
+  }, [user, userProfile, currentPatientId, patients, reloadTick]);
 
   // Merge Supabase database and Local configuration state
   const data = useMemo<FamilyMedData>(() => {
@@ -270,21 +331,34 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       };
     }
     return localData;
-  }, [user, userProfile, localData, patients, caregivers, therapies, events, notifications, currentPatientId]);
+  }, [
+    user,
+    userProfile,
+    localData,
+    patients,
+    caregivers,
+    therapies,
+    events,
+    notifications,
+    currentPatientId,
+  ]);
 
-  const setRole = useCallback((role: Role) => {
-    if (user && userProfile && supabase) {
-      // Update role in profiles table
-      supabase
-        .from("profiles")
-        .update({ role })
-        .eq("id", user.id)
-        .then(({ error }) => {
-          if (error) console.error("Errore aggiornamento ruolo:", error.message);
-        });
-    }
-    setLocalData((d) => ({ ...d, currentRole: role }));
-  }, [user, userProfile]);
+  const setRole = useCallback(
+    (role: Role) => {
+      if (user && userProfile && supabase) {
+        // Update role in profiles table
+        supabase
+          .from("profiles")
+          .update({ role })
+          .eq("id", user.id)
+          .then(({ error }) => {
+            if (error) console.error("Errore aggiornamento ruolo:", error.message);
+          });
+      }
+      setLocalData((d) => ({ ...d, currentRole: role }));
+    },
+    [user, userProfile],
+  );
 
   const setCurrentPatient = useCallback((id: string) => {
     setCurrentPatientId(id);
@@ -295,7 +369,6 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
   const pendingDoseActionsRef = useRef<Set<string>>(new Set());
 
   const confirmDose = useCallback(
-
     async ({
       therapyId,
       scheduledAt,
@@ -325,12 +398,11 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       const existingEvent = eventsSource.find(
         (e) =>
           e.therapyId === therapyId &&
-          Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000
+          Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000,
       );
       // Idempotenza: se la dose è già confermata, non ripetere l'azione.
       if (existingEvent?.status === "taken") return;
       pendingDoseActionsRef.current.add(actionKey);
-
 
       const updatedEvent: MedicationEvent = existingEvent
         ? {
@@ -362,14 +434,15 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
           await saveEventDoc(updatedEvent);
           // Decremento scorte, notifiche caregiver e low_stock sono generati
           // dal trigger DB handle_dose_taken.
-
         } else {
           setLocalData((d) => {
             const nextEvents = existingEvent
               ? d.events.map((e) => (e === existingEvent ? updatedEvent : e))
               : [...d.events, updatedEvent];
             const nextTherapies = d.therapies.map((t) =>
-              t.id === therapyId ? { ...t, pillsRemaining: Math.max(0, t.pillsRemaining - t.quantity) } : t
+              t.id === therapyId
+                ? { ...t, pillsRemaining: Math.max(0, t.pillsRemaining - t.quantity) }
+                : t,
             );
             return { ...d, events: nextEvents, therapies: nextTherapies };
           });
@@ -378,9 +451,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         pendingDoseActionsRef.current.delete(actionKey);
       }
     },
-    [user, therapies, events, localData.events, patients]
+    [user, therapies, events, localData.events, patients],
   );
-
 
   const skipDose = useCallback(
     async ({ therapyId, scheduledAt }: { therapyId: string; scheduledAt: Date }) => {
@@ -399,7 +471,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       const existingEvent = eventsSource.find(
         (e) =>
           e.therapyId === therapyId &&
-          Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000
+          Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000,
       );
       // Idempotenza: se già finalizzata (presa o saltata), non ripetere.
       if (existingEvent?.status === "skipped" || existingEvent?.status === "taken") return;
@@ -431,7 +503,6 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
           await saveEventDoc(updatedEvent);
           // Notifiche caregiver + notifica al paziente ("verrai contattato...")
           // sono generate dal trigger DB handle_dose_status_change.
-
         } else {
           setLocalData((d) => {
             const nextEvents = existingEvent
@@ -444,9 +515,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         pendingDoseActionsRef.current.delete(actionKey);
       }
     },
-    [user, therapies, events, localData.events, patients]
+    [user, therapies, events, localData.events, patients],
   );
-
 
   // "Segnala come gestita" (caregiver): non cambia lo status della dose
   // (resta "missed"/"skipped") né tocca le scorte, ma marca l'evento come
@@ -470,7 +540,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       const existingEvent = eventsSource.find(
         (e) =>
           e.therapyId === therapyId &&
-          Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000
+          Math.abs(new Date(e.scheduledAt).getTime() - scheduledAt.getTime()) < 60_000,
       );
       if (!existingEvent) return;
       // Idempotenza: già gestita.
@@ -482,7 +552,11 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         note: [existingEvent.note, note ?? CAREGIVER_ACK_TAG].filter(Boolean).join(" | "),
         timeline: [
           ...existingEvent.timeline,
-          { at: nowIso, kind: existingEvent.status, message: "Segnalata come gestita dal caregiver" },
+          {
+            at: nowIso,
+            kind: existingEvent.status,
+            message: "Segnalata come gestita dal caregiver",
+          },
         ],
       };
 
@@ -495,9 +569,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         }));
       }
     },
-    [user, events, localData.events]
+    [user, events, localData.events],
   );
-
 
   const snoozeDose = useCallback(
     async ({
@@ -514,10 +587,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       // Il rimando dura ESATTAMENTE quanto il "post-reminder" impostato sulla
       // terapia. Nessun default di 10 min: se il parametro non è passato,
       // usiamo postReminderMinutes (fallback 5 min minimo).
-      const snoozeMinutes = Math.max(
-        1,
-        Number(minutes ?? therapy.postReminderMinutes ?? 5),
-      );
+      const snoozeMinutes = Math.max(1, Number(minutes ?? therapy.postReminderMinutes ?? 5));
       const nowIso = new Date().toISOString();
       const scheduledIso = scheduledAt.toISOString();
       const actionKey = `${therapyId}@${scheduledIso}@snooze`;
@@ -535,8 +605,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       if (existingEvent?.status === "taken" || existingEvent?.status === "skipped") return;
       const alreadySnoozed = Boolean(
         existingEvent?.snoozedUntil ||
-          existingEvent?.status === "snoozed" ||
-          existingEvent?.timeline?.some((t) => t.kind === "snoozed"),
+        existingEvent?.status === "snoozed" ||
+        existingEvent?.timeline?.some((t) => t.kind === "snoozed"),
       );
       if (alreadySnoozed) return;
       pendingDoseActionsRef.current.add(actionKey);
@@ -566,7 +636,6 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         if (user) {
           await saveEventDoc(updatedEvent);
           // Notifiche generate dal trigger DB handle_dose_status_change.
-
         } else {
           setLocalData((d) => {
             const nextEvents = existingEvent
@@ -582,7 +651,6 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     [user, therapies, events, localData.events, patients],
   );
 
-
   const addTherapy = useCallback(
     async (t: Therapy) => {
       if (user) {
@@ -590,13 +658,15 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         setTherapies((prev) => (prev.some((item) => item.id === t.id) ? prev : [...prev, t]));
         setLocalData((d) => ({
           ...d,
-          therapies: d.therapies.some((item) => item.id === t.id) ? d.therapies : [...d.therapies, t],
+          therapies: d.therapies.some((item) => item.id === t.id)
+            ? d.therapies
+            : [...d.therapies, t],
         }));
       } else {
         setLocalData((d) => ({ ...d, therapies: [...d.therapies, t] }));
       }
     },
-    [user]
+    [user],
   );
 
   const updateTherapy = useCallback(
@@ -618,7 +688,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         }));
       }
     },
-    [user, therapies]
+    [user, therapies],
   );
 
   const deleteTherapy = useCallback(
@@ -631,7 +701,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         setLocalData((d) => ({ ...d, therapies: d.therapies.filter((t) => t.id !== id) }));
       }
     },
-    [user]
+    [user],
   );
 
   const addPatient = useCallback(
@@ -651,18 +721,21 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
           console.error("[store.addPatient] Errore in addPatientDoc:", error);
           throw error;
         }
-        setPatients((prev) => (prev.some((item) => item.id === p.id) ? prev : [...prev, patientWithOwner]));
+        setPatients((prev) =>
+          prev.some((item) => item.id === p.id) ? prev : [...prev, patientWithOwner],
+        );
         setLocalData((d) => ({
           ...d,
-          patients: d.patients.some((item) => item.id === p.id) ? d.patients : [...d.patients, patientWithOwner],
+          patients: d.patients.some((item) => item.id === p.id)
+            ? d.patients
+            : [...d.patients, patientWithOwner],
         }));
       } else {
         setLocalData((d) => ({ ...d, patients: [...d.patients, p] }));
       }
     },
-    [user]
+    [user],
   );
-
 
   const deletePatient = useCallback(
     async (id: string) => {
@@ -684,7 +757,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         }));
       }
     },
-    [user]
+    [user],
   );
 
   const markNotificationRead = useCallback(
@@ -703,7 +776,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         }));
       }
     },
-    [user]
+    [user],
   );
 
   const markNotificationsRead = useCallback(
@@ -711,19 +784,25 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       if (!ids || ids.length === 0) return;
       if (user) {
         await markAllNotificationsRead(ids);
-        setNotifications((prev) => prev.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n)));
+        setNotifications((prev) =>
+          prev.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n)),
+        );
         setLocalData((d) => ({
           ...d,
-          notifications: d.notifications.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n)),
+          notifications: d.notifications.map((n) =>
+            ids.includes(n.id) ? { ...n, read: true } : n,
+          ),
         }));
       } else {
         setLocalData((d) => ({
           ...d,
-          notifications: d.notifications.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n)),
+          notifications: d.notifications.map((n) =>
+            ids.includes(n.id) ? { ...n, read: true } : n,
+          ),
         }));
       }
     },
-    [user]
+    [user],
   );
 
   const markAllRead = useCallback(async () => {
@@ -785,21 +864,21 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     setPatients(list);
   }, [user, userProfile]);
 
-  const redeemInvite = useCallback(async (code: string) => {
-    if (!user) throw new Error("Non autenticato");
-    const patientId = await redeemFamilyInvite(code);
-    // Invalida la cache dei caregiver: il nuovo invito aggiunge una relazione
-    invalidateCaregiverCaches(patientId);
-    await refreshFollowedPatients();
-    return patientId;
-  }, [user, refreshFollowedPatients]);
-
-  const createInvite = useCallback(
-    async (patientId: string, ttlMinutes = 1440, maxUses = 1) => {
-      return createFamilyInvite(patientId, ttlMinutes, maxUses);
+  const redeemInvite = useCallback(
+    async (code: string) => {
+      if (!user) throw new Error("Non autenticato");
+      const patientId = await redeemFamilyInvite(code);
+      // Invalida la cache dei caregiver: il nuovo invito aggiunge una relazione
+      invalidateCaregiverCaches(patientId);
+      await refreshFollowedPatients();
+      return patientId;
     },
-    [],
+    [user, refreshFollowedPatients],
   );
+
+  const createInvite = useCallback(async (patientId: string, ttlMinutes = 1440, maxUses = 1) => {
+    return createFamilyInvite(patientId, ttlMinutes, maxUses);
+  }, []);
 
   const unfollowPatient = useCallback(
     async (patientId: string) => {
@@ -834,9 +913,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     const tick = async () => {
       if (user) return; // affidato interamente a dose-scheduler lato server
       const now = Date.now();
-      const activeTherapies = data.therapies.filter(
-        (t) => t.active && !t.suspended,
-      );
+      const activeTherapies = data.therapies.filter((t) => t.active && !t.suspended);
       for (const th of activeTherapies) {
         if (!th.times || th.times.length === 0) continue;
         // Solo dosi di oggi (evita di ri-processare storico vecchio)
@@ -851,15 +928,23 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         const dow = today.getDay();
         let dueToday = false;
         switch (r.kind) {
-          case "daily": dueToday = true; break;
-          case "weekdays": dueToday = dow >= 1 && dow <= 5; break;
-          case "weekend": dueToday = dow === 0 || dow === 6; break;
+          case "daily":
+            dueToday = true;
+            break;
+          case "weekdays":
+            dueToday = dow >= 1 && dow <= 5;
+            break;
+          case "weekend":
+            dueToday = dow === 0 || dow === 6;
+            break;
           case "every_x_days": {
             const diff = Math.floor((today.getTime() - start.getTime()) / 86400000);
             dueToday = r.x > 0 && diff % r.x === 0;
             break;
           }
-          case "specific_days": dueToday = r.days.includes(dow); break;
+          case "specific_days":
+            dueToday = r.days.includes(dow);
+            break;
         }
         if (!dueToday) continue;
         for (const time of th.times) {
@@ -895,7 +980,11 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
                 status: "missed" as const,
                 timeline: [
                   ...existing.timeline,
-                  { at: nowIso, kind: "missed", message: "Dose non confermata entro il tempo massimo" },
+                  {
+                    at: nowIso,
+                    kind: "missed",
+                    message: "Dose non confermata entro il tempo massimo",
+                  },
                 ],
               }
             : {
@@ -906,7 +995,11 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
                 status: "missed" as const,
                 timeline: [
                   { at: scheduledIso, kind: "scheduled", message: "Dose programmata" },
-                  { at: nowIso, kind: "missed", message: "Dose non confermata entro il tempo massimo" },
+                  {
+                    at: nowIso,
+                    kind: "missed",
+                    message: "Dose non confermata entro il tempo massimo",
+                  },
                 ],
               };
 
@@ -914,7 +1007,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
           const patient = data.patients.find((p) => p.id === th.patientId);
           const hhmm = scheduledAt.toLocaleTimeString("it-IT", {
-            hour: "2-digit", minute: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
           });
 
           {
@@ -1007,9 +1101,17 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         invalidateUserProfileCache(userProfile.uid);
       }
       if (user && supabase) {
+        // Scriviamo subscription_plan_own (quanto l'utente ha DAVVERO
+        // comprato), NON subscription_plan direttamente: quest'ultimo è il
+        // piano EFFETTIVO, tenuto sincronizzato da un trigger DB che tiene
+        // conto anche delle famiglie di cui l'utente fa parte come membro
+        // invitato — sovrascriverlo qui lo disallineerebbe subito dopo il
+        // prossimo evento di sync. Il trigger su subscription_plan_own si
+        // occupa anche di propagare l'upgrade a tutti i caregiver/pazienti
+        // che questo utente ha invitato (come Spotify Family).
         const { error } = await supabase
           .from("profiles")
-          .update({ subscription_plan: newPlan })
+          .update({ subscription_plan_own: newPlan })
           .eq("id", user.id);
         if (error) {
           console.error("Errore nell'aggiornamento del piano di abbonamento:", error.message);
@@ -1017,9 +1119,13 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [user, userProfile]
+    [user, userProfile],
   );
 
+  // Piano EFFETTIVO dell'utente loggato: già sincronizzato lato DB (vedi
+  // MIGRATION_piano_famiglia_ereditato.sql) col piano della famiglia/gruppo
+  // di cui fa parte, come Spotify Family — se invitato da un titolare
+  // Pro/Max, userProfile.subscriptionPlan È già Pro/Max.
   const subscriptionPlan = userProfile?.subscriptionPlan ?? "free";
 
   const value = useMemo<Ctx>(
@@ -1029,6 +1135,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       userProfile,
       subscriptionPlan,
       loadingAuth,
+      dataLoadError,
+      retryDataLoad,
       updateSubscriptionPlan,
       redeemInvite,
       createInvite,
@@ -1058,6 +1166,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       userProfile,
       subscriptionPlan,
       loadingAuth,
+      dataLoadError,
+      retryDataLoad,
       updateSubscriptionPlan,
       redeemInvite,
       createInvite,
@@ -1080,9 +1190,8 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       logout,
       isPrimaryCaregiverOf,
       isSecondaryCaregiverOf,
-    ]
+    ],
   );
-
 
   return <FamilyMedContext.Provider value={value}>{children}</FamilyMedContext.Provider>;
 }

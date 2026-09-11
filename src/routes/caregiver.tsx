@@ -33,10 +33,7 @@ import {
   statusTone,
 } from "@/lib/therapy";
 import type { ScheduledDose } from "@/lib/therapy";
-import type { FamilyMedData } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
-
-
 
 export const Route = createFileRoute("/caregiver")({
   head: () => ({
@@ -72,7 +69,6 @@ function CaregiverHome() {
   };
   useEffect(() => {
     loadStats();
-     
   }, []);
   // Aggiorna il countdown del cooldown ogni secondo, solo mentre è attivo.
   useEffect(() => {
@@ -132,7 +128,6 @@ function CaregiverHome() {
       ? stats.lowStockNames
       : fallbackLowStock.map((t) => t.name);
 
-
   const refreshedLabel = stats?.refreshedAt
     ? new Date(stats.refreshedAt).toLocaleString("it-IT", {
         day: "2-digit",
@@ -141,6 +136,31 @@ function CaregiverHome() {
         minute: "2-digit",
       })
     : null;
+
+  // CENTRO OPERATIVO: la prima domanda del caregiver è "c'è qualcosa da
+  // fare?" — la risposta deve stare in cima, prima di qualsiasi metrica.
+  const needsAction = activeAlerts > 0 || lowStockCount > 0;
+
+  // "Chi ha fatto cosa": le ultime conferme reali, con nome di chi le ha
+  // fatte. È il cuore della fiducia che l'app promette alla famiglia.
+  const recentActivity = useMemo(() => {
+    return data.events
+      .filter((e) => e.status === "taken" && e.confirmedAt)
+      .sort((a, b) => new Date(b.confirmedAt!).getTime() - new Date(a.confirmedAt!).getTime())
+      .slice(0, 6)
+      .map((e) => {
+        const therapy = data.therapies.find((t) => t.id === e.therapyId);
+        const patient = data.patients.find((p) => p.id === e.patientId);
+        return {
+          id: e.id,
+          therapyName: therapy?.name ?? "Terapia",
+          patientName: patient?.name ?? "—",
+          who: actorName(data, e.confirmedBy),
+          at: new Date(e.confirmedAt!),
+        };
+      });
+  }, [data]);
+  const mostRecent = recentActivity[0];
 
   return (
     <AppShell
@@ -169,7 +189,114 @@ function CaregiverHome() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+      {/* "C'è qualcosa da fare?" — risposta immediata, azionabile, in cima */}
+      {needsAction ? (
+        <div className="rounded-3xl border border-accent/30 bg-accent-soft p-5 sm:p-7">
+          <div className="flex items-start gap-4">
+            <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-accent text-accent-foreground">
+              <Bell className="size-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xl font-black tracking-tight sm:text-2xl">
+                C'è qualcosa da fare
+              </h2>
+              <div className="mt-3 space-y-2">
+                {activeAlerts > 0 && (
+                  <Link
+                    to="/dose-da-confermare"
+                    className="fm-interactive flex items-center justify-between gap-3 rounded-2xl bg-card px-4 py-3 shadow-sm"
+                  >
+                    <span className="text-sm font-semibold">
+                      {activeAlerts}{" "}
+                      {activeAlerts === 1 ? "dose da confermare" : "dosi da confermare"}
+                    </span>
+                    <ArrowRight className="size-4 shrink-0 text-accent" />
+                  </Link>
+                )}
+                {lowStockCount > 0 && (
+                  <Link
+                    to="/scorte"
+                    className="fm-interactive flex items-center justify-between gap-3 rounded-2xl bg-card px-4 py-3 shadow-sm"
+                  >
+                    <span className="min-w-0 truncate text-sm font-semibold">
+                      {lowStockCount}{" "}
+                      {lowStockCount === 1 ? "farmaco in esaurimento" : "farmaci in esaurimento"}
+                      {lowStockNames.length > 0 && `: ${lowStockNames.join(", ")}`}
+                    </span>
+                    <ArrowRight className="size-4 shrink-0 text-warning-foreground" />
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-3xl border border-success/30 bg-success/10 p-5 sm:p-7">
+          <div className="flex items-center gap-4">
+            <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-success text-white">
+              <CheckCircle2 className="size-6" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xl font-black tracking-tight sm:text-2xl">
+                Tutto sotto controllo
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {mostRecent ? (
+                  <>
+                    Nessuna azione richiesta. Ultima conferma:{" "}
+                    <span className="font-semibold text-foreground">{mostRecent.therapyName}</span>{" "}
+                    di {mostRecent.patientName}
+                    {mostRecent.who && (
+                      <>
+                        , da <span className="font-semibold text-foreground">{mostRecent.who}</span>
+                      </>
+                    )}{" "}
+                    alle {formatTime(mostRecent.at)}.
+                  </>
+                ) : (
+                  "Nessuna azione richiesta in questo momento."
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* "Chi ha fatto cosa": spinto in primo piano, non nascosto in fondo. */}
+      {recentActivity.length > 0 && (
+        <div className="mt-4 rounded-3xl border border-border/60 bg-card p-4 shadow-card sm:p-6">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="size-4 text-primary" />
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+              Chi ha fatto cosa
+            </h3>
+          </div>
+          <ul className="mt-3 divide-y divide-border/50">
+            {recentActivity.map((a) => (
+              <li key={a.id} className="flex items-center gap-3 py-2.5 text-sm">
+                <CheckCircle2 className="size-4 shrink-0 text-success" />
+                <span className="min-w-0 flex-1 truncate">
+                  <span className="font-semibold">{a.therapyName}</span>
+                  <span className="text-muted-foreground"> · {a.patientName}</span>
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {a.who ? (
+                    <>
+                      da <span className="font-semibold text-foreground">{a.who}</span>{" "}
+                    </>
+                  ) : null}
+                  {formatRelativeDay(a.at, now) === "oggi"
+                    ? ""
+                    : `${formatRelativeDay(a.at, now)} · `}
+                  {formatTime(a.at)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
         <MetricCard
           label="Aderenza media 7gg"
           value={`${totalAdherence}%`}
@@ -177,17 +304,25 @@ function CaregiverHome() {
           icon={TrendingUp}
           tone="primary"
         />
-        <Link to="/dose-da-confermare" className="fm-interactive block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        <Link
+          to="/dose-da-confermare"
+          className="fm-interactive block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
           <MetricCard
             label="Alert attivi"
             value={String(activeAlerts)}
-            hint={activeAlerts > 0 ? "Dose da confermare con il paziente" : "Nessuna dose in sospeso"}
+            hint={
+              activeAlerts > 0 ? "Dose da confermare con il paziente" : "Nessuna dose in sospeso"
+            }
             icon={AlertTriangle}
             tone="accent"
             clickable
           />
         </Link>
-        <Link to="/scorte" className="fm-interactive block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning">
+        <Link
+          to="/scorte"
+          className="fm-interactive block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning"
+        >
           <MetricCard
             label="Scorte in esaurimento"
             value={String(lowStockCount)}
@@ -220,7 +355,6 @@ function CaregiverHome() {
           </div>
 
           <TimelineCard now={now} />
-
         </section>
 
         <aside className="space-y-4 lg:col-span-4">
@@ -303,7 +437,9 @@ function MetricCard({
       )}
     >
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:gap-4">
-        <div className={cn("grid size-10 shrink-0 place-items-center rounded-2xl sm:size-12", styles)}>
+        <div
+          className={cn("grid size-10 shrink-0 place-items-center rounded-2xl sm:size-12", styles)}
+        >
           <Icon className="size-5" />
         </div>
         <div className="min-w-0">
@@ -314,7 +450,12 @@ function MetricCard({
           <p className="mt-2 text-xs leading-5 text-muted-foreground whitespace-normal">{hint}</p>
         </div>
         {clickable && (
-          <div className={cn("grid size-8 shrink-0 place-items-center self-start rounded-full", styles)}>
+          <div
+            className={cn(
+              "grid size-8 shrink-0 place-items-center self-start rounded-full",
+              styles,
+            )}
+          >
             <ArrowRight className="size-4" />
           </div>
         )}
@@ -338,6 +479,10 @@ function PatientCard({ patientId }: { patientId: string }) {
   const adherence = getAdherenceForPatient(data, patientId);
   const next = getNextDose(data, patientId);
   const problem = doses.find((d) => d.status === "late" || d.status === "reminder");
+  const lastTaken = [...doses]
+    .filter((d) => d.status === "taken")
+    .sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime())[0];
+  const lastTakenBy = lastTaken ? actorName(data, lastTaken.event?.confirmedBy) : null;
 
   return (
     <Link
@@ -347,7 +492,11 @@ function PatientCard({ patientId }: { patientId: string }) {
     >
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 sm:gap-4">
         <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary-soft text-lg font-black text-primary sm:size-14">
-          {patient.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+          {patient.name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .slice(0, 2)}
         </div>
         <div className="min-w-0">
           <p className="truncate text-lg font-black tracking-tight">{patient.name}</p>
@@ -378,10 +527,7 @@ function PatientCard({ patientId }: { patientId: string }) {
           </span>
         </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary">
-          <div
-            className="h-full bg-primary transition-all"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
@@ -389,7 +535,8 @@ function PatientCard({ patientId }: { patientId: string }) {
         <div className="mt-4 flex items-center gap-3 rounded-xl border border-accent/20 bg-accent-soft/70 p-3">
           <span className={cn("size-2 shrink-0 rounded-full", statusDot[problem.status])} />
           <p className="min-w-0 truncate text-sm font-semibold text-accent">
-            {statusLabel[problem.status]} — {problem.therapy.name} ({formatTime(problem.scheduledAt)})
+            {statusLabel[problem.status]} — {problem.therapy.name} (
+            {formatTime(problem.scheduledAt)})
           </p>
         </div>
       ) : next ? (
@@ -404,6 +551,14 @@ function PatientCard({ patientId }: { patientId: string }) {
       ) : (
         <div className="mt-4 rounded-xl bg-success/10 p-3 text-sm font-semibold text-success">
           ✓ Giornata completata
+          {lastTaken && (
+            <span className="block text-xs font-normal text-success/80">
+              {lastTakenBy ? `Ultima da ${lastTakenBy}` : "Ultima"} alle{" "}
+              {lastTaken.event?.confirmedAt
+                ? formatTime(new Date(lastTaken.event.confirmedAt))
+                : formatTime(lastTaken.scheduledAt)}
+            </span>
+          )}
         </div>
       )}
     </Link>
@@ -514,6 +669,7 @@ function TimelineCard({ now }: { now: Date }) {
         {doses.map((d) => {
           const patient = data.patients.find((p) => p.id === d.patientId);
           const isFuture = d.scheduledAt > now;
+          const who = d.status === "taken" ? actorName(data, d.event?.confirmedBy) : null;
           return (
             <div key={d.id} className="relative pl-10">
               <div className="absolute left-0 top-1.5 grid size-6 place-items-center rounded-full bg-background ring-2 ring-border">
@@ -525,19 +681,31 @@ function TimelineCard({ now }: { now: Date }) {
                   {formatTime(d.scheduledAt)}
                 </span>
               </div>
-              <div className="mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                <p className="truncate text-xs text-muted-foreground">
-                  {patient?.name} {isFuture ? "· in programma" : ""}
+              {who ? (
+                // "Chi ha fatto cosa": qui sta la fiducia — non basta sapere
+                // che è stata presa, conta sapere CHI l'ha confermata.
+                <p className="mt-1 truncate text-xs font-semibold text-success">
+                  ✓ Confermata da {who} alle{" "}
+                  {d.event?.confirmedAt
+                    ? formatTime(new Date(d.event.confirmedAt))
+                    : formatTime(d.scheduledAt)}
+                  <span className="font-normal text-muted-foreground"> · {patient?.name}</span>
                 </p>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                    statusTone[d.status],
-                  )}
-                >
-                  {statusLabel[d.status]}
-                </span>
-              </div>
+              ) : (
+                <div className="mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                  <p className="truncate text-xs text-muted-foreground">
+                    {patient?.name} {isFuture ? "· in programma" : ""}
+                  </p>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                      statusTone[d.status],
+                    )}
+                  >
+                    {statusLabel[d.status]}
+                  </span>
+                </div>
+              )}
             </div>
           );
         })}

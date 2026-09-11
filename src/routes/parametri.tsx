@@ -186,7 +186,7 @@ function VitalSignsPage() {
       toast.error("Impossibile caricare le misurazioni", { description: error.message });
       return;
     }
-    const next = ((res ?? []) as unknown) as VitalRow[];
+    const next = (res ?? []) as unknown as VitalRow[];
     VITALS_CACHE.set(patientId, { rows: next, fetchedAt: Date.now() });
     setRows(next);
   };
@@ -213,8 +213,7 @@ function VitalSignsPage() {
       toast.error("Inserisci un valore valido");
       return;
     }
-    const secondary =
-      kind === "blood_pressure" ? parseFloat(v2.replace(",", ".")) : undefined;
+    const secondary = kind === "blood_pressure" ? parseFloat(v2.replace(",", ".")) : undefined;
     if (kind === "blood_pressure" && !Number.isFinite(secondary as number)) {
       toast.error("Inserisci la diastolica");
       return;
@@ -294,20 +293,18 @@ function VitalSignsPage() {
     [rows, fromDate, toDate],
   );
 
-  const filtered = useMemo(
-    () => inPeriod.filter((r) => r.kind === kind),
-    [inPeriod, kind],
-  );
+  const filtered = useMemo(() => inPeriod.filter((r) => r.kind === kind), [inPeriod, kind]);
 
   // Aggregazione giornaliera (media del giorno) per grafico + media mobile 7gg
   const chartData = useMemo(() => {
-    if (!filtered.length) return [] as Array<{
-      t: string;
-      v?: number;
-      v2?: number;
-      ma?: number | null;
-      ma2?: number | null;
-    }>;
+    if (!filtered.length)
+      return [] as Array<{
+        t: string;
+        v?: number;
+        v2?: number;
+        ma?: number | null;
+        ma2?: number | null;
+      }>;
     // raggruppa per giorno YYYY-MM-DD
     const byDay = new Map<string, { sum1: number; sum2: number; n1: number; n2: number }>();
     for (const r of filtered) {
@@ -410,17 +407,15 @@ function VitalSignsPage() {
     <div className="space-y-6">
       {/* Nota conservazione dati: coerente con il testo già usato per il Registro attività */}
       <p className="text-xs text-muted-foreground">
-        Le misurazioni recenti (ultimi 90 giorni) restano intatte; oltre i 90 giorni ne
-        conserviamo una al giorno per mantenere il trend nel tempo. Storico conservato per{" "}
-        {retentionLabel} (piano {subscriptionPlan === "max" ? "Max" : "Pro"}).
+        Le misurazioni recenti (ultimi 90 giorni) restano intatte; oltre i 90 giorni ne conserviamo
+        una al giorno per mantenere il trend nel tempo. Storico conservato per {retentionLabel}{" "}
+        (piano {subscriptionPlan === "max" ? "Max" : "Pro"}).
       </p>
 
       {/* Selettore paziente (solo caregiver con più pazienti) */}
       {!isPatient && data.patients.length > 1 && (
         <div className="rounded-2xl border bg-card p-4">
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Paziente
-          </Label>
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Paziente</Label>
           <Select value={patientId} onValueChange={setPatientId}>
             <SelectTrigger className="mt-2">
               <SelectValue placeholder="Seleziona paziente" />
@@ -488,9 +483,7 @@ function VitalSignsPage() {
       <section className="rounded-2xl border bg-card p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="min-w-0 flex-1 sm:min-w-[180px]">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-              Periodo
-            </Label>
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Periodo</Label>
             <Select value={period} onValueChange={(v) => setPeriod(v as PeriodKey)}>
               <SelectTrigger className="mt-2">
                 <SelectValue />
@@ -531,7 +524,12 @@ function VitalSignsPage() {
             >
               {loading ? "Aggiorno…" : "Aggiorna"}
             </Button>
-            <Button variant="outline" className="w-full sm:w-auto" onClick={exportPdf} disabled={!currentPatient}>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={exportPdf}
+              disabled={!currentPatient}
+            >
               <FileDown className="mr-2 size-4" />
               PDF ({KINDS[kind].label})
             </Button>
@@ -605,9 +603,7 @@ function VitalSignsPage() {
                 inputMode="decimal"
                 value={v1}
                 onChange={(e) => setV1(e.target.value)}
-                placeholder={
-                  kind === "glycemia" ? "110" : kind === "weight" ? "72.5" : "98"
-                }
+                placeholder={kind === "glycemia" ? "110" : kind === "weight" ? "72.5" : "98"}
               />
             </div>
           )}
@@ -643,13 +639,11 @@ function VitalSignsPage() {
       <section className="rounded-2xl border bg-card p-4 sm:p-5">
         <div className="mb-3 flex items-center gap-2">
           <Activity className="size-4 text-primary" />
-          <h2 className="text-base font-bold">
-            Andamento — {PERIOD_LABELS[period].toLowerCase()}
-          </h2>
+          <h2 className="text-base font-bold">Andamento — {PERIOD_LABELS[period].toLowerCase()}</h2>
         </div>
         <p className="mb-3 text-xs text-muted-foreground">
-          Media giornaliera con media mobile a {period === "7" ? "3" : "7"} giorni per
-          evidenziare il trend.
+          Media giornaliera con media mobile a {period === "7" ? "3" : "7"} giorni per evidenziare
+          il trend.
         </p>
         {chartData.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
@@ -717,8 +711,7 @@ function VitalSignsPage() {
           <p className="text-sm text-muted-foreground">Caricamento…</p>
         ) : filtered.length === 0 ? (
           <p className="py-4 text-sm text-muted-foreground">
-            Registra la prima misurazione: bastano pochi secondi e potrai vedere
-            subito l'andamento.
+            Registra la prima misurazione: bastano pochi secondi e potrai vedere subito l'andamento.
           </p>
         ) : (
           <ul className="divide-y">
@@ -732,9 +725,7 @@ function VitalSignsPage() {
                         ? `${r.value_primary}/${r.value_secondary} ${r.unit ?? ""}`
                         : `${r.value_primary} ${r.unit ?? ""}`}
                       {r.pulse != null && (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          ♥ {r.pulse} bpm
-                        </span>
+                        <span className="ml-2 text-xs text-muted-foreground">♥ {r.pulse} bpm</span>
                       )}
                     </p>
                     <p className="text-xs text-muted-foreground">

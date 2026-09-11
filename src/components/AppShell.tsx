@@ -108,11 +108,7 @@ function AppSidebar() {
                 const showBadge = item.url === "/notifiche" && unreadCount > 0;
                 return (
                   <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive(item.url)}
-                      tooltip={item.title}
-                    >
+                    <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
                       <Link to={item.url} className="relative flex items-center gap-3">
                         <item.icon className="size-4" />
                         <span>{item.title}</span>
@@ -170,6 +166,7 @@ export function AppShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const { dataLoadError, retryDataLoad } = useFamilyMed();
   const now = new Date();
   const dateStr = now.toLocaleDateString("it-IT", {
     weekday: "long",
@@ -199,9 +196,7 @@ export function AppShell({
                     {title}
                   </h1>
                   {subtitle && (
-                    <p className="truncate text-xs text-muted-foreground md:text-sm">
-                      {subtitle}
-                    </p>
+                    <p className="truncate text-xs text-muted-foreground md:text-sm">{subtitle}</p>
                   )}
                 </div>
                 <div className="hidden shrink-0 items-center gap-4 md:flex">
@@ -223,6 +218,18 @@ export function AppShell({
             key={title}
             className="fm-page flex-1 w-full max-w-full min-w-0 px-4 py-6 md:px-8 md:py-8 overflow-x-hidden block"
           >
+            {dataLoadError && (
+              <div className="mb-5 flex flex-col items-start justify-between gap-3 rounded-2xl border border-accent/30 bg-accent-soft px-4 py-3 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2 text-sm font-semibold text-accent">
+                  <AlertTriangle className="size-4 shrink-0" />
+                  Non riusciamo a caricare i tuoi dati. Quelli mostrati potrebbero non essere
+                  aggiornati.
+                </div>
+                <Button variant="outline" size="sm" onClick={retryDataLoad} className="shrink-0">
+                  Riprova
+                </Button>
+              </div>
+            )}
             {children}
           </main>
           <AppFooter />
