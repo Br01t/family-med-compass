@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { useFeatureToggles } from "@/lib/feature-toggles";
 import { DisabledFeatureBanner } from "@/components/DisabledFeatureBanner";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { logger } from "@/lib/logger";
 
 
 export const Route = createFileRoute("/storico-report")({
@@ -120,7 +121,7 @@ function HistoryReportPage() {
         if (!cancelled) setMonthlyHistory(rows);
       })
       .catch((err) => {
-        console.error("[storico-report] Errore fetch aderenza mensile:", err);
+        logger.error("[storico-report] Errore fetch aderenza mensile:", err);
         if (!cancelled) setMonthlyHistory([]);
       })
       .finally(() => {

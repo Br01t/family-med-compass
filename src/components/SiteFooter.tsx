@@ -1,1 +1,0 @@
-export { PublicFooter as SiteFooter } from "./public/PublicFooter";

@@ -448,6 +448,7 @@ function WellnessDiaryPage() {
           <Textarea
             className="mt-2"
             rows={3}
+            maxLength={2000}
             placeholder="Es. Stamattina il nonno era particolarmente confuso. Nausea dopo la pillola delle 14:00."
             value={note}
             onChange={(e) => setNote(e.target.value)}

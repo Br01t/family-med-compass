@@ -44,6 +44,8 @@ import {
   insertNotificationDoc,
   fetchCaregiverIdsForPatient,
   invalidateCaregiverCaches,
+  saveCaregiverDoc,
+  updateProfileName,
   type FamilyInvite,
 } from "./supabase-service";
 
@@ -52,6 +54,7 @@ import {
 // client per evitare duplicati (chiavi `dose_key` diverse fra client e trigger).
 
 import { type SubscriptionPlan, getPlanLimits, PLAN_LIMITS } from "./subscription";
+import { logger } from "@/lib/logger";
 
 type Ctx = {
   data: FamilyMedData;
@@ -69,6 +72,11 @@ type Ctx = {
   dataLoadError: boolean;
   retryDataLoad: () => void;
   updateSubscriptionPlan: (plan: SubscriptionPlan) => Promise<void>;
+  updateCaregiverProfile: (updates: {
+    name?: string;
+    relation?: string;
+    photo?: string | null;
+  }) => Promise<void>;
   redeemInvite: (code: string) => Promise<string>;
   createInvite: (patientId: string, ttlMinutes?: number, maxUses?: number) => Promise<FamilyInvite>;
   unfollowPatient: (patientId: string) => Promise<void>;
@@ -170,7 +178,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
             .from("user_roles")
             .upsert({ user_id: u.id, role: resolvedProfile.role }, { onConflict: "user_id,role" })
             .then(({ error }) => {
-              if (error) console.warn("[store] backfill user_roles:", error.message);
+              if (error) logger.warn("[store] backfill user_roles:", error.message);
             });
         }
       }
@@ -240,7 +248,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
             birthYear: undefined,
             caregiverIds: [],
             userId: user.id,
-          }).catch((err) => console.warn("[store] Recovery paziente fallito:", err));
+          }).catch((err) => logger.warn("[store] Recovery paziente fallito:", err));
         }
       },
       () => setLoadErrors((prev) => ({ ...prev, patients: true })),
@@ -352,7 +360,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
           .update({ role })
           .eq("id", user.id)
           .then(({ error }) => {
-            if (error) console.error("Errore aggiornamento ruolo:", error.message);
+            if (error) logger.error("Errore aggiornamento ruolo:", error.message);
           });
       }
       setLocalData((d) => ({ ...d, currentRole: role }));
@@ -718,7 +726,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
         try {
           await addPatientDoc(patientWithOwner);
         } catch (error) {
-          console.error("[store.addPatient] Errore in addPatientDoc:", error);
+          logger.error("[store.addPatient] Errore in addPatientDoc:", error);
           throw error;
         }
         setPatients((prev) =>
@@ -1114,12 +1122,70 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
           .update({ subscription_plan_own: newPlan })
           .eq("id", user.id);
         if (error) {
-          console.error("Errore nell'aggiornamento del piano di abbonamento:", error.message);
+          logger.error("Errore nell'aggiornamento del piano di abbonamento:", error.message);
           throw error;
         }
       }
     },
     [user, userProfile],
+  );
+
+  /**
+   * Aggiorna il profilo del caregiver loggato (nome, relazione, foto).
+   * Stesso pattern di updateSubscriptionPlan: aggiornamento ottimistico
+   * locale (UI istantanea) + scrittura DB + invalidazione della cache 24h
+   * di getUserProfile (altrimenti il nuovo nome non comparirebbe altrove
+   * nell'app finché la cache non scade da sola).
+   *
+   * `photo` è già il PATH Storage risolto (non un dataURL): la componente
+   * chiamante deve aver già chiamato ensureCaregiverAvatarPath prima. Se
+   * l'upload della foto dovesse fallire, questa funzione non viene proprio
+   * chiamata (vedi CaregiverProfileCard) — così non si salva mai un profilo
+   * con un riferimento a un file mai caricato.
+   */
+  const updateCaregiverProfile = useCallback(
+    async (updates: { name?: string; relation?: string; photo?: string | null }) => {
+      if (!user) throw new Error("Non autenticato");
+
+      const current = data.caregivers.find((c) => c.id === user.id);
+      const nextName =
+        updates.name !== undefined
+          ? updates.name.trim()
+          : (current?.name ?? userProfile?.name ?? "");
+      const nextRelation =
+        updates.relation !== undefined ? updates.relation.trim() : (current?.relation ?? "");
+      const nextPhoto = updates.photo !== undefined ? (updates.photo ?? undefined) : current?.photo;
+
+      if (!nextName) throw new Error("Il nome non può essere vuoto");
+
+      // 1. Nome dell'account (profiles.name) — solo se davvero cambiato,
+      //    per non generare una scrittura extra a ogni salvataggio.
+      if (userProfile && nextName !== userProfile.name) {
+        await updateProfileName(user.id, nextName);
+      }
+
+      // 2. Riga caregivers (nome mostrato ad altri familiari, relazione, foto).
+      await saveCaregiverDoc({
+        id: user.id,
+        name: nextName,
+        relation: nextRelation,
+        photo: nextPhoto,
+        patientIds: current?.patientIds ?? [],
+        notify: current?.notify ?? { push: true, email: false, whatsapp: false },
+      });
+
+      // 3. Aggiornamento ottimistico locale + invalidazione cache.
+      if (userProfile) {
+        setUserProfile((prev) => (prev ? { ...prev, name: nextName } : null));
+        invalidateUserProfileCache(userProfile.uid);
+      }
+      setCaregivers((prev) =>
+        prev.map((c) =>
+          c.id === user.id ? { ...c, name: nextName, relation: nextRelation, photo: nextPhoto } : c,
+        ),
+      );
+    },
+    [user, userProfile, data.caregivers],
   );
 
   // Piano EFFETTIVO dell'utente loggato: già sincronizzato lato DB (vedi
@@ -1138,6 +1204,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       dataLoadError,
       retryDataLoad,
       updateSubscriptionPlan,
+      updateCaregiverProfile,
       redeemInvite,
       createInvite,
       unfollowPatient,
@@ -1169,6 +1236,7 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
       dataLoadError,
       retryDataLoad,
       updateSubscriptionPlan,
+      updateCaregiverProfile,
       redeemInvite,
       createInvite,
       unfollowPatient,

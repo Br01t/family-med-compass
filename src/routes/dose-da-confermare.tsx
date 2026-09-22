@@ -9,6 +9,7 @@ import { CAREGIVER_ACK_TAG, formatTime, isDoseAcknowledged } from "@/lib/therapy
 import type { MedicationEvent } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { hapticTap } from "@/lib/feedback";
+import { logger } from "@/lib/logger";
 
 export const Route = createFileRoute("/dose-da-confermare")({
   head: () => ({
@@ -63,7 +64,7 @@ function DoseDaConfermarePage() {
         description: "La scorta è stata scalata di conseguenza.",
       });
     } catch (err) {
-      console.error(err);
+      logger.error("[dose-da-confermare] Conferma dose fallita", err);
       toast.error("Errore nella conferma");
     } finally {
       setBusy(null);
@@ -82,7 +83,7 @@ function DoseDaConfermarePage() {
       hapticTap();
       toast.success("Segnata come gestita");
     } catch (err) {
-      console.error(err);
+      logger.error("[dose-da-confermare] Acknowledge dose fallito", err);
       toast.error("Errore nell'aggiornamento");
     } finally {
       setBusy(null);

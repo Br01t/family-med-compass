@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from "react";
+import { logger } from "@/lib/logger";
 
 declare global {
   interface Window {
@@ -88,7 +89,7 @@ export function TurnstileWidget({
     // presente, altrimenti login/registrazione falliscono silenziosamente
     // lato Supabase.
     if (import.meta.env.DEV) {
-      console.warn("[TurnstileWidget] VITE_TURNSTILE_SITE_KEY non impostata: captcha disattivato in dev.");
+      logger.warn("[TurnstileWidget] VITE_TURNSTILE_SITE_KEY non impostata: captcha disattivato in dev.");
     }
     return null;
   }

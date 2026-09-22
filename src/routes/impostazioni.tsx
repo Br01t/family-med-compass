@@ -8,6 +8,7 @@ import { AppShell } from "@/components/AppShell";
 import { PatientShell } from "@/components/PatientShell";
 import { FamilyInviteCard } from "@/components/FamilyInviteCard";
 import { AccountDataCard } from "@/components/AccountDataCard";
+import { CaregiverProfileCard } from "@/components/CaregiverProfileCard";
 import { MfaSecurityCard } from "@/components/MfaSecurityCard";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ import { type Role } from "@/lib/mock-data";
 import { useFeatureToggles, type FeatureKey } from "@/lib/feature-toggles";
 import { PLAN_LIMITS } from "@/lib/subscription";
 import { LEGAL_CONTACT } from "@/lib/legal-contact";
+import { logger } from "@/lib/logger";
 
 export const Route = createFileRoute("/impostazioni")({
   head: () => ({ meta: [{ title: "Impostazioni — FamilyMed" }] }),
@@ -167,6 +169,8 @@ function SettingsPage() {
 
         <SubscriptionCard />
 
+        {user && userProfile && <CaregiverProfileCard />}
+
         <FeatureTogglesCard />
 
         <InstallCard />
@@ -249,13 +253,13 @@ function GdprConsentCard({ userId }: { userId?: string }) {
           .eq("user_id", userId);
         if (error) {
           // Tabella potrebbe non esistere ancora prima delle migration
-          if (error.code !== "42P01") console.warn("Load consents:", error);
+          if (error.code !== "42P01") logger.warn("Load consents:", error);
           setConsents([]);
         } else {
           setConsents(data || []);
         }
       } catch (e) {
-        console.warn("Consents fetch exception:", e);
+        logger.warn("Consents fetch exception:", e);
       } finally {
         setLoading(false);
       }

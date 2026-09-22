@@ -283,6 +283,10 @@ function ProfileEditForm({
       toast.warning("Allergia già presente");
       return;
     }
+    if (form.allergies.length >= 50) {
+      toast.warning("Massimo 50 allergie registrabili");
+      return;
+    }
     setForm((f) => ({ ...f, allergies: [...f.allergies, val], allergyInput: "" }));
     allergyInputRef.current?.focus();
   };
@@ -391,6 +395,7 @@ function ProfileEditForm({
             onChange={(e) => setField("allergyInput", e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addAllergy())}
             className="border-destructive/30 focus-visible:ring-destructive/40"
+            maxLength={200}
           />
           <Button type="button" variant="outline" size="sm" onClick={addAllergy} className="shrink-0">
             <Plus className="size-4" />
@@ -448,12 +453,14 @@ function ProfileEditForm({
                   value={c.name}
                   onChange={(e) => updateContact(i, "name", e.target.value)}
                   className="text-sm"
+                  maxLength={80}
                 />
                 <Input
                   placeholder="Ruolo (es. Medico di Base)"
                   value={c.role}
                   onChange={(e) => updateContact(i, "role", e.target.value)}
                   className="text-sm"
+                  maxLength={80}
                 />
                 <Input
                   placeholder="Telefono"
@@ -461,6 +468,7 @@ function ProfileEditForm({
                   value={c.phone}
                   onChange={(e) => updateContact(i, "phone", e.target.value)}
                   className="text-sm"
+                  maxLength={30}
                 />
               </div>
             </div>
@@ -490,6 +498,7 @@ function ProfileEditForm({
         <textarea
           id="diagnoses-textarea"
           rows={4}
+          maxLength={3000}
           placeholder="es. Ipertensione arteriosa, Diabete Tipo 2…&#10;Lascia vuoto se non ci sono patologie note."
           value={form.diagnoses}
           onChange={(e) => setField("diagnoses", e.target.value)}
@@ -508,6 +517,7 @@ function ProfileEditForm({
         <textarea
           id="notes-textarea"
           rows={3}
+          maxLength={3000}
           placeholder="Qualsiasi altra informazione utile in caso di necessità..."
           value={form.notes}
           onChange={(e) => setField("notes", e.target.value)}

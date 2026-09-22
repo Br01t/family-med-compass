@@ -36,6 +36,7 @@ In FamilyMed la retention **non è affidata a promesse manuali**, ma è **ingegn
 | **Note Cliniche / Sintomi** | `wellness_notes` | **24 mesi** | Cron `wellness-notes-cleanup-daily` (alle 03:40) | Diario dei sintomi per il medico curante |
 | **Riepilogo Aderenza Mensile** | `adherence_monthly` | **Senza scadenza (Cumulativo aggregato)** | Calcolato da `rollup_adherence_monthly()` | Statistica aggregata non dettagliata (percentuale % mensile) |
 | **Log di Audit e Sicurezza** | `audit_log` | **90 giorni** | Cron `audit-log-cleanup-daily` (alle 03:35) | Verifica accessi e modifiche di sicurezza (Art. 32) |
+| **Movimenti di Scorta** | `stock_movements` | **24 mesi** | Cron `stock-movements-cleanup-daily` (alle 03:50) | Ledger di consumo/rifornimento; storico oltre 24 mesi non necessario, tabella a crescita costante da tenere sotto controllo sul piano free (500 MB totali) |
 | **Dati Sospesi da Downgrade** | `patients`, `therapies`, `caregiver_patients` (`suspended_at IS NOT NULL`) | **30 giorni (Finestra di ripensamento)** | Cron `downgrade-suspended-*-cleanup` (03:10, 03:12, 03:14) | Consente all'utente di fare re-upgrade e recuperare i dati |
 | **Codici Invito Famiglia** | `family_invites` | **7 giorni** dalla generazione | Check logico (`expires_at < now()`) e pulizia | Prevenzione uso improprio di vecchi inviti |
 | **Prove del Consenso Privacy** | `user_consents` | **Durata account + 10 anni** | Tabella dedicata preservata fino a cancellazione account | Prova di conformità legale (Art. 7.1 GDPR) |

@@ -6,7 +6,7 @@ import { Camera, Plus, Trash2, PillIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { fileToCompressedDataUrl } from "@/lib/image-utils";
-import { ensureTherapyPhotoUrl } from "@/lib/supabase-service";
+import { ensureTherapyPhotoUrl, deleteTherapyPhotoObject } from "@/lib/supabase-service";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +37,8 @@ import type { Therapy } from "@/lib/mock-data";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getPlanLimits } from "@/lib/subscription";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { TherapyPhotoImg } from "@/components/TherapyPhotoImg";
+import { logger } from "@/lib/logger";
 
 const CATEGORIES = [
   "Cardiologia",
@@ -221,8 +223,8 @@ export function AddTherapyDialog({
         // Se le foto sono dataURL nuovi, caricali su Storage prima del save
         // (le foto già-URL vengono lasciate invariate).
         const [uploadedDrug, uploadedPackage] = await Promise.all([
-          ensureTherapyPhotoUrl(editTherapy.id, "drug", photoDrug),
-          ensureTherapyPhotoUrl(editTherapy.id, "package", photoPackage),
+          ensureTherapyPhotoUrl(editTherapy.patientId, editTherapy.id, "drug", photoDrug),
+          ensureTherapyPhotoUrl(editTherapy.patientId, editTherapy.id, "package", photoPackage),
         ]);
         await updateTherapy(editTherapy.id, {
           patientId: values.patientId,
@@ -246,13 +248,27 @@ export function AddTherapyDialog({
           photoDrug: uploadedDrug,
           photoPackage: uploadedPackage,
         });
+
+        // Pulizia: se la foto è stata sostituita o rimossa, elimina il file
+        // vecchio dal bucket (altrimenti resta orfano per sempre — vedi
+        // compliance/storage-privacy-migration.md). Best-effort, non
+        // bloccante: eseguito dopo l'update per non rischiare di perdere la
+        // foto precedente se il salvataggio della terapia fallisse.
+        const photoCleanups: Promise<void>[] = [];
+        if (editTherapy.photoDrug && editTherapy.photoDrug !== uploadedDrug) {
+          photoCleanups.push(deleteTherapyPhotoObject(editTherapy.photoDrug));
+        }
+        if (editTherapy.photoPackage && editTherapy.photoPackage !== uploadedPackage) {
+          photoCleanups.push(deleteTherapyPhotoObject(editTherapy.photoPackage));
+        }
+        if (photoCleanups.length > 0) void Promise.all(photoCleanups);
         toast.success("Terapia aggiornata", { description: values.name });
       } else {
         // UUID invece di timestamp: evita ID prevedibili/enumerabili (GDPR - minimizzazione rischio IDOR)
         const newId = `t_${crypto.randomUUID()}`;
         const [uploadedDrug, uploadedPackage] = await Promise.all([
-          ensureTherapyPhotoUrl(newId, "drug", photoDrug),
-          ensureTherapyPhotoUrl(newId, "package", photoPackage),
+          ensureTherapyPhotoUrl(values.patientId, newId, "drug", photoDrug),
+          ensureTherapyPhotoUrl(values.patientId, newId, "package", photoPackage),
         ]);
         await addTherapy({
           id: newId,
@@ -289,7 +305,7 @@ export function AddTherapyDialog({
       onClose?.();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Errore sconosciuto";
-      console.error("[AddTherapyDialog] salvataggio fallito:", err);
+      logger.error("[AddTherapyDialog] salvataggio fallito:", err);
       toast.error("Impossibile salvare la terapia", {
         description: msg.includes("row-level security")
           ? "Permessi mancanti: non risulti collegato a questo paziente. Vai in Pazienti e clicca Segui."
@@ -383,6 +399,7 @@ export function AddTherapyDialog({
                           <Input
                             id="therapy-name-input"
                             placeholder="es. Cardioaspirina"
+                            maxLength={120}
                             {...field}
                           />
                         </FormControl>
@@ -397,7 +414,12 @@ export function AddTherapyDialog({
                       <FormItem>
                         <FormLabel>Dosaggio</FormLabel>
                         <FormControl>
-                          <Input id="therapy-dosage-input" placeholder="es. 100mg" {...field} />
+                          <Input
+                            id="therapy-dosage-input"
+                            placeholder="es. 100mg"
+                            maxLength={60}
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -779,6 +801,7 @@ export function AddTherapyDialog({
                           placeholder="es. Assumere dopo i pasti, non con il caffè..."
                           className="resize-none"
                           rows={3}
+                          maxLength={5000}
                           {...field}
                           value={field.value ?? ""}
                         />
@@ -851,7 +874,7 @@ function PhotoField({
       const dataUrl = await fileToCompressedDataUrl(f);
       onChange(dataUrl);
     } catch (e) {
-      console.warn(e);
+      logger.warn("[AddTherapyDialog] Compressione/caricamento foto fallito", e);
       toast.custom(() => (
         <div className="flex items-start gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3 shadow-lg">
           <div>
@@ -875,11 +898,19 @@ function PhotoField({
       <div className="flex flex-wrap items-center gap-3">
         {value ? (
           <div className="relative">
-            <img
-              src={value}
-              alt={label}
-              className="size-20 rounded-xl border border-border/60 object-cover"
-            />
+            {value.startsWith("data:") ? (
+              <img
+                src={value}
+                alt={label}
+                className="size-20 rounded-xl border border-border/60 object-cover"
+              />
+            ) : (
+              <TherapyPhotoImg
+                path={value}
+                alt={label}
+                className="size-20 rounded-xl border border-border/60 object-cover"
+              />
+            )}
             <button
               type="button"
               onClick={() => onChange(undefined)}

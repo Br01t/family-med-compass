@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { logger } from "@/lib/logger";
 
 export type FeatureKey = "storico" | "parametri" | "scorte" | "diario" | "eccezioni";
 
@@ -38,7 +39,7 @@ export function saveFeatureToggles(toggles: FeatureToggles): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toggles));
     window.dispatchEvent(new Event("familymed_feature_toggles_updated"));
   } catch (err) {
-    console.warn("Save feature toggles failed:", err);
+    logger.warn("Save feature toggles failed:", err);
   }
 }
 

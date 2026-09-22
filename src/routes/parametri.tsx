@@ -624,6 +624,7 @@ function VitalSignsPage() {
               onChange={(e) => setNote(e.target.value)}
               placeholder="Es. a digiuno, dopo camminata, ecc."
               rows={2}
+              maxLength={500}
             />
           </div>
         </div>

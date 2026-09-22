@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 /**
  * Feedback uniforme per le azioni che salvano dati:
@@ -18,7 +19,7 @@ export async function withSaveFeedback<T>(
     toast.success(messages?.success ?? "Salvato", { id, duration: 2200 });
     return result;
   } catch (e) {
-    console.warn(e);
+    logger.warn("[withSaveFeedback] Azione di salvataggio fallita", e);
     toast.error(messages?.error ?? "Non è stato possibile salvare. Riprova tra poco.", {
       id,
       duration: 4000,

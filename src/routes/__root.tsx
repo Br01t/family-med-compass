@@ -18,6 +18,7 @@ import { InstallBanner } from "../components/InstallBanner";
 import { AlarmRinger } from "../components/AlarmRinger";
 import { primeAlarmAudio } from "../lib/alarm-audio";
 import { MaintenancePage } from "../components/MaintenancePage";
+import { logger } from "@/lib/logger";
 
 // 🔒 MODALITÀ MANUTENZIONE — metti a false per riattivare il sito
 const MAINTENANCE_MODE = true;
@@ -45,7 +46,7 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
+  logger.error("[root] Errore SSR/render non gestito", error);
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
@@ -172,8 +173,8 @@ function RootComponent() {
     window.addEventListener("load", () => {
       navigator.serviceWorker
         .register("/sw.js")
-        .then((reg) => console.log("[SW] Registered:", reg.scope))
-        .catch((err) => console.warn("[SW] Registration failed:", err));
+        .then((reg) => logger.info("[SW] Registered", { scope: reg.scope }))
+        .catch((err) => logger.warn("[SW] Registration failed", err));
     });
   }, []);
 

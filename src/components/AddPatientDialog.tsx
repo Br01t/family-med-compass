@@ -26,6 +26,7 @@ import { useFamilyMed } from "@/lib/store";
 import { getPlanLimits } from "@/lib/subscription";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { recordCaregiverAuthorization } from "@/lib/supabase-service";
+import { logger } from "@/lib/logger";
 
 const currentYear = new Date().getFullYear();
 
@@ -83,9 +84,7 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
 
     try {
       const id = `p_${crypto.randomUUID()}`;
-      const caregiverIds: string[] = data.currentCaregiverId
-        ? [data.currentCaregiverId]
-        : [];
+      const caregiverIds: string[] = data.currentCaregiverId ? [data.currentCaregiverId] : [];
 
       const patientData = {
         id,
@@ -105,7 +104,7 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
       try {
         await recordCaregiverAuthorization(id);
       } catch (consentError) {
-        console.error("[AddPatientDialog] Dichiarazione non registrata:", consentError);
+        logger.error("[AddPatientDialog] Dichiarazione non registrata:", consentError);
         toast.warning("Paziente salvato, ma la dichiarazione non è stata registrata", {
           description: "Riprova dalle impostazioni del paziente, sezione Privacy.",
         });
@@ -117,23 +116,25 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
       form.reset();
       setOpen(false);
     } catch (error) {
-      console.error("[AddPatientDialog] Errore durante il salvataggio:", error);
+      logger.error("[AddPatientDialog] Errore durante il salvataggio:", error);
       toast.error("Impossibile salvare il paziente", {
-        description:
-          error instanceof Error ? error.message : "Riprova tra qualche secondo.",
+        description: error instanceof Error ? error.message : "Riprova tra qualche secondo.",
       });
     }
   }
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(v) => {
-        if (v && isLimitReached) {
-          setUpgradeModalOpen(true);
-          return;
-        }
-        setOpen(v);
-      }}>
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          if (v && isLimitReached) {
+            setUpgradeModalOpen(true);
+            return;
+          }
+          setOpen(v);
+        }}
+      >
         <DialogTrigger asChild onClick={handleTriggerClick}>
           {trigger ?? (
             <Button size="sm" id="add-patient-btn">
@@ -145,117 +146,124 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
 
         <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black tracking-tight">
-              Nuovo paziente
-            </DialogTitle>
+            <DialogTitle className="text-xl font-black tracking-tight">Nuovo paziente</DialogTitle>
           </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="mt-2 space-y-5">
-            {/* Nome */}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome e cognome</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="es. Mario Rossi"
-                      id="patient-name-input"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="mt-2 space-y-5">
+              {/* Nome */}
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome e cognome</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="es. Mario Rossi"
+                        id="patient-name-input"
+                        maxLength={80}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {/* Anno di nascita */}
-            <FormField
-              control={form.control}
-              name="birthYear"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Anno di nascita</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder={`es. ${currentYear - 75}`}
-                      id="patient-birth-year-input"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(e.target.value ? Number(e.target.value) : undefined)
-                      }
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              {/* Anno di nascita */}
+              <FormField
+                control={form.control}
+                name="birthYear"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Anno di nascita</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder={`es. ${currentYear - 75}`}
+                        id="patient-birth-year-input"
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(e.target.value ? Number(e.target.value) : undefined)
+                        }
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <div className="rounded-xl border border-border/60 bg-surface-muted p-3 text-xs text-muted-foreground">
-              Il nuovo paziente verrà collegato al tuo account. Potrai gestirne
-              terapie e scorte anche senza un account paziente separato.
-            </div>
+              <div className="rounded-xl border border-border/60 bg-surface-muted p-3 text-xs text-muted-foreground">
+                Il nuovo paziente verrà collegato al tuo account. Potrai gestirne terapie e scorte
+                anche senza un account paziente separato.
+              </div>
 
-            {/* Dichiarazione di autorizzazione (art. 7.1 GDPR) — obbligatoria
+              {/* Dichiarazione di autorizzazione (art. 7.1 GDPR) — obbligatoria
                 perché il caregiver sta per inserire dati sanitari (art. 9
                 GDPR) di una persona diversa da sé stesso. */}
-            <FormField
-              control={form.control}
-              name="authorizationDeclared"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start gap-3 rounded-xl border border-border/60 p-3">
-                  <FormControl>
-                    <Checkbox
-                      id="patient-authorization-checkbox"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-snug">
-                    <FormLabel htmlFor="patient-authorization-checkbox" className="text-xs font-normal text-foreground">
-                      Dichiaro di essere autorizzato — in quanto genitore, tutore
-                      legale o su indicazione diretta dell'interessato — a
-                      inserire e gestire in questa app i dati relativi alla
-                      salute di <strong>{form.watch("name") || "questa persona"}</strong>.
-                    </FormLabel>
-                    <FormMessage />
-                  </div>
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="authorizationDeclared"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start gap-3 rounded-xl border border-border/60 p-3">
+                    <FormControl>
+                      <Checkbox
+                        id="patient-authorization-checkbox"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-snug">
+                      <FormLabel
+                        htmlFor="patient-authorization-checkbox"
+                        className="text-xs font-normal text-foreground"
+                      >
+                        Dichiaro di essere autorizzato — in quanto genitore, tutore legale o su
+                        indicazione diretta dell'interessato — a inserire e gestire in questa app i
+                        dati relativi alla salute di{" "}
+                        <strong>{form.watch("name") || "questa persona"}</strong>.
+                      </FormLabel>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
 
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full sm:w-auto"
-                onClick={() => {
-                  form.reset();
-                  setOpen(false);
-                }}
-              >
-                Annulla
-              </Button>
-              <Button type="submit" id="save-patient-btn" className="w-full sm:w-auto" loading={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Salvataggio…" : "Salva paziente"}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => {
+                    form.reset();
+                    setOpen(false);
+                  }}
+                >
+                  Annulla
+                </Button>
+                <Button
+                  type="submit"
+                  id="save-patient-btn"
+                  className="w-full sm:w-auto"
+                  loading={form.formState.isSubmitting}
+                >
+                  {form.formState.isSubmitting ? "Salvataggio…" : "Salva paziente"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
-    <UpgradeModal
-      open={upgradeModalOpen}
-      onOpenChange={setUpgradeModalOpen}
-      requiredPlan="pro"
-      featureTitle="Limite Pazienti Raggiunto"
-      featureDescription={`Il tuo piano attuale (${limits.name}) ti permette di gestire fino a ${limits.maxPatients} ${limits.maxPatients === 1 ? 'paziente' : 'pazienti'}. Passa a Pro o Max per gestirne di più.`}
-    />
+      <UpgradeModal
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+        requiredPlan="pro"
+        featureTitle="Limite Pazienti Raggiunto"
+        featureDescription={`Il tuo piano attuale (${limits.name}) ti permette di gestire fino a ${limits.maxPatients} ${limits.maxPatients === 1 ? "paziente" : "pazienti"}. Passa a Pro o Max per gestirne di più.`}
+      />
     </>
   );
 }

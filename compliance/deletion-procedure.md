@@ -128,7 +128,7 @@ Qualora l'interessato non riesca ad accedere all'app o invii formale richiesta s
 ## 4. Gestione di Backup e Storage Foto (Gap & Best Practices)
 
 ### 4.1 Backup di Database (Supabase Automated Backups)
-- I backup giornalieri di Supabase contengono snapshot fisici del database e hanno un ciclo di retention standard (da 7 a 30 giorni a seconda del piano).
+- Il progetto FamilyMed è oggi sul piano **Free** di Supabase, che **non include alcun backup automatico né Point-in-Time Recovery**: questo canale di conservazione residua non esiste allo stato attuale. Se in futuro si passasse al piano Pro, i backup giornalieri tornerebbero disponibili con una retention di default di 7 giorni (configurabile), e questa sezione andrebbe aggiornata di conseguenza.
 - I dati eliminati in produzione **non vengono ripristinati**, ma decadono naturalmente allo scadere del periodo di rotazione dei backup.
 - *Presidio GDPR:* Qualora si rendesse necessario un ripristino da backup per motivi di disaster recovery, è istituita la procedura di ri-applicazione del log delle cancellazioni (`log_gdpr_event`) per eliminare nuovamente gli utenti che avevano esercitato l'oblio prima del restore.
 

@@ -5,6 +5,8 @@
  *   e @capacitor/push-notifications. Nessun componente da modificare.
  */
 
+import { logger } from "@/lib/logger";
+
 export type NotificationPayload = {
   id?: string;
   title: string;
@@ -62,7 +64,7 @@ class WebNotificationService implements NotificationService {
       };
       if (payload.playSound) void this.playSound();
     } catch (e) {
-      console.warn("[Notif] error", e);
+      logger.warn("[Notif] error", e);
     }
   }
 
@@ -87,7 +89,7 @@ class WebNotificationService implements NotificationService {
         setTimeout(() => { osc.stop(); ctx.close(); }, 400);
       });
     } catch (e) {
-      console.warn("[Notif sound] error", e);
+      logger.warn("[Notif sound] error", e);
     }
   }
 }

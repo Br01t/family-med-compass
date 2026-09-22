@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { type Role } from "@/lib/mock-data";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { LEGAL_CONTACT } from "@/lib/legal-contact";
+import { logger } from "@/lib/logger";
 
 export const Route = createFileRoute("/registrati")({
   head: () => ({ meta: [{ title: "Registrati — FamilyMed" }] }),
@@ -93,7 +94,7 @@ function RegisterPage() {
             consentError.code !== "42P01" && // tabella non esiste
             !consentError.message?.includes("does not exist")
           ) {
-            console.error("[GDPR] Consensi non registrati:", consentError);
+            logger.error("[GDPR] Consensi non registrati:", consentError);
             setDialogVariant("error");
             setDialogTitle("Registrazione incompleta");
             setDialogDescription(
@@ -103,7 +104,7 @@ function RegisterPage() {
             setDialogOpen(true);
             return;
           } else {
-            console.warn("[GDPR] Tabella user_consents non trovata (esegui MIGRATION_consensi_gdpr.sql).");
+            logger.warn("[GDPR] Tabella user_consents non trovata (esegui MIGRATION_consensi_gdpr.sql).");
           }
         }
       }

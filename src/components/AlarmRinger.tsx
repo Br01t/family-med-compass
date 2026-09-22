@@ -4,6 +4,7 @@ import { useFamilyMed } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { getPrimedAlarmAudioContext } from "@/lib/alarm-audio";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 function formatMMSS(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return "00:00";
@@ -162,7 +163,7 @@ export function AlarmRinger() {
         vibrateIntervalRef.current = beepInterval;
       });
     } catch (err) {
-      console.warn("[alarm] audio failed:", err);
+      logger.warn("[alarm] audio failed:", err);
     }
 
     if ("vibrate" in navigator) navigator.vibrate([400, 200, 400, 200, 400]);
@@ -320,7 +321,7 @@ export function AlarmRinger() {
             await skipDose({ therapyId: therapy.id, scheduledAt });
           }
         } catch (err) {
-          console.warn("[modal] action failed:", err);
+          logger.warn("[modal] action failed:", err);
         }
       }
       setModal(null);

@@ -34,6 +34,17 @@ export default tseslint.config(
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+      // Tutto il logging passa da src/lib/logger.ts, che sanitizza errori e
+      // metadati prima di stamparli (vedi compliance/logging-hardening.md).
+      // Un console.* diretto altrove bypassa la sanitizzazione e rischia di
+      // far finire dati sanitari (terapie, dosaggi, note cliniche...) nei log.
+      "no-console": "error",
+    },
+  },
+  {
+    files: ["src/lib/logger.ts"],
+    rules: {
+      "no-console": "off",
     },
   },
   eslintPluginPrettier,

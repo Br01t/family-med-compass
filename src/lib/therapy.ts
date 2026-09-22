@@ -155,13 +155,6 @@ export function getAdherenceForPatient(data: FamilyMedData, patientId: string, d
   return Math.round((taken / total) * 100);
 }
 
-export function getTodayProgress(data: FamilyMedData, patientId: string) {
-  const now = new Date();
-  const doses = getDosesForPatientOnDate(data, patientId, now, now);
-  const taken = doses.filter((d) => d.status === "taken").length;
-  return { taken, total: doses.length, doses };
-}
-
 export function getNextDose(data: FamilyMedData, patientId: string): ScheduledDose | undefined {
   const now = new Date();
   // Look at today + tomorrow

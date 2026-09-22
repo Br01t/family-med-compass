@@ -10,12 +10,9 @@ directory = ".output/public"
 binding = "ASSETS"
 
 # Variabili d'ambiente non sensibili.
-# I secret (chiavi Supabase, VAPID_PRIVATE_KEY, ecc.) impostali con:
+# I secret (chiavi Supabase) impostali con:
 #   wrangler secret put VITE_SUPABASE_URL
 #   wrangler secret put VITE_SUPABASE_PUBLISHABLE_KEY
-#   wrangler secret put VAPID_PUBLIC_KEY
-#   wrangler secret put VAPID_PRIVATE_KEY
-#   wrangler secret put VAPID_SUBJECT
 [vars]
 NODE_ENV = "production"
 

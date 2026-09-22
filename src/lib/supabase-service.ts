@@ -7,6 +7,9 @@ import {
   type Notification,
 } from "./mock-data";
 import type { SubscriptionPlan } from "./subscription";
+import { logger } from "@/lib/logger";
+import { extractTherapyPhotoPath } from "@/lib/therapy-photo-url";
+import { extractCaregiverAvatarPath } from "@/lib/caregiver-avatar-url";
 
 /* =========================================================
    SAFE GUARD BASE
@@ -152,7 +155,7 @@ export async function fetchPatientsOnce(userId: string, role: string): Promise<P
     if (error) {
       // Fallback compatibile se la RPC non è ancora stata deployata
       if (error.code === "PGRST202" || error.message?.includes("does not exist")) {
-        console.warn("[supabase-service] get_my_patients RPC non trovata, uso fallback 2-query.");
+        logger.warn("[supabase-service] get_my_patients RPC non trovata, uso fallback 2-query.");
         return fetchPatientsOnceFallback(userId, role);
       }
       throw error;
@@ -168,7 +171,7 @@ export async function fetchPatientsOnce(userId: string, role: string): Promise<P
       primaryCaregiverId: p.primary_caregiver_id ?? null,
     }));
   } catch (err) {
-    console.error("Errore fetch pazienti:", err);
+    logger.error("Errore fetch pazienti:", err);
     // NON restituire [] silenziosamente: un errore di rete/RPC verrebbe
     // interpretato dalla UI come "questo utente non ha pazienti", cancellando
     // la lista che l'utente vedeva un attimo prima. Propaghiamo l'errore:
@@ -212,7 +215,7 @@ async function fetchPatientsOnceFallback(userId: string, role: string): Promise<
       primaryCaregiverId: (p as any).primary_caregiver_id ?? null,
     }));
   } catch (err) {
-    console.error("Errore fetch pazienti (fallback):", err);
+    logger.error("Errore fetch pazienti (fallback):", err);
     throw err;
   }
 }
@@ -237,7 +240,7 @@ export function subscribePatients(
       // Errore infrastrutturale: NON chiamare onUpdate([]). Lo stato React
       // resta quello precedente (dati in cache), la UI mostra un banner di
       // errore invece di una lista vuota fuorviante.
-      console.error("[subscribePatients] fetch fallito, mantengo i dati in cache:", err);
+      logger.error("[subscribePatients] fetch fallito, mantengo i dati in cache:", err);
       onError?.(err);
     });
   return () => {};
@@ -258,7 +261,7 @@ export async function fetchCaregiversOnce(userId: string, role: string): Promise
     if (error) {
       // Fallback se la RPC non è ancora stata deployata
       if (error.code === "PGRST202" || error.message?.includes("does not exist")) {
-        console.warn("[supabase-service] get_my_caregivers RPC non trovata, uso fallback 2-query.");
+        logger.warn("[supabase-service] get_my_caregivers RPC non trovata, uso fallback 2-query.");
         return fetchCaregiversOnceFallback(userId, role);
       }
       throw error;
@@ -272,7 +275,7 @@ export async function fetchCaregiversOnce(userId: string, role: string): Promise
       notify: c.notify,
     }));
   } catch (err) {
-    console.error("Errore fetch caregiver:", err);
+    logger.error("Errore fetch caregiver:", err);
     throw err;
   }
 }
@@ -306,7 +309,7 @@ async function fetchCaregiversOnceFallback(userId: string, role: string): Promis
       notify: c.notify,
     }));
   } catch (err) {
-    console.error("Errore fetch caregiver (fallback):", err);
+    logger.error("Errore fetch caregiver (fallback):", err);
     throw err;
   }
 }
@@ -325,7 +328,7 @@ export function subscribeCaregivers(
   fetchCaregiversOnce(userId, role)
     .then(onUpdate)
     .catch((err) => {
-      console.error("[subscribeCaregivers] fetch fallito, mantengo i dati in cache:", err);
+      logger.error("[subscribeCaregivers] fetch fallito, mantengo i dati in cache:", err);
       onError?.(err);
     });
   return () => {};
@@ -351,7 +354,7 @@ export async function fetchTherapiesOnce(patientIds: string[]): Promise<Therapy[
     if (error) throw error;
     return (data || []).map(mapTherapyRow);
   } catch (err) {
-    console.error("Errore fetch terapie:", err);
+    logger.error("Errore fetch terapie:", err);
     throw err;
   }
 }
@@ -376,21 +379,10 @@ export function subscribeTherapiesForPatients(
   fetchTherapiesOnce(ids)
     .then(onUpdate)
     .catch((err) => {
-      console.error(
-        "[subscribeTherapiesForPatients] fetch fallito, mantengo i dati in cache:",
-        err,
-      );
+      logger.error("[subscribeTherapiesForPatients] fetch fallito, mantengo i dati in cache:", err);
       onError?.(err);
     });
   return () => {};
-}
-
-export function subscribeTherapies(
-  patientId: string,
-  onUpdate: (therapies: Therapy[]) => void,
-  onError?: (err: unknown) => void,
-): () => void {
-  return subscribeTherapiesForPatients(patientId ? [patientId] : [], onUpdate, onError);
 }
 
 /* =========================================================
@@ -472,7 +464,7 @@ export function subscribeEventsForPatients(
       // NON chiamare onUpdate([]): resta lo stato precedente (dati in
       // cache) e `ready` resta false, così il canale realtime aperto qui
       // sotto non applica delta su una cache vuota/incompleta.
-      console.error("[subscribeEventsForPatients] fetch fallito, mantengo i dati in cache:", err);
+      logger.error("[subscribeEventsForPatients] fetch fallito, mantengo i dati in cache:", err);
       onError?.(err);
     }
   };
@@ -525,14 +517,6 @@ export function subscribeEventsForPatients(
   };
 }
 
-export function subscribeEvents(
-  patientId: string,
-  onUpdate: (events: MedicationEvent[]) => void,
-  plan: SubscriptionPlan = "free",
-): () => void {
-  return subscribeEventsForPatients(patientId ? [patientId] : [], onUpdate, plan);
-}
-
 /**
  * Fetch one-shot degli eventi di UN SOLO paziente su una finestra
  * arbitraria (es. 30 o 90 giorni). Usata solo da "Storico & Report",
@@ -558,7 +542,7 @@ export async function fetchEventsForPatientRange(
     if (error) throw error;
     return (data || []).map(mapEventRow);
   } catch (err) {
-    console.error("Errore fetch eventi storico:", err);
+    logger.error("Errore fetch eventi storico:", err);
     return [];
   }
 }
@@ -603,7 +587,7 @@ export function subscribeNotifications(
       ready = true;
       onUpdate(cache);
     } catch (err) {
-      console.error("[subscribeNotifications] fetch fallito, mantengo i dati in cache:", err);
+      logger.error("[subscribeNotifications] fetch fallito, mantengo i dati in cache:", err);
       onError?.(err);
     }
   };
@@ -693,7 +677,7 @@ export async function fetchCaregiverDashboardStats(): Promise<CaregiverDashboard
 
   const { data, error } = await supabase.rpc("get_my_caregiver_stats");
   if (error) {
-    console.error("get_my_caregiver_stats:", error);
+    logger.error("get_my_caregiver_stats:", error);
     return empty;
   }
   const row = Array.isArray(data) ? data[0] : data;
@@ -715,7 +699,7 @@ export async function refreshMyCaregiverStats(): Promise<boolean> {
   caregiverStatsCache.delete("my_stats");
   const { error } = await supabase.rpc("refresh_my_caregiver_stats");
   if (error) {
-    console.error("refresh_my_caregiver_stats:", error);
+    logger.error("refresh_my_caregiver_stats:", error);
     return false;
   }
   return true;
@@ -744,7 +728,7 @@ export async function fetchNotificationsPage(
   if (opts?.patientId) q = q.eq("patient_id", opts.patientId);
   const { data, error, count } = await q.order("created_at", { ascending: false }).range(from, to);
   if (error) {
-    console.error("fetchNotificationsPage:", error);
+    logger.error("fetchNotificationsPage:", error);
     return { items: [], total: 0 };
   }
   return {
@@ -841,11 +825,11 @@ export async function addPatientDoc(patient: Patient): Promise<void> {
         .update({ name: patientPayload.name, user_id: patientPayload.user_id })
         .eq("id", patientPayload.id);
       if (updateError) {
-        console.error("[addPatientDoc] Errore update paziente:", updateError);
+        logger.error("[addPatientDoc] Errore update paziente:", updateError);
         throw updateError;
       }
     } else {
-      console.error("[addPatientDoc] Errore salvataggio paziente:", patientError);
+      logger.error("[addPatientDoc] Errore salvataggio paziente:", patientError);
       throw patientError;
     }
   }
@@ -859,7 +843,7 @@ export async function addPatientDoc(patient: Patient): Promise<void> {
     const { error: relationError } = await supabase.from("caregiver_patients").insert(relationRows);
 
     if (relationError) {
-      console.error("[addPatientDoc] Errore salvataggio relazioni:", relationError);
+      logger.error("[addPatientDoc] Errore salvataggio relazioni:", relationError);
       throw relationError;
     }
   }
@@ -970,8 +954,118 @@ export async function saveCaregiverDoc(caregiver: Caregiver): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Aggiorna il nome dell'account (public.profiles.name) — il campo mostrato
+ * nella card "Profilo & Account" di Impostazioni, letto anche da
+ * getUserProfile() con cache 24h lato client. Chi chiama questa funzione
+ * DEVE invalidare quella cache subito dopo (invalidateUserProfileCache, da
+ * @/lib/auth-service), altrimenti il nuovo nome non compare finché la
+ * cache non scade da sola.
+ */
+export async function updateProfileName(uid: string, name: string): Promise<void> {
+  if (!supabase) throw new Error("Supabase non configurato");
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Il nome non può essere vuoto");
+  const { error } = await supabase.from("profiles").update({ name: trimmed }).eq("id", uid);
+  if (error) throw error;
+}
+
+const CAREGIVER_AVATARS_BUCKET = "caregiver-avatars";
+
+/**
+ * Carica un avatar (dataURL) su Storage e ritorna il PATH dell'oggetto
+ * (bucket privato, lettura tramite Signed URL — vedi
+ * src/lib/caregiver-avatar-url.ts). Path: caregivers/{caregiverId}/avatar-{ts}.{ext}
+ */
+export async function uploadCaregiverAvatarFromDataUrl(
+  caregiverId: string,
+  dataUrl: string,
+): Promise<string> {
+  if (!supabase) throw new Error("Supabase non configurato");
+  const { blob, ext } = dataUrlToBlob(dataUrl);
+  const path = `caregivers/${caregiverId}/avatar-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage
+    .from(CAREGIVER_AVATARS_BUCKET)
+    .upload(path, blob, { upsert: true, contentType: blob.type });
+  if (error) throw error;
+  return path;
+}
+
+/**
+ * Se `current` è un dataURL (foto appena scattata/selezionata, non ancora
+ * caricata), la carica su Storage e ritorna il path. Se è già un path/URL
+ * esistente, lo ritorna invariato. Se null/undefined, ritorna undefined.
+ */
+export async function ensureCaregiverAvatarPath(
+  caregiverId: string,
+  current: string | undefined | null,
+): Promise<string | undefined> {
+  if (!current) return undefined;
+  if (current.startsWith("data:")) {
+    return uploadCaregiverAvatarFromDataUrl(caregiverId, current);
+  }
+  return current;
+}
+
+/**
+ * Elimina dal bucket il vecchio avatar quando viene sostituito o rimosso —
+ * stessa logica anti-orfani già applicata alle foto terapia (vedi
+ * deleteTherapyPhotoObject). Best-effort: un fallimento qui non deve mai
+ * bloccare il salvataggio del profilo.
+ */
+export async function deleteCaregiverAvatarObject(
+  previousValue: string | null | undefined,
+): Promise<void> {
+  if (!supabase || !previousValue) return;
+  const path = extractCaregiverAvatarPath(previousValue);
+  if (!path) return;
+  try {
+    const { error } = await supabase.storage.from(CAREGIVER_AVATARS_BUCKET).remove([path]);
+    if (error) {
+      logger.warn("[deleteCaregiverAvatarObject] rimozione file precedente fallita", error);
+    }
+  } catch (e) {
+    logger.warn("[deleteCaregiverAvatarObject] rimozione file precedente fallita", e);
+  }
+}
+
 export async function deleteTherapyDoc(id: string): Promise<void> {
   if (!supabase) throw new Error("Supabase non configurato");
+
+  // Pulizia foto Storage PRIMA di cancellare la riga: il path nuovo
+  // (therapies/{patientId}/{therapyId}/...) resta gestibile anche a riga
+  // cancellata (l'autorizzazione si basa sul paziente), ma quello legacy
+  // (therapies/{therapyId}/...) richiede che la riga esista ancora per
+  // risalire al paziente — quindi va pulito PRIMA, non dopo, altrimenti
+  // diventa un file orfano non più cancellabile da nessuno. Best-effort:
+  // un fallimento qui non deve mai bloccare la cancellazione della terapia.
+  try {
+    const { data: row } = await supabase
+      .from("therapies")
+      .select("patient_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (row?.patient_id) {
+      const { data: newSchemeFiles } = await supabase.storage
+        .from("therapy-photos")
+        .list(`therapies/${row.patient_id}/${id}`);
+      if (newSchemeFiles && newSchemeFiles.length > 0) {
+        await supabase.storage
+          .from("therapy-photos")
+          .remove(newSchemeFiles.map((f) => `therapies/${row.patient_id}/${id}/${f.name}`));
+      }
+    }
+    const { data: legacyFiles } = await supabase.storage
+      .from("therapy-photos")
+      .list(`therapies/${id}`);
+    if (legacyFiles && legacyFiles.length > 0) {
+      await supabase.storage
+        .from("therapy-photos")
+        .remove(legacyFiles.map((f) => `therapies/${id}/${f.name}`));
+    }
+  } catch (e) {
+    logger.warn("[deleteTherapyDoc] pulizia foto Storage fallita (non bloccante)", e);
+  }
 
   const { error } = await supabase.from("therapies").delete().eq("id", id);
 
@@ -1045,7 +1139,7 @@ export async function listFamilyInvites(patientId: string): Promise<FamilyInvite
     .eq("patient_id", patientId)
     .order("created_at", { ascending: false });
   if (error) {
-    console.warn("listFamilyInvites:", error.message);
+    logger.warn("listFamilyInvites:", error.message);
     return [];
   }
   return (data || []).map(mapInvite);
@@ -1114,7 +1208,7 @@ export async function logPatientView(patientId: string): Promise<void> {
   try {
     await supabase.rpc("log_patient_view", { _patient_id: patientId });
   } catch (err) {
-    console.warn("logPatientView:", err);
+    logger.warn("logPatientView:", err);
   }
 }
 
@@ -1133,7 +1227,7 @@ export async function fetchPatientAuditLog(
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) {
-    console.warn("fetchPatientAuditLog:", error.message);
+    logger.warn("fetchPatientAuditLog:", error.message);
     return [];
   }
   return (data || []).map(mapAuditEntry);
@@ -1250,7 +1344,7 @@ export async function adjustStockManually(
     reason: `manual:${reason}`,
   });
   if (stockErr) {
-    console.warn("[adjustStockManually] stock_movements insert failed:", stockErr.message);
+    logger.warn("[adjustStockManually] stock_movements insert failed:", stockErr.message);
   }
 
   return { newPillsRemaining: newValue };
@@ -1285,7 +1379,7 @@ export async function insertNotificationDoc(input: {
     dose_key: input.doseKey,
   });
   if (error && error.code !== "23505") {
-    console.warn("[insertNotificationDoc]", error.message);
+    logger.warn("[insertNotificationDoc]", error.message);
   }
 }
 
@@ -1321,7 +1415,7 @@ export async function listCaregiversForPatient(
     .select("caregiver_id, relationship, created_at")
     .eq("patient_id", patientId);
   if (linksError) {
-    console.warn("[listCaregiversForPatient]", linksError.message);
+    logger.warn("[listCaregiversForPatient]", linksError.message);
     return [];
   }
   if (!links || links.length === 0) return [];
@@ -1332,7 +1426,7 @@ export async function listCaregiversForPatient(
     .select("id, name, relation, photo")
     .in("id", ids);
   if (cgError) {
-    console.warn("[listCaregiversForPatient]", cgError.message);
+    logger.warn("[listCaregiversForPatient]", cgError.message);
   }
   const byId = new Map((caregivers ?? []).map((c) => [c.id, c]));
 
@@ -1387,7 +1481,7 @@ export async function fetchFamilyGroupData(
     _audit_limit: auditLimit,
   });
   if (error) {
-    console.warn("[fetchFamilyGroupData]", error.message);
+    logger.warn("[fetchFamilyGroupData]", error.message);
     return empty;
   }
 
@@ -1431,7 +1525,7 @@ export async function fetchCaregiverIdsForPatient(patientId: string): Promise<st
     .select("caregiver_id")
     .eq("patient_id", patientId);
   if (error) {
-    console.warn("[fetchCaregiverIdsForPatient]", error.message);
+    logger.warn("[fetchCaregiverIdsForPatient]", error.message);
     return [];
   }
   const ids = (data ?? []).map((r) => r.caregiver_id);
@@ -1441,8 +1535,15 @@ export async function fetchCaregiverIdsForPatient(patientId: string): Promise<st
 
 /* =========================================================
    THERAPY PHOTOS — Supabase Storage
-   Le foto sono su bucket `therapy-photos` (private con RLS SELECT pubblica).
-   In DB salviamo solo l'URL pubblico (~100 byte) invece del base64 (~150 KB).
+   Il bucket `therapy-photos` è PRIVATO (RLS su storage.objects, vedi
+   supabase/migrations/20260916000000_private_therapy_photos.sql).
+   In DB salviamo solo il PATH dell'oggetto (~50 byte), non un URL
+   pubblico: la visualizzazione avviene sempre tramite Signed URL a
+   breve scadenza, generato on-demand da src/lib/therapy-photo-url.ts.
+   Path: therapies/{patientId}/{therapyId}/{kind}-{timestamp}.{ext}
+   (il patientId in testa al path permette alla RLS di autorizzare
+   l'upload anche quando la riga `therapies` non esiste ancora, perché
+   la foto viene caricata PRIMA dell'insert della terapia).
 ========================================================= */
 
 const THERAPY_PHOTOS_BUCKET = "therapy-photos";
@@ -1466,44 +1567,73 @@ function dataUrlToBlob(dataUrl: string): { blob: Blob; ext: string } {
 }
 
 /**
- * Carica una foto (dataURL) su Storage e ritorna l'URL pubblico.
+ * Carica una foto (dataURL) su Storage e ritorna il PATH dell'oggetto
+ * (non un URL: il bucket è privato, la lettura passa da Signed URL).
  * `kind` = "drug" | "package".
  */
 export async function uploadTherapyPhotoFromDataUrl(
+  patientId: string,
   therapyId: string,
   kind: "drug" | "package",
   dataUrl: string,
 ): Promise<string> {
   if (!supabase) throw new Error("Supabase non configurato");
   const { blob, ext } = dataUrlToBlob(dataUrl);
-  const path = `therapies/${therapyId}/${kind}-${Date.now()}.${ext}`;
+  const path = `therapies/${patientId}/${therapyId}/${kind}-${Date.now()}.${ext}`;
   const { error } = await supabase.storage
     .from(THERAPY_PHOTOS_BUCKET)
     .upload(path, blob, { upsert: true, contentType: blob.type });
   if (error) throw error;
-  const { data } = supabase.storage.from(THERAPY_PHOTOS_BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  return path;
 }
 
 /**
- * Se `current` è un dataURL, lo carica su Storage e ritorna l'URL pubblico.
- * Se è già un URL http(s)://, lo ritorna così com'è. Se null/undefined, ritorna undefined.
+ * Se `current` è un dataURL, lo carica su Storage e ritorna il path
+ * dell'oggetto. Se è già un path/URL esistente, lo ritorna invariato
+ * (evita di ri-caricare una foto non cambiata). Se null/undefined,
+ * ritorna undefined.
  */
 export async function ensureTherapyPhotoUrl(
+  patientId: string,
   therapyId: string,
   kind: "drug" | "package",
   current: string | undefined | null,
 ): Promise<string | undefined> {
   if (!current) return undefined;
   if (current.startsWith("data:")) {
-    return uploadTherapyPhotoFromDataUrl(therapyId, kind, current);
+    return uploadTherapyPhotoFromDataUrl(patientId, therapyId, kind, current);
   }
   return current;
 }
 
 /**
+ * Elimina dal bucket Storage il file corrispondente a un vecchio path/URL
+ * salvato in DB, quando una foto viene sostituita o rimossa. Senza questo
+ * passaggio, ogni sostituzione crea un nuovo oggetto con timestamp univoco
+ * e **lascia quello vecchio orfano nel bucket per sempre**: su un piano
+ * free con quota Storage limitata, e con molte famiglie che cambiano foto
+ * nel tempo, è la fonte di spreco più semplice da evitare. Best-effort: un
+ * fallimento qui non deve mai bloccare il salvataggio della terapia.
+ */
+export async function deleteTherapyPhotoObject(
+  previousValue: string | null | undefined,
+): Promise<void> {
+  if (!supabase || !previousValue) return;
+  const path = extractTherapyPhotoPath(previousValue);
+  if (!path) return;
+  try {
+    const { error } = await supabase.storage.from(THERAPY_PHOTOS_BUCKET).remove([path]);
+    if (error) {
+      logger.warn("[deleteTherapyPhotoObject] rimozione file precedente fallita", error);
+    }
+  } catch (e) {
+    logger.warn("[deleteTherapyPhotoObject] rimozione file precedente fallita", e);
+  }
+}
+
+/**
  * Migrazione una-tantum: per ogni terapia visibile, se photo_drug/photo_package
- * è un dataURL lo carica su Storage e sostituisce con l'URL pubblico.
+ * è un dataURL lo carica su Storage e sostituisce con il path dell'oggetto.
  * Ritorna il conteggio di righe aggiornate.
  */
 export async function migrateAllTherapyPhotosToStorage(): Promise<{
@@ -1512,7 +1642,9 @@ export async function migrateAllTherapyPhotosToStorage(): Promise<{
   errors: number;
 }> {
   if (!supabase) throw new Error("Supabase non configurato");
-  const { data, error } = await supabase.from("therapies").select("id, photo_drug, photo_package");
+  const { data, error } = await supabase
+    .from("therapies")
+    .select("id, patient_id, photo_drug, photo_package");
   if (error) throw error;
 
   let migrated = 0,
@@ -1528,10 +1660,16 @@ export async function migrateAllTherapyPhotosToStorage(): Promise<{
     try {
       const patch: Record<string, string> = {};
       if (hasDrugData) {
-        patch.photo_drug = await uploadTherapyPhotoFromDataUrl(row.id, "drug", row.photo_drug!);
+        patch.photo_drug = await uploadTherapyPhotoFromDataUrl(
+          row.patient_id!,
+          row.id,
+          "drug",
+          row.photo_drug!,
+        );
       }
       if (hasPkgData) {
         patch.photo_package = await uploadTherapyPhotoFromDataUrl(
+          row.patient_id!,
           row.id,
           "package",
           row.photo_package!,
@@ -1541,7 +1679,7 @@ export async function migrateAllTherapyPhotosToStorage(): Promise<{
       if (upErr) throw upErr;
       migrated++;
     } catch (err) {
-      console.error("[migrateAllTherapyPhotosToStorage] errore su", row.id, err);
+      logger.error(`[migrateAllTherapyPhotosToStorage] errore su terapia ${row.id}`, err);
       errors++;
     }
   }
@@ -1610,7 +1748,7 @@ export async function fetchMedicalProfile(patientId: string): Promise<MedicalPro
     .maybeSingle();
 
   if (error) {
-    console.error("[fetchMedicalProfile] errore:", error);
+    logger.error("[fetchMedicalProfile] errore:", error);
     return null;
   }
 
@@ -1642,7 +1780,7 @@ export async function saveMedicalProfile(
   );
 
   if (error) {
-    console.error("[saveMedicalProfile] errore:", error);
+    logger.error("[saveMedicalProfile] errore:", error);
     return { error: error.message };
   }
 
@@ -1663,21 +1801,12 @@ export async function deleteMedicalProfile(patientId: string): Promise<{ error: 
     .eq("patient_id", patientId);
 
   if (error) {
-    console.error("[deleteMedicalProfile] errore:", error);
+    logger.error("[deleteMedicalProfile] errore:", error);
     return { error: error.message };
   }
 
   medicalProfileCache.delete(patientId);
   return { error: null };
-}
-
-/** Invalida la cache della scheda medica (es. dopo realtime o navigazione). */
-export function invalidateMedicalProfileCache(patientId?: string) {
-  if (patientId) {
-    medicalProfileCache.delete(patientId);
-  } else {
-    medicalProfileCache.clear();
-  }
 }
 
 /* =========================================================
@@ -1717,7 +1846,7 @@ export async function resetPatientHistory(patientId: string): Promise<ResetPatie
   });
 
   if (error) {
-    console.error("[resetPatientHistory] errore:", error);
+    logger.error("[resetPatientHistory] errore:", error);
     return {
       ok: false,
       eventsDeleted: 0,
@@ -1762,7 +1891,7 @@ export interface DowngradeImpact {
   current_plan: string;
   new_plan: string;
   patient_limit: number;
-  therapy_limit: number;        // -1 = illimitato
+  therapy_limit: number; // -1 = illimitato
   caregiver_extra_limit: number;
   patients: DowngradePatient[];
   therapies_per_patient: Record<string, DowngradeTherapy[]>;
@@ -1783,15 +1912,13 @@ export interface DowngradeResult {
  * Recupera l'impatto di un downgrade (solo lettura).
  * Una singola RPC STABLE → 1 round-trip Supabase.
  */
-export async function checkDowngradeImpact(
-  newPlan: string
-): Promise<DowngradeImpact | null> {
+export async function checkDowngradeImpact(newPlan: string): Promise<DowngradeImpact | null> {
   if (!supabase) return null;
   const { data, error } = await supabase.rpc("check_downgrade_impact", {
     _new_plan: newPlan,
   });
   if (error) {
-    console.error("[checkDowngradeImpact]", error);
+    logger.error("[checkDowngradeImpact]", error);
     return null;
   }
   return data as DowngradeImpact;
@@ -1806,10 +1933,18 @@ export async function performDowngrade(
   newPlan: string,
   keepPatientIds: string[],
   keepTherapyIds: Record<string, string[]>, // { patientId: [therapyId, ...] }
-  keepCaregiverIds?: Record<string, string[]> // { patientId: [caregiverId, ...] }
+  keepCaregiverIds?: Record<string, string[]>, // { patientId: [caregiverId, ...] }
 ): Promise<DowngradeResult> {
   if (!supabase) {
-    return { ok: false, new_plan: newPlan, suspended_patients: 0, suspended_therapies: 0, suspended_caregivers: 0, cleanup_after_days: 30, error: "Non autenticato" };
+    return {
+      ok: false,
+      new_plan: newPlan,
+      suspended_patients: 0,
+      suspended_therapies: 0,
+      suspended_caregivers: 0,
+      cleanup_after_days: 30,
+      error: "Non autenticato",
+    };
   }
   const { data, error } = await supabase.rpc("perform_downgrade", {
     _new_plan: newPlan,
@@ -1818,8 +1953,16 @@ export async function performDowngrade(
     _keep_caregiver_ids: keepCaregiverIds ?? {},
   });
   if (error) {
-    console.error("[performDowngrade]", error);
-    return { ok: false, new_plan: newPlan, suspended_patients: 0, suspended_therapies: 0, suspended_caregivers: 0, cleanup_after_days: 30, error: error.message };
+    logger.error("[performDowngrade]", error);
+    return {
+      ok: false,
+      new_plan: newPlan,
+      suspended_patients: 0,
+      suspended_therapies: 0,
+      suspended_caregivers: 0,
+      cleanup_after_days: 30,
+      error: error.message,
+    };
   }
   return data as DowngradeResult;
 }

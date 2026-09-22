@@ -48,6 +48,8 @@ import {
 import { getPlanLimits } from "@/lib/subscription";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { PlanGate } from "@/components/PlanGate";
+import { PrivatePhotoImg } from "@/components/PrivatePhotoImg";
+import { extractCaregiverAvatarPath } from "@/lib/caregiver-avatar-url";
 
 export const Route = createFileRoute("/pazienti/$id/famiglia")({
   head: ({ params }) => ({
@@ -436,7 +438,12 @@ function MembersCard(props: {
                 >
                   <div className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-primary-soft font-bold text-primary">
                     {c.photo ? (
-                      <img src={c.photo} alt="" className="size-full object-cover" />
+                      <PrivatePhotoImg
+                        bucket="caregiver-avatars"
+                        path={extractCaregiverAvatarPath(c.photo)}
+                        alt=""
+                        className="size-full object-cover"
+                      />
                     ) : (
                       c.name.slice(0, 1).toUpperCase()
                     )}
@@ -475,6 +482,7 @@ function MembersCard(props: {
                           onChange={(e) => onChangeRel(e.target.value)}
                           placeholder="Es. Figlio, Coniuge, Badante…"
                           className="h-8 max-w-[220px] rounded-lg text-xs"
+                          maxLength={60}
                           autoFocus
                           disabled={busy}
                           onKeyDown={(e) => {

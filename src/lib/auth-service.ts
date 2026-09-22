@@ -4,6 +4,7 @@ import { type Role } from "./mock-data";
 import { addPatientDoc } from "./supabase-service";
 
 import { type SubscriptionPlan } from "./subscription";
+import { logger } from "@/lib/logger";
 
 export interface UserProfile {
   uid: string;
@@ -66,7 +67,7 @@ export async function getUserProfile(
 
       if (error) {
         // Errore di rete/RLS momentaneo: riprova prima di arrenderti.
-        console.warn(`Profilo non disponibile (tentativo ${attempt + 1}/${retries + 1}):`, error.message);
+        logger.warn(`Profilo non disponibile (tentativo ${attempt + 1}/${retries + 1}):`, error.message);
         if (attempt < retries) {
           await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
           continue;
@@ -92,7 +93,7 @@ export async function getUserProfile(
       profileCache.set(uid, { profile: result, expiresAt: Date.now() + PROFILE_TTL_MS });
       return result;
     } catch (error) {
-      console.error(`Errore nel recupero del profilo utente (tentativo ${attempt + 1}/${retries + 1}):`, error);
+      logger.error(`Errore nel recupero del profilo utente (tentativo ${attempt + 1}/${retries + 1}):`, error);
       if (attempt < retries) {
         await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
         continue;
@@ -145,7 +146,7 @@ export async function signUpUser(params: {
       { onConflict: "id" }
     );
   } catch (profileError) {
-    console.warn("Profilo non creato automaticamente, continuo con il fallback metadata:", profileError);
+    logger.warn("Profilo non creato automaticamente, continuo con il fallback metadata:", profileError);
   }
 
   // Se il ruolo è "paziente", crea automaticamente il record nel DB
@@ -162,7 +163,7 @@ export async function signUpUser(params: {
     } catch (patientError) {
       // Non blocchiamo la registrazione: il trigger Supabase o il recovery al login
       // provvederanno a creare il record paziente automaticamente.
-      console.error("[signUpUser] Creazione paziente fallita (sarà recuperata al login):", patientError);
+      logger.error("[signUpUser] Creazione paziente fallita (sarà recuperata al login):", patientError);
     }
   }
 

@@ -3,6 +3,7 @@ import { Lock } from "lucide-react";
 import { useFamilyMed } from "@/lib/store";
 import { canAccessFeature } from "@/lib/subscription";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { TherapyPhotoImg } from "@/components/TherapyPhotoImg";
 import { cn } from "@/lib/utils";
 
 /**
@@ -57,7 +58,11 @@ export function TherapyPhoto({
   }
 
   if (src) {
-    return <img src={src} alt={alt} className={className} />;
+    // Il bucket `therapy-photos` è privato: `src` è un path (o, per i dati
+    // migrati prima dell'irrigidimento della privacy, un vecchio URL
+    // pubblico) — TherapyPhotoImg lo risolve in un Signed URL temporaneo
+    // prima di renderizzare l'immagine reale.
+    return <TherapyPhotoImg path={src} alt={alt} className={className} />;
   }
 
   return fallbackIcon ? <>{fallbackIcon}</> : null;

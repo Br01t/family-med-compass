@@ -17,19 +17,6 @@ export type OnboardingRole = "caregiver" | "paziente";
 const DONE_KEY = (role: OnboardingRole) => `familymed:onboarding:${role}:done`;
 const SKIP_KEY = (role: OnboardingRole) => `familymed:onboarding:${role}:skip`;
 
-export function hasSeenOnboarding(role: OnboardingRole): boolean {
-  if (typeof window === "undefined") return true;
-  return (
-    localStorage.getItem(DONE_KEY(role)) === "1" ||
-    localStorage.getItem(SKIP_KEY(role)) === "1"
-  );
-}
-
-export function markOnboardingSeen(role: OnboardingRole) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(DONE_KEY(role), "1");
-}
-
 export function resetOnboarding(role: OnboardingRole) {
   if (typeof window === "undefined") return;
   localStorage.removeItem(DONE_KEY(role));

@@ -44,20 +44,4 @@ export function FullPageLoader({ label = "Un attimo…" }: { label?: string }) {
   );
 }
 
-/** Blocco di caricamento inline (dentro card e liste). */
-export function InlineLoader({
-  label = "Caricamento…",
-  className,
-}: {
-  label?: string;
-  className?: string;
-}) {
-  return (
-    <div className={cn("flex items-center gap-3 py-6", className)}>
-      <Loader size="sm" />
-      <span className="text-sm text-muted-foreground">{label}</span>
-    </div>
-  );
-}
-
 export default Loader;
