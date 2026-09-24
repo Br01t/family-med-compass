@@ -36,6 +36,8 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { AppFooter } from "@/components/AppFooter";
+import { PrivatePhotoImg } from "@/components/PrivatePhotoImg";
+import { extractCaregiverAvatarPath } from "@/lib/caregiver-avatar-url";
 
 const nav = [
   { title: "Dashboard", url: "/caregiver", icon: LayoutDashboard },
@@ -128,17 +130,35 @@ function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border/60">
-        <div className="flex items-center gap-3 rounded-xl px-2 py-2 group-data-[collapsible=icon]:hidden">
-          <div className="grid size-9 shrink-0 place-items-center rounded-full bg-primary-soft text-primary font-bold">
-            {data.caregivers.find((c) => c.id === data.currentCaregiverId)?.name.slice(0, 1) ?? "E"}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">
-              {data.caregivers.find((c) => c.id === data.currentCaregiverId)?.name}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">Caregiver</p>
-          </div>
-        </div>
+        {(() => {
+          const caregiver = data.caregivers.find((c) => c.id === data.currentCaregiverId);
+          const patient =
+            data.patients.find((p) => p.id === data.currentPatientId) ?? data.patients[0];
+
+          return (
+            <div className="space-y-1">
+              {patient && (
+                <div className="flex items-center gap-3 rounded-xl px-2 py-2 group-data-[collapsible=icon]:hidden">
+                  <SidebarProfileAvatar photo={patient.photo} name={patient.name} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{patient.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">Paziente</p>
+                  </div>
+                </div>
+              )}
+
+              {caregiver && (
+                <div className="flex items-center gap-3 rounded-xl px-2 py-2 group-data-[collapsible=icon]:hidden">
+                  <SidebarProfileAvatar photo={caregiver.photo} name={caregiver.name} caregiver />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{caregiver.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">Caregiver</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
         <div className="space-y-2">
           <Button
             variant="ghost"
@@ -153,6 +173,59 @@ function AppSidebar() {
       </SidebarFooter>
     </Sidebar>
   );
+}
+
+function SidebarProfileAvatar({
+  photo,
+  name,
+  caregiver = false,
+}: {
+  photo?: string | null;
+  name: string;
+  caregiver?: boolean;
+}) {
+  const initials =
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || (caregiver ? "C" : "P");
+
+  const fallback = (
+    <div className="grid size-9 shrink-0 place-items-center rounded-full bg-primary-soft text-sm font-bold text-primary">
+      {initials}
+    </div>
+  );
+
+  if (caregiver) {
+    const path = extractCaregiverAvatarPath(photo);
+    if (path) {
+      return (
+        <div className="relative size-9 shrink-0">
+          <div className="absolute inset-0">{fallback}</div>
+          <PrivatePhotoImg
+            bucket="caregiver-avatars"
+            path={path}
+            alt=""
+            className="relative size-9 rounded-full border border-sidebar-border/60 object-cover"
+          />
+        </div>
+      );
+    }
+  }
+
+  if (photo?.startsWith("data:") || photo?.startsWith("http://") || photo?.startsWith("https://")) {
+    return (
+      <img
+        src={photo}
+        alt=""
+        className="size-9 shrink-0 rounded-full border border-sidebar-border/60 object-cover"
+      />
+    );
+  }
+
+  return fallback;
 }
 
 export function AppShell({
