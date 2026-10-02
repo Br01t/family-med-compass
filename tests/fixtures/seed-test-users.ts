@@ -149,19 +149,17 @@ export async function setupTestEnvironment(): Promise<TestEnvironment> {
     primary_caregiver_id: primaryCaregiverUser.userId,
   });
 
-  // Collegamento Caregiver Secondario a Paziente A
-  await adminClient.from("caregiver_patients").insert([
-    {
-      caregiver_id: primaryCaregiverUser.userId,
-      patient_id: patientId,
-      relationship: "Figlio",
-    },
+  // Collegamento Caregiver Secondario a Paziente A (su piano Free max 1 caregiver collegato)
+  const { error: cpErr } = await adminClient.from("caregiver_patients").insert([
     {
       caregiver_id: secondaryCaregiverUser.userId,
       patient_id: patientId,
       relationship: "Nuora",
     },
   ]);
+  if (cpErr) {
+    throw new Error(`Errore seed caregiver_patients: ${cpErr.message}`);
+  }
 
   // Inserimento Paziente B (Famiglia estranea)
   await adminClient.from("patients").insert({
