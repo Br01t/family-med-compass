@@ -169,6 +169,7 @@ export async function fetchPatientsOnce(userId: string, role: string): Promise<P
       userId: p.user_id,
       ownerUserId: p.owner_user_id ?? null,
       primaryCaregiverId: p.primary_caregiver_id ?? null,
+      suspendedAt: p.suspended_at ?? null,
     }));
   } catch (err) {
     logger.error("Errore fetch pazienti:", err);
@@ -186,7 +187,7 @@ async function fetchPatientsOnceFallback(userId: string, role: string): Promise<
   try {
     let query = supabase!
       .from("patients")
-      .select("id, name, birth_year, photo, user_id, owner_user_id, primary_caregiver_id");
+      .select("id, name, birth_year, photo, user_id, owner_user_id, primary_caregiver_id, suspended_at");
 
     if (role === "caregiver") {
       const { data: relations, error } = await supabase!
@@ -213,6 +214,7 @@ async function fetchPatientsOnceFallback(userId: string, role: string): Promise<
       userId: p.user_id,
       ownerUserId: (p as any).owner_user_id,
       primaryCaregiverId: (p as any).primary_caregiver_id ?? null,
+      suspendedAt: (p as any).suspended_at ?? null,
     }));
   } catch (err) {
     logger.error("Errore fetch pazienti (fallback):", err);

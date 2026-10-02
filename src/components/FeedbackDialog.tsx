@@ -48,7 +48,7 @@ export function FeedbackDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-md">
         <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full shadow-sm">
           <div
             className={cn(

@@ -30,7 +30,7 @@ export function UpgradeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-6 overflow-hidden rounded-3xl sm:max-w-lg">
+      <DialogContent className="w-full max-w-[calc(100vw-2rem)] p-6 overflow-hidden rounded-3xl sm:max-w-lg">
         <div className="absolute -right-12 -top-12 size-36 rounded-full bg-primary/10 blur-2xl pointer-events-none" />
         
         <DialogHeader className="space-y-3 text-left">

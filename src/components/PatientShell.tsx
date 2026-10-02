@@ -77,7 +77,7 @@ export function PatientShell({
       </main>
 
       {/* Bottom nav: solo sezioni per il paziente */}
-      <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-border/60 bg-background/95 backdrop-blur">
+      <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-border/60 bg-background/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
         <ul className="mx-auto grid max-w-xl sm:max-w-2xl grid-cols-5">
           {PATIENT_NAV.map((item) => {
             const active =

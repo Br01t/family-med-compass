@@ -29,7 +29,7 @@ export function PublicFooter() {
             </p>
             <ul className="mt-3.5 space-y-2.5 text-sm">
               <li>
-                <Link to={"/prezzi" as any} className="text-stone-600 hover:text-emerald-800 transition-colors">
+                <Link to="/prezzi" className="text-stone-600 hover:text-emerald-800 transition-colors">
                   Prezzi e Piani
                 </Link>
               </li>

@@ -170,6 +170,16 @@ $$;
 ALTER FUNCTION "public"."_get_notes_encryption_key"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."array_max_element_length"("arr" "text"[]) RETURNS integer
+    LANGUAGE "sql" IMMUTABLE
+    AS $$
+  SELECT COALESCE(MAX(char_length(elem)), 0) FROM unnest(arr) AS elem;
+$$;
+
+
+ALTER FUNCTION "public"."array_max_element_length"("arr" "text"[]) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."audit_actor_name"("_uid" "uuid") RETURNS "text"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -182,19 +192,131 @@ $$;
 ALTER FUNCTION "public"."audit_actor_name"("_uid" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."can_access_caregiver_avatar"("_object_name" "text") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_caregiver_id uuid;
+BEGIN
+  v_caregiver_id := (storage.foldername(_object_name))[2]::uuid;
+  IF v_caregiver_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  RETURN
+    -- il caregiver vede il proprio avatar
+    v_caregiver_id = auth.uid()
+    -- un "family peer": un altro caregiver collegato a un paziente in comune
+    OR EXISTS (
+      SELECT 1
+      FROM public.caregiver_patients cp_target
+      JOIN public.caregiver_patients cp_self ON cp_self.patient_id = cp_target.patient_id
+      WHERE cp_target.caregiver_id = v_caregiver_id
+        AND cp_self.caregiver_id = auth.uid()
+    )
+    -- il paziente seguito da quel caregiver, se ha un account proprio
+    OR EXISTS (
+      SELECT 1
+      FROM public.caregiver_patients cp
+      JOIN public.patients p ON p.id = cp.patient_id
+      WHERE cp.caregiver_id = v_caregiver_id
+        AND p.user_id = auth.uid()
+    );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."can_access_caregiver_avatar"("_object_name" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."can_access_caregiver_avatar"("_object_name" "text") IS 'True se auth.uid() può VISUALIZZARE l''avatar del caregiver identificato dal path oggetto Storage: se stesso, un caregiver collegato allo stesso paziente, o il paziente seguito.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."can_access_therapy_photo"("_object_name" "text") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_segments text[] := storage.foldername(_object_name);
+  v_second text := v_segments[2];
+  v_third text := v_segments[3];
+BEGIN
+  IF v_third IS NOT NULL THEN
+    -- Nuovo schema: v_second = patientId, v_third = therapyId
+    RETURN public.owns_patient(v_second) OR public.is_caregiver_of(v_second);
+  END IF;
+
+  IF v_second IS NOT NULL THEN
+    -- Schema legacy: v_second = therapyId, risaliamo al paziente
+    RETURN EXISTS (
+      SELECT 1 FROM public.therapies t
+      WHERE t.id = v_second
+        AND (public.owns_patient(t.patient_id) OR public.is_caregiver_of(t.patient_id))
+    );
+  END IF;
+
+  RETURN false;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."can_access_therapy_photo"("_object_name" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."can_access_therapy_photo"("_object_name" "text") IS 'True se auth.uid() può VISUALIZZARE la foto terapia identificata dal path oggetto Storage (nuovo schema o legacy).';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."can_manage_therapy_photo"("_object_name" "text") RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_segments text[] := storage.foldername(_object_name);
+  v_second text := v_segments[2];
+  v_third text := v_segments[3];
+BEGIN
+  IF v_third IS NOT NULL THEN
+    -- Nuovo schema: v_second = patientId (riga therapies può non esistere ancora)
+    RETURN public.is_primary_of(v_second);
+  END IF;
+
+  IF v_second IS NOT NULL THEN
+    -- Schema legacy: v_second = therapyId, la riga esiste già
+    RETURN EXISTS (
+      SELECT 1 FROM public.therapies t
+      WHERE t.id = v_second AND public.is_primary_of(t.patient_id)
+    );
+  END IF;
+
+  RETURN false;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."can_manage_therapy_photo"("_object_name" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."can_manage_therapy_photo"("_object_name" "text") IS 'True se auth.uid() può CARICARE/SOSTITUIRE/ELIMINARE la foto terapia identificata dal path oggetto Storage (nuovo schema o legacy).';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."check_caregiver_invite_limit"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_plan text;
   v_current_count int;
   v_max_allowed int;
 BEGIN
-  SELECT subscription_plan INTO v_plan
-  FROM public.profiles
-  WHERE id = (
-    SELECT owner_id FROM public.patients WHERE id = NEW.patient_id
-  );
+  SELECT COALESCE(pr.subscription_plan, 'free') INTO v_plan
+  FROM public.patients p
+  LEFT JOIN public.profiles pr
+    ON pr.id = COALESCE(p.owner_user_id, p.user_id)
+  WHERE p.id = NEW.patient_id;
 
   v_plan := COALESCE(v_plan, 'free');
 
@@ -218,6 +340,116 @@ $$;
 
 
 ALTER FUNCTION "public"."check_caregiver_invite_limit"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."check_downgrade_impact"("_new_plan" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid              uuid := auth.uid();
+  v_current_plan     text;
+  v_plan_order       int;
+  v_new_plan_order   int;
+  v_patient_limit    int;
+  v_therapy_limit    int;
+  v_caregiver_extra_limit int;
+  v_patients         jsonb;
+  v_therapies_map    jsonb;
+  v_caregivers_map   jsonb;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  SELECT subscription_plan_own INTO v_current_plan
+  FROM public.profiles WHERE id = v_uid;
+
+  v_current_plan := COALESCE(v_current_plan, 'free');
+
+  v_plan_order := CASE v_current_plan WHEN 'free' THEN 0 WHEN 'pro' THEN 1 WHEN 'max' THEN 2 ELSE 0 END;
+  v_new_plan_order := CASE _new_plan WHEN 'free' THEN 0 WHEN 'pro' THEN 1 WHEN 'max' THEN 2 ELSE 0 END;
+
+  IF v_new_plan_order >= v_plan_order THEN
+    RAISE EXCEPTION 'Not a downgrade: % -> %', v_current_plan, _new_plan;
+  END IF;
+
+  v_patient_limit := CASE _new_plan WHEN 'free' THEN 1 WHEN 'pro' THEN 2 WHEN 'max' THEN 10 ELSE 1 END;
+  v_therapy_limit := CASE _new_plan WHEN 'free' THEN 3 ELSE -1 END;
+  v_caregiver_extra_limit := CASE _new_plan WHEN 'free' THEN 0 WHEN 'pro' THEN 4 WHEN 'max' THEN 9 ELSE 0 END;
+
+  -- Lista pazienti attivi di proprietà del titolare
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'id', p.id,
+      'name', p.name,
+      'birth_year', p.birth_year
+    ) ORDER BY p.name
+  )
+  INTO v_patients
+  FROM public.patients p
+  WHERE p.owner_user_id = v_uid
+    AND p.suspended_at IS NULL;
+
+  -- Terapie attive per paziente
+  IF v_therapy_limit >= 0 THEN
+    SELECT jsonb_object_agg(
+      p.id,
+      (
+        SELECT jsonb_agg(
+          jsonb_build_object('id', t.id, 'name', t.name, 'active', t.active)
+          ORDER BY t.active DESC, t.name
+        )
+        FROM public.therapies t
+        WHERE t.patient_id = p.id
+          AND t.suspended_at IS NULL
+      )
+    )
+    INTO v_therapies_map
+    FROM public.patients p
+    WHERE p.owner_user_id = v_uid
+      AND p.suspended_at IS NULL;
+  ELSE
+    v_therapies_map := '{}'::jsonb;
+  END IF;
+
+  -- Caregiver extra per paziente (escluso titolare)
+  SELECT jsonb_object_agg(
+    p.id,
+    COALESCE((
+      SELECT jsonb_agg(
+        jsonb_build_object(
+          'id', cp.caregiver_id::text,
+          'name', COALESCE(cg.name, cp.caregiver_id::text)
+        ) ORDER BY cp.created_at ASC
+      )
+      FROM public.caregiver_patients cp
+      LEFT JOIN public.caregivers cg ON cg.id = cp.caregiver_id
+      WHERE cp.patient_id = p.id
+        AND cp.caregiver_id <> v_uid
+        AND cp.suspended_at IS NULL
+    ), '[]'::jsonb)
+  )
+  INTO v_caregivers_map
+  FROM public.patients p
+  WHERE p.owner_user_id = v_uid
+    AND p.suspended_at IS NULL;
+
+  RETURN jsonb_build_object(
+    'current_plan',          v_current_plan,
+    'new_plan',              _new_plan,
+    'patient_limit',         v_patient_limit,
+    'therapy_limit',         v_therapy_limit,
+    'caregiver_extra_limit', v_caregiver_extra_limit,
+    'patients',              COALESCE(v_patients, '[]'::jsonb),
+    'therapies_per_patient', COALESCE(v_therapies_map, '{}'::jsonb),
+    'caregivers_per_patient',COALESCE(v_caregivers_map, '{}'::jsonb)
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."check_downgrade_impact"("_new_plan" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."check_patient_limit"() RETURNS "trigger"
@@ -272,7 +504,9 @@ BEGIN
 
   SELECT COUNT(*) INTO v_active_count
   FROM public.therapies
-  WHERE patient_id = NEW.patient_id AND active = true;
+  WHERE patient_id = NEW.patient_id
+    AND active = true
+    AND suspended_at IS NULL;
 
   IF v_active_count >= 3 THEN
     RAISE EXCEPTION 'Limite di 3 terapie attive raggiunto per il piano Free. Passa a Pro o Max per terapie illimitate.';
@@ -451,8 +685,10 @@ begin
 
   loop
     v_attempt := v_attempt + 1;
+    -- 8 caratteri invece di 6: stessa UX (codice breve da condividere a
+    -- voce/messaggio), entropia molto più alta.
     v_code := upper(translate(
-      substr(encode(gen_random_bytes(8), 'base64'), 1, 6),
+      substr(encode(gen_random_bytes(10), 'base64'), 1, 8),
       '01OIl+/=', 'ABCDEFGH'
     ));
     begin
@@ -826,31 +1062,47 @@ CREATE OR REPLACE FUNCTION "public"."get_my_caregivers"() RETURNS TABLE("id" "uu
     AS $$
 DECLARE
   v_uid  uuid := auth.uid();
-  v_role app_role;
+  v_role public.app_role;
 BEGIN
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'Non autenticato' USING ERRCODE = '42501';
   END IF;
 
-  SELECT role INTO v_role
-  FROM public.user_roles
-  WHERE user_id = v_uid
+  SELECT ur.role INTO v_role
+  FROM public.user_roles ur
+  WHERE ur.user_id = v_uid
   LIMIT 1;
 
   IF v_role = 'paziente' THEN
-    -- Paziente: vede i caregiver collegati tramite caregiver_patients del suo patient record
     RETURN QUERY
-      SELECT c.id, c.name, c.relation, c.photo, c.notify
-      FROM public.caregivers c
-      INNER JOIN public.caregiver_patients cp ON cp.caregiver_id = c.id
-      INNER JOIN public.patients p ON p.id = cp.patient_id
-      WHERE p.user_id = v_uid;
+      SELECT row_data.out_id, row_data.out_name, row_data.out_relation,
+             row_data.out_photo, row_data.out_notify
+      FROM (
+        SELECT
+          c.id       AS out_id,
+          c.name     AS out_name,
+          c.relation AS out_relation,
+          c.photo    AS out_photo,
+          c.notify   AS out_notify
+        FROM public.caregivers c
+        INNER JOIN public.caregiver_patients cp ON cp.caregiver_id = c.id
+        INNER JOIN public.patients p ON p.id = cp.patient_id
+        WHERE p.user_id = v_uid
+      ) AS row_data;
   ELSE
-    -- Caregiver: vede solo se stesso
     RETURN QUERY
-      SELECT c.id, c.name, c.relation, c.photo, c.notify
-      FROM public.caregivers c
-      WHERE c.id = v_uid;
+      SELECT row_data.out_id, row_data.out_name, row_data.out_relation,
+             row_data.out_photo, row_data.out_notify
+      FROM (
+        SELECT
+          c.id       AS out_id,
+          c.name     AS out_name,
+          c.relation AS out_relation,
+          c.photo    AS out_photo,
+          c.notify   AS out_notify
+        FROM public.caregivers c
+        WHERE c.id = v_uid
+      ) AS row_data;
   END IF;
 END;
 $$;
@@ -859,7 +1111,7 @@ $$;
 ALTER FUNCTION "public"."get_my_caregivers"() OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."get_my_caregivers"() IS 'Restituisce i caregiver visibili all''utente autenticato in base al ruolo. Per i pazienti: tutti i caregiver collegati. Per i caregiver: solo se stessi. Sostituisce 2 query sequenziali (caregiver_patients + caregivers) con 1 sola chiamata.';
+COMMENT ON FUNCTION "public"."get_my_caregivers"() IS 'Restituisce i caregiver visibili all''utente autenticato (paziente: caregiver collegati; caregiver: solo il proprio profilo). Alias interni diversi dai nomi di output (out_id vs id, ecc.) per rendere strutturalmente impossibile la stessa classe di bug 42702 già riscontrata in get_my_patients().';
 
 
 
@@ -868,30 +1120,35 @@ CREATE OR REPLACE FUNCTION "public"."get_my_patients"() RETURNS TABLE("id" "text
     SET "search_path" TO 'public'
     AS $$
 DECLARE
-  v_uid  uuid := auth.uid();
-  v_role app_role;
+  v_uid uuid := auth.uid();
 BEGIN
   IF v_uid IS NULL THEN
     RAISE EXCEPTION 'Non autenticato' USING ERRCODE = '42501';
   END IF;
 
-  SELECT role INTO v_role
-  FROM public.user_roles
-  WHERE user_id = v_uid
-  LIMIT 1;
-
-  IF v_role = 'caregiver' THEN
-    RETURN QUERY
-      SELECT p.id, p.name, p.birth_year, p.photo, p.user_id, p.owner_user_id, p.primary_caregiver_id
+  RETURN QUERY
+    SELECT
+      row_data.out_id,
+      row_data.out_name,
+      row_data.out_birth_year,
+      row_data.out_photo,
+      row_data.out_user_id,
+      row_data.out_owner_user_id,
+      row_data.out_primary_caregiver_id
+    FROM (
+      SELECT
+        p.id                    AS out_id,
+        p.name                  AS out_name,
+        p.birth_year            AS out_birth_year,
+        p.photo                 AS out_photo,
+        p.user_id               AS out_user_id,
+        p.owner_user_id         AS out_owner_user_id,
+        p.primary_caregiver_id  AS out_primary_caregiver_id
       FROM public.patients p
-      INNER JOIN public.caregiver_patients cp ON cp.patient_id = p.id
-      WHERE cp.caregiver_id = v_uid;
-  ELSE
-    RETURN QUERY
-      SELECT p.id, p.name, p.birth_year, p.photo, p.user_id, p.owner_user_id, p.primary_caregiver_id
-      FROM public.patients p
-      WHERE p.user_id = v_uid;
-  END IF;
+      WHERE p.user_id = v_uid
+         OR p.owner_user_id = v_uid
+         OR public.is_caregiver_of(p.id)
+    ) AS row_data;
 END;
 $$;
 
@@ -899,7 +1156,7 @@ $$;
 ALTER FUNCTION "public"."get_my_patients"() OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."get_my_patients"() IS 'Restituisce i pazienti visibili all''utente autenticato. Riscritta in SQL puro per evitare ambiguità 42702 su user_id in PL/pgSQL. Visibili: pazienti dove auth.uid() è caregiver collegato, paziente stesso, o titolare.';
+COMMENT ON FUNCTION "public"."get_my_patients"() IS 'Restituisce i pazienti visibili all''utente autenticato: stesso criterio della policy RLS "patients: silo read" (user_id, owner_user_id, o caregiver collegato). La query interna usa alias diversi dai nomi di output (out_user_id vs user_id, ecc.) apposta per rendere strutturalmente impossibile la ricorrenza del bug 42702 "column reference ambiguous" legato ai parametri OUT di RETURNS TABLE in PL/pgSQL.';
 
 
 
@@ -1286,11 +1543,14 @@ CREATE OR REPLACE FUNCTION "public"."is_caregiver_of"("_patient_id" "text") RETU
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-  select exists (
-    select 1
-    from public.caregiver_patients cp
-    where cp.patient_id = _patient_id
-      and cp.caregiver_id = auth.uid()
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.caregiver_patients cp
+    JOIN public.patients p ON p.id = cp.patient_id
+    WHERE cp.patient_id = _patient_id
+      AND cp.caregiver_id = auth.uid()
+      AND cp.suspended_at IS NULL
+      AND p.suspended_at IS NULL
   );
 $$;
 
@@ -1390,6 +1650,20 @@ COMMENT ON FUNCTION "public"."owns_patient"("_patient_id" "text") IS 'True se l'
 
 
 
+CREATE OR REPLACE FUNCTION "public"."patient_is_suspended"("_patient_id" "text") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT suspended_at IS NOT NULL
+  FROM public.patients
+  WHERE id = _patient_id
+  LIMIT 1
+$$;
+
+
+ALTER FUNCTION "public"."patient_is_suspended"("_patient_id" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."patient_plan"("_patient_id" "text") RETURNS "text"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -1405,20 +1679,193 @@ $$;
 ALTER FUNCTION "public"."patient_plan"("_patient_id" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."perform_downgrade"("_new_plan" "text", "_keep_patient_ids" "text"[], "_keep_therapy_ids" "jsonb", "_keep_caregiver_ids" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_uid                  uuid := auth.uid();
+  v_current_plan         text;
+  v_plan_order           int;
+  v_new_plan_order       int;
+  v_caregiver_extra_limit int;
+  v_therapy_limit        int;
+  v_suspended_patients   int := 0;
+  v_suspended_therapies  int := 0;
+  v_suspended_caregivers int := 0;
+  v_patient_id           text;
+  v_keep_therapy_arr     text[];
+  v_keep_caregiver_arr   uuid[];
+  v_suspended_patient_ids text[];
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+
+  SELECT COALESCE(subscription_plan_own, 'free') INTO v_current_plan
+  FROM public.profiles WHERE id = v_uid;
+
+  v_plan_order     := CASE v_current_plan WHEN 'free' THEN 0 WHEN 'pro' THEN 1 WHEN 'max' THEN 2 ELSE 0 END;
+  v_new_plan_order := CASE _new_plan WHEN 'free' THEN 0 WHEN 'pro' THEN 1 WHEN 'max' THEN 2 ELSE 0 END;
+
+  IF v_new_plan_order >= v_plan_order THEN
+    RAISE EXCEPTION 'Not a downgrade: % -> %', v_current_plan, _new_plan;
+  END IF;
+
+  v_caregiver_extra_limit := CASE _new_plan WHEN 'free' THEN 0 WHEN 'pro' THEN 4 WHEN 'max' THEN 9 ELSE 0 END;
+  v_therapy_limit         := CASE _new_plan WHEN 'free' THEN 3 ELSE -1 END;
+
+  -- 1. Pazienti sospesi: raccogli gli ID prima di aggiornare
+  SELECT array_agg(id) INTO v_suspended_patient_ids
+  FROM public.patients
+  WHERE owner_user_id = v_uid
+    AND suspended_at IS NULL
+    AND id <> ALL(COALESCE(_keep_patient_ids, ARRAY[]::text[]));
+
+  IF v_suspended_patient_ids IS NOT NULL AND array_length(v_suspended_patient_ids, 1) > 0 THEN
+    UPDATE public.patients
+    SET suspended_at = now()
+    WHERE id = ANY(v_suspended_patient_ids);
+
+    GET DIAGNOSTICS v_suspended_patients = ROW_COUNT;
+
+    -- Cancella subito gli eventi futuri dei pazienti sospesi
+    DELETE FROM public.events
+    WHERE patient_id = ANY(v_suspended_patient_ids)
+      AND status = 'scheduled'
+      AND scheduled_at >= now();
+  END IF;
+
+  -- 2. Terapie dei pazienti mantenuti
+  IF v_therapy_limit >= 0 THEN
+    FOR v_patient_id IN
+      SELECT id FROM public.patients
+      WHERE owner_user_id = v_uid
+        AND suspended_at IS NULL
+        AND id = ANY(COALESCE(_keep_patient_ids, ARRAY[]::text[]))
+    LOOP
+      v_keep_therapy_arr := ARRAY(
+        SELECT jsonb_array_elements_text(
+          COALESCE(_keep_therapy_ids->v_patient_id, '[]'::jsonb)
+        )
+      );
+
+      -- Sospendi terapie non incluse
+      UPDATE public.therapies
+      SET suspended_at     = now(),
+          suspended_reason = 'downgrade',
+          suspended        = true,
+          active           = false
+      WHERE patient_id    = v_patient_id
+        AND suspended_at IS NULL
+        AND id <> ALL(v_keep_therapy_arr);
+
+      GET DIAGNOSTICS v_suspended_therapies = ROW_COUNT;
+
+      -- Cancella gli eventi futuri delle terapie sospese
+      DELETE FROM public.events
+      WHERE therapy_id IN (
+        SELECT id FROM public.therapies
+        WHERE patient_id = v_patient_id
+          AND suspended_reason = 'downgrade'
+          AND suspended_at >= (now() - interval '5 seconds')
+      )
+      AND status = 'scheduled'
+      AND scheduled_at >= now();
+    END LOOP;
+  END IF;
+
+  -- 3. Caregiver sui pazienti mantenuti
+  IF v_caregiver_extra_limit = 0 THEN
+    -- In Free nessun caregiver extra consentito
+    UPDATE public.caregiver_patients cp
+    SET suspended_at = now()
+    FROM public.patients p
+    WHERE cp.patient_id = p.id
+      AND p.owner_user_id = v_uid
+      AND p.id = ANY(COALESCE(_keep_patient_ids, ARRAY[]::text[]))
+      AND cp.caregiver_id <> v_uid
+      AND cp.suspended_at IS NULL;
+
+    GET DIAGNOSTICS v_suspended_caregivers = ROW_COUNT;
+  ELSE
+    -- Passaggio con caregiver extra consentiti (es. Max -> Pro, 4 consentiti)
+    FOR v_patient_id IN
+      SELECT id FROM public.patients
+      WHERE owner_user_id = v_uid
+        AND id = ANY(COALESCE(_keep_patient_ids, ARRAY[]::text[]))
+    LOOP
+      IF _keep_caregiver_ids ? v_patient_id THEN
+        v_keep_caregiver_arr := ARRAY(
+          SELECT jsonb_array_elements_text(_keep_caregiver_ids->v_patient_id)::uuid
+        );
+
+        UPDATE public.caregiver_patients
+        SET suspended_at = now()
+        WHERE patient_id = v_patient_id
+          AND caregiver_id <> v_uid
+          AND suspended_at IS NULL
+          AND caregiver_id <> ALL(v_keep_caregiver_arr);
+      ELSE
+        -- Fallback: tieni i v_caregiver_extra_limit più vecchi
+        UPDATE public.caregiver_patients
+        SET suspended_at = now()
+        WHERE patient_id = v_patient_id
+          AND caregiver_id <> v_uid
+          AND suspended_at IS NULL
+          AND caregiver_id NOT IN (
+            SELECT caregiver_id
+            FROM public.caregiver_patients
+            WHERE patient_id = v_patient_id
+              AND caregiver_id <> v_uid
+              AND suspended_at IS NULL
+            ORDER BY created_at ASC
+            LIMIT v_caregiver_extra_limit
+          );
+      END IF;
+
+      v_suspended_caregivers := v_suspended_caregivers + (
+        SELECT count(*) FROM public.caregiver_patients
+        WHERE patient_id = v_patient_id
+          AND suspended_at >= (now() - interval '5 seconds')
+      );
+    END LOOP;
+  END IF;
+
+  -- 4. Aggiorna il piano del profilo (il trigger DB propagherà il piano ai membri)
+  UPDATE public.profiles
+  SET subscription_plan_own = _new_plan
+  WHERE id = v_uid;
+
+  RETURN jsonb_build_object(
+    'ok',                   true,
+    'new_plan',             _new_plan,
+    'suspended_patients',   v_suspended_patients,
+    'suspended_therapies',  v_suspended_therapies,
+    'suspended_caregivers', v_suspended_caregivers,
+    'cleanup_after_days',   30
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."perform_downgrade"("_new_plan" "text", "_keep_patient_ids" "text"[], "_keep_therapy_ids" "jsonb", "_keep_caregiver_ids" "jsonb") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."process_dose_schedule"() RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_now timestamptz := now();
+  v_minute int := extract(minute from v_now)::int;
+  v_past timestamptz := v_now - interval '2 hours';
   v_horizon timestamptz := v_now + interval '24 hours';
-  v_past timestamptz := v_now - interval '30 minutes';
+  v_should_generate boolean := false;
   v_therapy RECORD;
-  v_curr_date date;
   v_start_date date;
   v_end_date date;
-  v_dow int;
+  v_curr_date date;
   v_kind text;
+  v_dow int;
   v_is_scheduled boolean;
   v_time_str text;
   v_at timestamptz;
@@ -1431,58 +1878,75 @@ DECLARE
   v_hard_deadline timestamptz;
   v_ev RECORD;
 BEGIN
-  -- Generazione dosi future mancanti (-30min -> +24h)
-  FOR v_therapy IN
-    SELECT id, patient_id, times, recurrence, start_date, end_date
-    FROM public.therapies
-    WHERE active = true AND suspended = false AND times IS NOT NULL AND jsonb_array_length(times) > 0
-  LOOP
-    v_start_date := v_therapy.start_date::date;
-    v_end_date := CASE WHEN v_therapy.end_date IS NOT NULL THEN v_therapy.end_date::date ELSE NULL END;
-    v_curr_date := v_past::date;
+  -- 1) GENERAZIONE DOSI FUTURE (+24h):
+  IF (v_minute % 15 = 0) OR NOT EXISTS (
+    SELECT 1 FROM public.events
+    WHERE scheduled_at BETWEEN v_now AND (v_now + interval '1 hour')
+      AND status = 'scheduled'
+    LIMIT 1
+  ) THEN
+    v_should_generate := true;
+  END IF;
 
-    WHILE v_curr_date <= v_horizon::date LOOP
-      IF v_curr_date >= v_start_date AND (v_end_date IS NULL OR v_curr_date <= v_end_date) THEN
-        v_kind := COALESCE(v_therapy.recurrence->>'kind', 'daily');
-        v_dow := EXTRACT(DOW FROM v_curr_date)::int;
+  IF v_should_generate THEN
+    FOR v_therapy IN
+      SELECT t.id, t.patient_id, t.times, t.recurrence, t.start_date, t.end_date
+      FROM public.therapies t
+      JOIN public.patients p ON p.id = t.patient_id
+      WHERE t.active = true
+        AND t.suspended = false
+        AND t.suspended_at IS NULL
+        AND p.suspended_at IS NULL
+        AND t.times IS NOT NULL
+        AND cardinality(t.times) > 0
+    LOOP
+      v_start_date := v_therapy.start_date::date;
+      v_end_date := CASE WHEN v_therapy.end_date IS NOT NULL THEN v_therapy.end_date::date ELSE NULL END;
+      v_curr_date := v_past::date;
 
-        v_is_scheduled := CASE
-          WHEN v_kind = 'daily' THEN true
-          WHEN v_kind = 'weekdays' THEN v_dow BETWEEN 1 AND 5
-          WHEN v_kind = 'weekend' THEN v_dow IN (0, 6)
-          WHEN v_kind = 'every_x_days' THEN
-            v_curr_date >= v_start_date AND
-            ((v_curr_date - v_start_date) % GREATEST(1, COALESCE((v_therapy.recurrence->>'x')::int, 1))) = 0
-          WHEN v_kind = 'specific_days' THEN
-            COALESCE(v_therapy.recurrence->'days', '[]'::jsonb) @> to_jsonb(v_dow)
-          ELSE true
-        END;
+      WHILE v_curr_date <= v_horizon::date LOOP
+        IF v_curr_date >= v_start_date AND (v_end_date IS NULL OR v_curr_date <= v_end_date) THEN
+          v_kind := COALESCE(v_therapy.recurrence->>'kind', 'daily');
+          v_dow := EXTRACT(DOW FROM v_curr_date)::int;
 
-        IF v_is_scheduled THEN
-          FOR v_time_str IN SELECT jsonb_array_elements_text(v_therapy.times) LOOP
-            v_at := (v_curr_date || ' ' || v_time_str || ':00')::timestamptz;
-            IF v_at BETWEEN v_past AND v_horizon THEN
-              v_event_id := 'e_' || v_therapy.id || '_' || (floor(extract(epoch from v_at) * 1000))::bigint;
+          v_is_scheduled := CASE
+            WHEN v_kind = 'daily' THEN true
+            WHEN v_kind = 'weekdays' THEN v_dow BETWEEN 1 AND 5
+            WHEN v_kind = 'weekend' THEN v_dow IN (0, 6)
+            WHEN v_kind = 'every_x_days' THEN
+              v_curr_date >= v_start_date AND
+              ((v_curr_date - v_start_date) % GREATEST(1, COALESCE((v_therapy.recurrence->>'x')::int, 1))) = 0
+            WHEN v_kind = 'specific_days' THEN
+              COALESCE(v_therapy.recurrence->'days', '[]'::jsonb) @> to_jsonb(v_dow)
+            ELSE true
+          END;
 
-              INSERT INTO public.events (id, therapy_id, patient_id, scheduled_at, status, stage, timeline)
-              VALUES (
-                v_event_id, v_therapy.id, v_therapy.patient_id, v_at, 'scheduled', 'scheduled',
-                jsonb_build_array(jsonb_build_object(
-                  'at', to_char(v_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-                  'kind', 'scheduled',
-                  'message', 'Dose programmata'
-                ))
-              )
-              ON CONFLICT (therapy_id, scheduled_at) DO NOTHING;
-            END IF;
-          END LOOP;
+          IF v_is_scheduled THEN
+            FOR v_time_str IN SELECT unnest(v_therapy.times) LOOP
+              v_at := (v_curr_date || ' ' || v_time_str || ':00')::timestamptz;
+              IF v_at BETWEEN v_past AND v_horizon THEN
+                v_event_id := 'e_' || v_therapy.id || '_' || (floor(extract(epoch from v_at) * 1000))::bigint;
+
+                INSERT INTO public.events (id, therapy_id, patient_id, scheduled_at, status, stage, timeline)
+                VALUES (
+                  v_event_id, v_therapy.id, v_therapy.patient_id, v_at, 'scheduled', 'scheduled',
+                  jsonb_build_array(jsonb_build_object(
+                    'at', to_char(v_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+                    'kind', 'scheduled',
+                    'message', 'Dose programmata'
+                  ))
+                )
+                ON CONFLICT (therapy_id, scheduled_at) DO NOTHING;
+              END IF;
+            END LOOP;
+          END IF;
         END IF;
-      END IF;
-      v_curr_date := v_curr_date + 1;
+        v_curr_date := v_curr_date + 1;
+      END LOOP;
     END LOOP;
-  END LOOP;
+  END IF;
 
-  -- 2a) REMINDER_PRE
+  -- 2a) REMINDER_PRE (Finestra di 20 minuti)
   FOR v_ev IN
     SELECT e.id, e.therapy_id, e.patient_id, e.scheduled_at,
            t.name AS therapy_name, t.dosage, t.reminder_intervals,
@@ -1491,7 +1955,10 @@ BEGIN
     JOIN public.therapies t ON t.id = e.therapy_id
     JOIN public.patients p ON p.id = e.patient_id
     WHERE e.status = 'scheduled'
-      AND e.scheduled_at BETWEEN v_now AND v_horizon
+      AND e.scheduled_at BETWEEN v_now AND (v_now + interval '20 minutes')
+      AND p.suspended_at IS NULL
+      AND t.suspended_at IS NULL
+      AND t.suspended = false
   LOOP
     v_before := 10;
     IF v_ev.reminder_intervals IS NOT NULL AND jsonb_array_length(v_ev.reminder_intervals) > 0 THEN
@@ -1505,132 +1972,128 @@ BEGIN
       IF v_ev.patient_user_id IS NOT NULL THEN
         INSERT INTO public.notifications (
           target_user_id, kind, severity, title, message, patient_id, therapy_id, event_id, dose_key
-        ) VALUES (
-          v_ev.patient_user_id, 'reminder_pre', 'info',
-          '💊 Tra ' || v_before || ' min: ' || COALESCE(v_ev.therapy_name, 'farmaco'),
-          'Alle ' || to_char(v_ev.scheduled_at AT TIME ZONE 'Europe/Rome', 'HH24:MI') || ' — ' || COALESCE(v_ev.dosage, ''),
-          v_ev.patient_id, v_ev.therapy_id, v_ev.id,
-          v_ev.therapy_id || '@' || v_ev.scheduled_at::text || '@reminder_pre@patient'
         )
-        ON CONFLICT DO NOTHING;
+        VALUES (
+          v_ev.patient_user_id,
+          'dose_reminder_pre',
+          'low',
+          'Promemoria: ' || v_ev.therapy_name,
+          'Tra ' || v_before || ' minuti è prevista l''assunzione (' || COALESCE(v_ev.dosage, '') || ')',
+          v_ev.patient_id,
+          v_ev.therapy_id,
+          v_ev.id,
+          v_ev.id || ':pre:' || v_before
+        )
+        ON CONFLICT (target_user_id, dose_key) DO NOTHING;
       END IF;
     END IF;
   END LOOP;
 
-  -- 2b) DUE
+  -- 2b) REMINDER_EXACT (:00)
   FOR v_ev IN
     SELECT e.id, e.therapy_id, e.patient_id, e.scheduled_at,
-           t.name AS therapy_name, t.dosage, t.quantity,
+           t.name AS therapy_name, t.dosage,
            p.user_id AS patient_user_id
     FROM public.events e
     JOIN public.therapies t ON t.id = e.therapy_id
     JOIN public.patients p ON p.id = e.patient_id
     WHERE e.status = 'scheduled'
-      AND e.scheduled_at BETWEEN (v_now - interval '60 seconds') AND (v_now + interval '90 seconds')
+      AND e.scheduled_at BETWEEN (v_now - interval '1 minute') AND (v_now + interval '1 minute')
+      AND p.suspended_at IS NULL
+      AND t.suspended_at IS NULL
+      AND t.suspended = false
   LOOP
-    UPDATE public.events SET stage = 'due' WHERE id = v_ev.id AND status = 'scheduled';
-
-    IF FOUND AND v_ev.patient_user_id IS NOT NULL THEN
+    IF v_ev.patient_user_id IS NOT NULL THEN
       INSERT INTO public.notifications (
         target_user_id, kind, severity, title, message, patient_id, therapy_id, event_id, dose_key
-      ) VALUES (
-        v_ev.patient_user_id, 'due', 'warning',
-        '💊 È ora: ' || COALESCE(v_ev.therapy_name, 'farmaco'),
-        COALESCE(v_ev.quantity, 1) || ' unità — ' || COALESCE(v_ev.dosage, ''),
-        v_ev.patient_id, v_ev.therapy_id, v_ev.id,
-        v_ev.therapy_id || '@' || v_ev.scheduled_at::text || '@due@patient'
       )
-      ON CONFLICT DO NOTHING;
+      VALUES (
+        v_ev.patient_user_id,
+        'dose_reminder_exact',
+        'medium',
+        'È ora della terapia: ' || v_ev.therapy_name,
+        'Assumi adesso ' || COALESCE(v_ev.dosage, ''),
+        v_ev.patient_id,
+        v_ev.therapy_id,
+        v_ev.id,
+        v_ev.id || ':exact:0'
+      )
+      ON CONFLICT (target_user_id, dose_key) DO NOTHING;
     END IF;
   END LOOP;
 
   -- 2c) REMINDER_POST
   FOR v_ev IN
-    SELECT e.id, e.therapy_id, e.patient_id, e.scheduled_at, e.stage,
-           t.name AS therapy_name, t.post_reminder_minutes,
+    SELECT e.id, e.therapy_id, e.patient_id, e.scheduled_at,
+           t.name AS therapy_name, t.dosage, t.reminder_intervals,
            p.user_id AS patient_user_id
     FROM public.events e
     JOIN public.therapies t ON t.id = e.therapy_id
     JOIN public.patients p ON p.id = e.patient_id
     WHERE e.status = 'scheduled'
-      AND e.scheduled_at BETWEEN v_past AND (v_now - interval '60 seconds')
-      AND e.stage NOT IN ('reminder_post', 'final_due', 'missed')
+      AND e.scheduled_at BETWEEN (v_now - interval '45 minutes') AND v_now
+      AND p.suspended_at IS NULL
+      AND t.suspended_at IS NULL
+      AND t.suspended = false
   LOOP
-    v_post_min := GREATEST(1, COALESCE(v_ev.post_reminder_minutes, 5));
+    v_post_min := 15;
+    IF v_ev.reminder_intervals IS NOT NULL AND jsonb_array_length(v_ev.reminder_intervals) > 0 THEN
+      SELECT COALESCE(NULLIF(ABS((jsonb_array_elements_text(v_ev.reminder_intervals))::int), 0), 15)
+      INTO v_post_min
+      LIMIT 1;
+    END IF;
+
     v_elapsed_min := extract(epoch from (v_now - v_ev.scheduled_at)) / 60.0;
-
-    IF v_elapsed_min >= v_post_min AND v_elapsed_min <= (v_post_min + 2) THEN
-      UPDATE public.events SET stage = 'reminder_post' WHERE id = v_ev.id AND status = 'scheduled';
-
-      IF FOUND AND v_ev.patient_user_id IS NOT NULL THEN
+    IF v_elapsed_min >= v_post_min AND v_elapsed_min < (v_post_min + 2) THEN
+      IF v_ev.patient_user_id IS NOT NULL THEN
         INSERT INTO public.notifications (
           target_user_id, kind, severity, title, message, patient_id, therapy_id, event_id, dose_key
-        ) VALUES (
-          v_ev.patient_user_id, 'reminder_post', 'warning',
-          '💊 Non hai ancora preso ' || COALESCE(v_ev.therapy_name, 'il farmaco'),
-          'Erano le ' || to_char(v_ev.scheduled_at AT TIME ZONE 'Europe/Rome', 'HH24:MI') || '. Conferma o rimanda.',
-          v_ev.patient_id, v_ev.therapy_id, v_ev.id,
-          v_ev.therapy_id || '@' || v_ev.scheduled_at::text || '@reminder_post@patient'
         )
-        ON CONFLICT DO NOTHING;
+        VALUES (
+          v_ev.patient_user_id,
+          'dose_reminder_post',
+          'high',
+          'Dose in ritardo: ' || v_ev.therapy_name,
+          'Non risulta confermata la dose delle ' || to_char(v_ev.scheduled_at AT TIME ZONE 'Europe/Rome', 'HH24:MI'),
+          v_ev.patient_id,
+          v_ev.therapy_id,
+          v_ev.id,
+          v_ev.id || ':post:' || v_post_min
+        )
+        ON CONFLICT (target_user_id, dose_key) DO NOTHING;
       END IF;
     END IF;
   END LOOP;
 
-  -- 2d) FINAL_DUE
+  -- 3) AUTO-MISSED
   FOR v_ev IN
-    SELECT e.id, e.therapy_id, e.patient_id, e.scheduled_at, e.stage, e.final_due_at,
-           t.name AS therapy_name, p.user_id AS patient_user_id
+    SELECT e.id, e.therapy_id, e.patient_id, e.scheduled_at,
+           COALESCE(t.timeout_minutes, 180) AS timeout_minutes
     FROM public.events e
     JOIN public.therapies t ON t.id = e.therapy_id
     JOIN public.patients p ON p.id = e.patient_id
-    WHERE e.status = 'snoozed'
-      AND e.snoozed_until IS NOT NULL
-      AND e.snoozed_until <= (v_now + interval '60 seconds')
-      AND e.final_due_at IS NULL
-      AND e.stage NOT IN ('final_due', 'missed')
+    WHERE e.status = 'scheduled'
+      AND e.scheduled_at < (v_now - interval '30 minutes')
+      AND p.suspended_at IS NULL
+      AND t.suspended_at IS NULL
+      AND t.suspended = false
   LOOP
-    UPDATE public.events SET stage = 'final_due', final_due_at = v_now WHERE id = v_ev.id AND status = 'snoozed';
-
-    IF FOUND AND v_ev.patient_user_id IS NOT NULL THEN
-      INSERT INTO public.notifications (
-        target_user_id, kind, severity, title, message, patient_id, therapy_id, event_id, dose_key
-      ) VALUES (
-        v_ev.patient_user_id, 'final_due', 'warning',
-        '💊 Ultima chiamata: ' || COALESCE(v_ev.therapy_name, 'farmaco'),
-        'Conferma la dose delle ' || to_char(v_ev.scheduled_at AT TIME ZONE 'Europe/Rome', 'HH24:MI') || '. Non puoi più rimandare.',
-        v_ev.patient_id, v_ev.therapy_id, v_ev.id,
-        v_ev.therapy_id || '@' || v_ev.scheduled_at::text || '@final_due@patient'
-      )
-      ON CONFLICT DO NOTHING;
-    END IF;
-  END LOOP;
-
-  -- 2e) MISSED
-  FOR v_ev IN
-    SELECT e.id, e.therapy_id, e.patient_id, e.scheduled_at, e.snoozed_until, t.timeout_minutes
-    FROM public.events e
-    JOIN public.therapies t ON t.id = e.therapy_id
-    WHERE e.status IN ('scheduled', 'snoozed')
-      AND e.scheduled_at <= (v_now - interval '5 minutes')
-  LOOP
-    v_timeout_min := COALESCE(v_ev.timeout_minutes, 10);
-    v_hard_deadline := CASE
-      WHEN v_ev.snoozed_until IS NOT NULL THEN v_ev.snoozed_until
-      ELSE v_ev.scheduled_at + (v_timeout_min || ' minutes')::interval
-    END;
+    v_timeout_min := GREATEST(30, v_ev.timeout_minutes);
+    v_hard_deadline := v_ev.scheduled_at + make_interval(mins => v_timeout_min);
 
     IF v_now >= v_hard_deadline THEN
       UPDATE public.events
-      SET status = 'missed', stage = 'missed',
-          timeline = timeline || jsonb_build_array(jsonb_build_object(
+      SET status = 'missed',
+          stage = 'missed',
+          timeline = COALESCE(timeline, '[]'::jsonb) || jsonb_build_object(
             'at', to_char(v_now AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-            'kind', 'missed',
-            'message', 'Dose non confermata entro il tempo massimo'
-          ))
-      WHERE id = v_ev.id AND status IN ('scheduled', 'snoozed');
+            'kind', 'auto_missed',
+            'message', 'Dose scaduta automaticamente'
+          )
+      WHERE id = v_ev.id AND status = 'scheduled';
     END IF;
   END LOOP;
+
 END;
 $$;
 
@@ -1644,21 +2107,45 @@ CREATE OR REPLACE FUNCTION "public"."redeem_family_invite"("_code" "text") RETUR
     AS $$
 declare
   v_invite public.family_invites;
+  v_recent_failures integer;
 begin
   if not public.has_role(auth.uid(), 'caregiver') then
     raise exception 'Solo un caregiver può usare un codice invito' using errcode = '42501';
+  end if;
+
+  -- Limite tentativi: se questo utente ha già generato 8+ fallimenti negli
+  -- ultimi 10 minuti, blocca PRIMA di controllare il nuovo codice (così un
+  -- eventuale attaccante non ottiene nemmeno il segnale "codice sbagliato"
+  -- vs "troppi tentativi" per distinguere i due casi più velocemente).
+  select count(*) into v_recent_failures
+  from public.audit_log
+  where actor_id = auth.uid()
+    and action = 'invite_redeem_failed'
+    and created_at > now() - interval '10 minutes';
+
+  if v_recent_failures >= 8 then
+    raise exception 'Troppi tentativi. Riprova tra qualche minuto.' using errcode = '42501';
   end if;
 
   select * into v_invite from public.family_invites
     where code = upper(trim(_code)) for update;
 
   if not found then
+    insert into public.audit_log(actor_id, actor_name, action, entity_type, summary)
+    values (auth.uid(), coalesce(public.audit_actor_name(auth.uid()), 'Utente'),
+            'invite_redeem_failed', 'family_invite', 'Tentativo con codice invito non valido');
     raise exception 'Codice non valido' using errcode = 'P0002';
   end if;
   if v_invite.expires_at < now() then
+    insert into public.audit_log(actor_id, actor_name, action, entity_type, entity_id, summary)
+    values (auth.uid(), coalesce(public.audit_actor_name(auth.uid()), 'Utente'),
+            'invite_redeem_failed', 'family_invite', v_invite.id::text, 'Tentativo con codice invito scaduto');
     raise exception 'Codice scaduto' using errcode = 'P0003';
   end if;
   if v_invite.uses >= v_invite.max_uses then
+    insert into public.audit_log(actor_id, actor_name, action, entity_type, entity_id, summary)
+    values (auth.uid(), coalesce(public.audit_actor_name(auth.uid()), 'Utente'),
+            'invite_redeem_failed', 'family_invite', v_invite.id::text, 'Tentativo con codice invito già esaurito');
     raise exception 'Codice già utilizzato' using errcode = 'P0004';
   end if;
 
@@ -1666,7 +2153,6 @@ begin
     values (auth.uid(), v_invite.patient_id)
     on conflict do nothing;
 
-  -- Se il paziente non ha owner e nessun primario ancora, questo caregiver diventa primario
   update public.patients
     set primary_caregiver_id = auth.uid()
     where id = v_invite.patient_id
@@ -1685,6 +2171,10 @@ $$;
 
 
 ALTER FUNCTION "public"."redeem_family_invite"("_code" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."redeem_family_invite"("_code" "text") IS 'Riscatta un codice invito famiglia. Limita a 8 tentativi falliti ogni 10 minuti per utente (tracciati in audit_log, action=invite_redeem_failed) per contrastare il brute-force dei codici. Codici generati da create_family_invite ora a 8 caratteri (~48 bit di entropia).';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."refresh_caregiver_dashboard_stats"() RETURNS "void"
@@ -2208,9 +2698,44 @@ CREATE OR REPLACE FUNCTION "public"."trg_cascade_plan_on_own_plan_change"() RETU
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-DECLARE r RECORD;
+DECLARE
+  r RECORD;
+  v_old_order int;
+  v_new_order int;
 BEGIN
   IF NEW.subscription_plan_own IS DISTINCT FROM OLD.subscription_plan_own THEN
+    v_old_order := CASE COALESCE(OLD.subscription_plan_own, 'free') WHEN 'free' THEN 0 WHEN 'pro' THEN 1 WHEN 'max' THEN 2 ELSE 0 END;
+    v_new_order := CASE COALESCE(NEW.subscription_plan_own, 'free') WHEN 'free' THEN 0 WHEN 'pro' THEN 1 WHEN 'max' THEN 2 ELSE 0 END;
+
+    -- Se è un UPGRADE, ripristina i record sospesi durante il downgrade
+    IF v_new_order > v_old_order THEN
+      -- Ripristina pazienti sospesi
+      UPDATE public.patients
+      SET suspended_at = NULL
+      WHERE owner_user_id = NEW.id
+        AND suspended_at IS NOT NULL;
+
+      -- Ripristina terapie sospese per downgrade
+      UPDATE public.therapies t
+      SET suspended_at     = NULL,
+          suspended_reason = NULL,
+          suspended        = false,
+          active           = true
+      FROM public.patients p
+      WHERE t.patient_id = p.id
+        AND p.owner_user_id = NEW.id
+        AND t.suspended_reason = 'downgrade';
+
+      -- Ripristina caregiver sospesi
+      UPDATE public.caregiver_patients cp
+      SET suspended_at = NULL
+      FROM public.patients p
+      WHERE cp.patient_id = p.id
+        AND p.owner_user_id = NEW.id
+        AND cp.suspended_at IS NULL;
+    END IF;
+
+    -- Propaga il piano effettivo a tutti i collegati
     PERFORM public.sync_effective_plan(NEW.id);
 
     FOR r IN
@@ -2393,7 +2918,8 @@ CREATE TABLE IF NOT EXISTS "public"."caregiver_patients" (
     "caregiver_id" "uuid" NOT NULL,
     "patient_id" "text" NOT NULL,
     "relationship" "text",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "suspended_at" timestamp with time zone
 );
 
 
@@ -2401,6 +2927,10 @@ ALTER TABLE "public"."caregiver_patients" OWNER TO "postgres";
 
 
 COMMENT ON TABLE "public"."caregiver_patients" IS 'INSERT: solo RPC redeem_family_invite (SECURITY DEFINER). SELECT: caregiver self o paziente owner. UPDATE: caregiver self (relationship). DELETE: caregiver self o primario che rimuove secondari.';
+
+
+
+COMMENT ON COLUMN "public"."caregiver_patients"."suspended_at" IS 'Impostato dal downgrade (caregiver in eccesso). Il caregiver perde accesso via RLS ma può rientrare se il titolare fa upgrade entro 30 giorni.';
 
 
 
@@ -2477,6 +3007,8 @@ CREATE TABLE IF NOT EXISTS "public"."therapies" (
     "photo_package" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "notes_enc" "bytea",
+    "suspended_at" timestamp with time zone,
+    "suspended_reason" "text",
     CONSTRAINT "therapies_photo_drug_not_base64" CHECK ((("photo_drug" IS NULL) OR ("photo_drug" !~~ 'data:%'::"text"))),
     CONSTRAINT "therapies_photo_package_not_base64" CHECK ((("photo_package" IS NULL) OR ("photo_package" !~~ 'data:%'::"text")))
 );
@@ -2486,6 +3018,14 @@ ALTER TABLE "public"."therapies" OWNER TO "postgres";
 
 
 COMMENT ON COLUMN "public"."therapies"."notes_enc" IS 'Note cifrate (AES-256 via pgcrypto + Supabase Vault). Opt-in: vedi encrypt_therapy_note()/decrypt_therapy_note().';
+
+
+
+COMMENT ON COLUMN "public"."therapies"."suspended_at" IS 'Impostato dal downgrade (terapie in eccesso). Eliminata dopo 30 giorni dal cron downgrade-suspended-therapies-cleanup.';
+
+
+
+COMMENT ON COLUMN "public"."therapies"."suspended_reason" IS 'Motivo della sospensione: "downgrade" oppure NULL per sospensioni manuali.';
 
 
 
@@ -2628,11 +3168,16 @@ CREATE TABLE IF NOT EXISTS "public"."patients" (
     "user_id" "uuid",
     "owner_user_id" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "primary_caregiver_id" "uuid"
+    "primary_caregiver_id" "uuid",
+    "suspended_at" timestamp with time zone
 );
 
 
 ALTER TABLE "public"."patients" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."patients"."suspended_at" IS 'Impostato dal downgrade del piano. Il paziente resta nel DB per 30 giorni (leggibile solo dal titolare), poi viene eliminato dal cron downgrade-suspended-patients-cleanup.';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."stock_movements" (
@@ -2731,8 +3276,23 @@ ALTER TABLE ONLY "public"."adherence_monthly"
 
 
 
+ALTER TABLE "public"."audit_log"
+    ADD CONSTRAINT "audit_detail_size" CHECK ((("detail" IS NULL) OR ("char_length"(("detail")::"text") <= 5000))) NOT VALID;
+
+
+
 ALTER TABLE ONLY "public"."audit_log"
     ADD CONSTRAINT "audit_log_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."audit_log"
+    ADD CONSTRAINT "audit_meta_size" CHECK ((("meta" IS NULL) OR ("char_length"(("meta")::"text") <= 5000))) NOT VALID;
+
+
+
+ALTER TABLE "public"."audit_log"
+    ADD CONSTRAINT "audit_summary_len" CHECK ((("summary" IS NULL) OR ("char_length"("summary") <= 2000))) NOT VALID;
 
 
 
@@ -2741,8 +3301,33 @@ ALTER TABLE ONLY "public"."caregiver_patients"
 
 
 
+ALTER TABLE "public"."caregivers"
+    ADD CONSTRAINT "caregivers_name_len" CHECK (("char_length"("name") <= 80)) NOT VALID;
+
+
+
+ALTER TABLE "public"."caregivers"
+    ADD CONSTRAINT "caregivers_notify_size" CHECK (("char_length"(("notify")::"text") <= 500)) NOT VALID;
+
+
+
 ALTER TABLE ONLY "public"."caregivers"
     ADD CONSTRAINT "caregivers_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."caregivers"
+    ADD CONSTRAINT "caregivers_relation_len" CHECK ((("relation" IS NULL) OR ("char_length"("relation") <= 60))) NOT VALID;
+
+
+
+ALTER TABLE "public"."caregiver_patients"
+    ADD CONSTRAINT "cp_relationship_len" CHECK ((("relationship" IS NULL) OR ("char_length"("relationship") <= 60))) NOT VALID;
+
+
+
+ALTER TABLE "public"."events"
+    ADD CONSTRAINT "events_note_len" CHECK ((("note" IS NULL) OR ("char_length"("note") <= 500))) NOT VALID;
 
 
 
@@ -2756,6 +3341,11 @@ ALTER TABLE ONLY "public"."events"
 
 
 
+ALTER TABLE "public"."events"
+    ADD CONSTRAINT "events_timeline_size" CHECK (("char_length"(("timeline")::"text") <= 5000)) NOT VALID;
+
+
+
 ALTER TABLE ONLY "public"."family_invites"
     ADD CONSTRAINT "family_invites_code_key" UNIQUE ("code");
 
@@ -2763,6 +3353,16 @@ ALTER TABLE ONLY "public"."family_invites"
 
 ALTER TABLE ONLY "public"."family_invites"
     ADD CONSTRAINT "family_invites_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."notifications"
+    ADD CONSTRAINT "notif_message_len" CHECK ((("message" IS NULL) OR ("char_length"("message") <= 1000))) NOT VALID;
+
+
+
+ALTER TABLE "public"."notifications"
+    ADD CONSTRAINT "notif_title_len" CHECK ((("title" IS NULL) OR ("char_length"("title") <= 200))) NOT VALID;
 
 
 
@@ -2776,8 +3376,38 @@ ALTER TABLE ONLY "public"."patient_medical_profiles"
 
 
 
+ALTER TABLE "public"."patients"
+    ADD CONSTRAINT "patients_name_len" CHECK (("char_length"("name") <= 80)) NOT VALID;
+
+
+
 ALTER TABLE ONLY "public"."patients"
     ADD CONSTRAINT "patients_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."patient_medical_profiles"
+    ADD CONSTRAINT "pmp_allergies_count" CHECK ((("array_length"("allergies", 1) IS NULL) OR ("array_length"("allergies", 1) <= 50))) NOT VALID;
+
+
+
+ALTER TABLE "public"."patient_medical_profiles"
+    ADD CONSTRAINT "pmp_allergy_item_len" CHECK (("public"."array_max_element_length"("allergies") <= 200)) NOT VALID;
+
+
+
+ALTER TABLE "public"."patient_medical_profiles"
+    ADD CONSTRAINT "pmp_diagnoses_len" CHECK ((("diagnoses" IS NULL) OR ("char_length"("diagnoses") <= 3000))) NOT VALID;
+
+
+
+ALTER TABLE "public"."patient_medical_profiles"
+    ADD CONSTRAINT "pmp_emergency_contacts_size" CHECK (("char_length"(("emergency_contacts")::"text") <= 5000)) NOT VALID;
+
+
+
+ALTER TABLE "public"."patient_medical_profiles"
+    ADD CONSTRAINT "pmp_notes_len" CHECK ((("notes" IS NULL) OR ("char_length"("notes") <= 3000))) NOT VALID;
 
 
 
@@ -2786,13 +3416,48 @@ ALTER TABLE ONLY "public"."profiles"
 
 
 
+ALTER TABLE "public"."stock_movements"
+    ADD CONSTRAINT "sm_reason_len" CHECK (("char_length"("reason") <= 200)) NOT VALID;
+
+
+
 ALTER TABLE ONLY "public"."stock_movements"
     ADD CONSTRAINT "stock_movements_pkey" PRIMARY KEY ("id");
 
 
 
+ALTER TABLE "public"."therapies"
+    ADD CONSTRAINT "therapies_category_len" CHECK ((("category" IS NULL) OR ("char_length"("category") <= 60))) NOT VALID;
+
+
+
+ALTER TABLE "public"."therapies"
+    ADD CONSTRAINT "therapies_dosage_len" CHECK ((("dosage" IS NULL) OR ("char_length"("dosage") <= 60))) NOT VALID;
+
+
+
+ALTER TABLE "public"."therapies"
+    ADD CONSTRAINT "therapies_name_len" CHECK (("char_length"("name") <= 120)) NOT VALID;
+
+
+
+ALTER TABLE "public"."therapies"
+    ADD CONSTRAINT "therapies_notes_len" CHECK ((("notes" IS NULL) OR ("char_length"("notes") <= 5000))) NOT VALID;
+
+
+
 ALTER TABLE ONLY "public"."therapies"
     ADD CONSTRAINT "therapies_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."therapies"
+    ADD CONSTRAINT "therapies_recurrence_size" CHECK (("char_length"(("recurrence")::"text") <= 2000)) NOT VALID;
+
+
+
+ALTER TABLE "public"."therapies"
+    ADD CONSTRAINT "therapies_times_count" CHECK ((("array_length"("times", 1) IS NULL) OR ("array_length"("times", 1) <= 20))) NOT VALID;
 
 
 
@@ -2816,8 +3481,28 @@ ALTER TABLE ONLY "public"."vital_signs"
 
 
 
+ALTER TABLE "public"."vital_signs"
+    ADD CONSTRAINT "vs_notes_len" CHECK ((("notes" IS NULL) OR ("char_length"("notes") <= 500))) NOT VALID;
+
+
+
 ALTER TABLE ONLY "public"."wellness_notes"
     ADD CONSTRAINT "wellness_notes_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."wellness_notes"
+    ADD CONSTRAINT "wn_note_len" CHECK ((("note" IS NULL) OR ("char_length"("note") <= 2000))) NOT VALID;
+
+
+
+ALTER TABLE "public"."wellness_notes"
+    ADD CONSTRAINT "wn_symptom_item_len" CHECK (("public"."array_max_element_length"("symptoms") <= 100)) NOT VALID;
+
+
+
+ALTER TABLE "public"."wellness_notes"
+    ADD CONSTRAINT "wn_symptoms_count" CHECK ((("array_length"("symptoms", 1) IS NULL) OR ("array_length"("symptoms", 1) <= 30))) NOT VALID;
 
 
 
@@ -2829,15 +3514,7 @@ CREATE UNIQUE INDEX "caregiver_dashboard_stats_pk" ON "public"."caregiver_dashbo
 
 
 
-CREATE INDEX "cp_caregiver_idx" ON "public"."caregiver_patients" USING "btree" ("caregiver_id");
-
-
-
 CREATE INDEX "cp_patient_idx" ON "public"."caregiver_patients" USING "btree" ("patient_id");
-
-
-
-CREATE INDEX "events_patient_idx" ON "public"."events" USING "btree" ("patient_id");
 
 
 
@@ -2877,6 +3554,14 @@ CREATE INDEX "idx_caregiver_patients_caregiver" ON "public"."caregiver_patients"
 
 
 
+CREATE INDEX "idx_caregiver_patients_suspended" ON "public"."caregiver_patients" USING "btree" ("suspended_at", "caregiver_id") WHERE ("suspended_at" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_events_active_schedule" ON "public"."events" USING "btree" ("scheduled_at") WHERE ("status" = ANY (ARRAY['scheduled'::"text", 'snoozed'::"text"]));
+
+
+
 CREATE INDEX "idx_events_patient_scheduled" ON "public"."events" USING "btree" ("patient_id", "scheduled_at" DESC);
 
 
@@ -2885,11 +3570,31 @@ CREATE INDEX "idx_events_pending_ack" ON "public"."events" USING "btree" ("patie
 
 
 
+CREATE INDEX "idx_events_snoozed_until" ON "public"."events" USING "btree" ("snoozed_until") WHERE (("status" = 'snoozed'::"text") AND ("snoozed_until" IS NOT NULL));
+
+
+
 CREATE INDEX "idx_events_therapy_scheduled" ON "public"."events" USING "btree" ("therapy_id", "scheduled_at" DESC);
 
 
 
+CREATE INDEX "idx_family_invites_created_by" ON "public"."family_invites" USING "btree" ("created_by");
+
+
+
+CREATE INDEX "idx_family_invites_used_by" ON "public"."family_invites" USING "btree" ("used_by");
+
+
+
+CREATE INDEX "idx_notifications_patient_id" ON "public"."notifications" USING "btree" ("patient_id");
+
+
+
 CREATE INDEX "idx_notifications_target_created" ON "public"."notifications" USING "btree" ("target_user_id", "created_at" DESC);
+
+
+
+CREATE INDEX "idx_patients_suspended_at" ON "public"."patients" USING "btree" ("suspended_at") WHERE ("suspended_at" IS NOT NULL);
 
 
 
@@ -2905,15 +3610,15 @@ CREATE INDEX "idx_therapies_patient" ON "public"."therapies" USING "btree" ("pat
 
 
 
-CREATE UNIQUE INDEX "notifications_dose_key_idx" ON "public"."notifications" USING "btree" ("target_user_id", "dose_key") WHERE ("dose_key" IS NOT NULL);
+CREATE INDEX "idx_therapies_suspended" ON "public"."therapies" USING "btree" ("suspended_at", "patient_id") WHERE ("suspended_at" IS NOT NULL);
+
+
+
+CREATE INDEX "idx_user_roles_user_id" ON "public"."user_roles" USING "btree" ("user_id");
 
 
 
 CREATE UNIQUE INDEX "notifications_dose_key_target_uniq" ON "public"."notifications" USING "btree" ("target_user_id", "dose_key") WHERE ("dose_key" IS NOT NULL);
-
-
-
-CREATE INDEX "notifications_target_created_idx" ON "public"."notifications" USING "btree" ("target_user_id", "created_at" DESC);
 
 
 
@@ -2934,10 +3639,6 @@ CREATE INDEX "patients_user_id_idx" ON "public"."patients" USING "btree" ("user_
 
 
 CREATE INDEX "stock_therapy_idx" ON "public"."stock_movements" USING "btree" ("therapy_id");
-
-
-
-CREATE INDEX "therapies_patient_idx" ON "public"."therapies" USING "btree" ("patient_id");
 
 
 
@@ -3211,14 +3912,6 @@ CREATE POLICY "adherence_monthly: read if linked to patient" ON "public"."adhere
 
 
 
-CREATE POLICY "audit: read linked" ON "public"."audit_log" FOR SELECT TO "authenticated" USING ((("patient_id" IS NULL) OR (EXISTS ( SELECT 1
-   FROM "public"."patients" "p"
-  WHERE (("p"."id" = "audit_log"."patient_id") AND (("p"."user_id" = "auth"."uid"()) OR ("p"."owner_user_id" = "auth"."uid"()) OR (EXISTS ( SELECT 1
-           FROM "public"."caregiver_patients" "cp"
-          WHERE (("cp"."patient_id" = "p"."id") AND ("cp"."caregiver_id" = "auth"."uid"()))))))))));
-
-
-
 ALTER TABLE "public"."audit_log" ENABLE ROW LEVEL SECURITY;
 
 
@@ -3266,11 +3959,15 @@ CREATE POLICY "cp: caregiver can update own" ON "public"."caregiver_patients" FO
 
 
 
-CREATE POLICY "cp: family peers read" ON "public"."caregiver_patients" FOR SELECT TO "authenticated" USING ((("caregiver_id" = "auth"."uid"()) OR "public"."owns_patient"("patient_id") OR "public"."is_caregiver_of"("patient_id")));
+CREATE POLICY "cp: family peers read" ON "public"."caregiver_patients" FOR SELECT TO "authenticated" USING (((("caregiver_id" = "auth"."uid"()) AND ("suspended_at" IS NULL)) OR "public"."owns_patient"("patient_id") OR ("public"."is_caregiver_of"("patient_id") AND ("suspended_at" IS NULL))));
 
 
 
 CREATE POLICY "cp: primary can remove secondary" ON "public"."caregiver_patients" FOR DELETE TO "authenticated" USING (("public"."is_primary_of"("patient_id") AND ("caregiver_id" <> "auth"."uid"())));
+
+
+
+CREATE POLICY "cp: primary can self-insert" ON "public"."caregiver_patients" FOR INSERT TO "authenticated" WITH CHECK ((("caregiver_id" = "auth"."uid"()) AND "public"."is_primary_of"("patient_id")));
 
 
 
@@ -3289,23 +3986,17 @@ CREATE POLICY "events: insert primary" ON "public"."events" FOR INSERT TO "authe
 
 
 
-CREATE POLICY "events: read linked" ON "public"."events" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+CREATE POLICY "events: read linked" ON "public"."events" FOR SELECT TO "authenticated" USING (((EXISTS ( SELECT 1
    FROM "public"."patients" "p"
-  WHERE (("p"."id" = "events"."patient_id") AND (("p"."user_id" = "auth"."uid"()) OR ("p"."owner_user_id" = "auth"."uid"()) OR (EXISTS ( SELECT 1
-           FROM "public"."caregiver_patients" "cp"
-          WHERE (("cp"."patient_id" = "p"."id") AND ("cp"."caregiver_id" = "auth"."uid"())))))))));
+  WHERE (("p"."id" = "events"."patient_id") AND (("p"."owner_user_id" = "auth"."uid"()) OR ("p"."user_id" = "auth"."uid"()) OR "public"."is_caregiver_of"("p"."id"))))) AND (("public"."get_patient_owner_plan"("patient_id") = ANY (ARRAY['pro'::"text", 'max'::"text"])) OR ("scheduled_at" >= ("now"() - '7 days'::interval)))));
 
 
 
 CREATE POLICY "events: update linked" ON "public"."events" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."patients" "p"
-  WHERE (("p"."id" = "events"."patient_id") AND (("p"."user_id" = "auth"."uid"()) OR ("p"."owner_user_id" = "auth"."uid"()) OR (EXISTS ( SELECT 1
-           FROM "public"."caregiver_patients" "cp"
-          WHERE (("cp"."patient_id" = "p"."id") AND ("cp"."caregiver_id" = "auth"."uid"()))))))))) WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (("p"."id" = "events"."patient_id") AND (("p"."owner_user_id" = "auth"."uid"()) OR ("p"."user_id" = "auth"."uid"()) OR "public"."is_caregiver_of"("p"."id")))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."patients" "p"
-  WHERE (("p"."id" = "events"."patient_id") AND (("p"."user_id" = "auth"."uid"()) OR ("p"."owner_user_id" = "auth"."uid"()) OR (EXISTS ( SELECT 1
-           FROM "public"."caregiver_patients" "cp"
-          WHERE (("cp"."patient_id" = "p"."id") AND ("cp"."caregiver_id" = "auth"."uid"())))))))));
+  WHERE (("p"."id" = "events"."patient_id") AND (("p"."owner_user_id" = "auth"."uid"()) OR ("p"."user_id" = "auth"."uid"()) OR "public"."is_caregiver_of"("p"."id"))))));
 
 
 
@@ -3353,9 +4044,7 @@ CREATE POLICY "notifications: mark own read" ON "public"."notifications" FOR UPD
 
 CREATE POLICY "notifications: read own or caregiver of patient" ON "public"."notifications" FOR SELECT TO "authenticated" USING ((("target_user_id" = "auth"."uid"()) OR (("patient_id" IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM "public"."patients" "p"
-  WHERE (("p"."id" = "notifications"."patient_id") AND (("p"."user_id" = "auth"."uid"()) OR ("p"."owner_user_id" = "auth"."uid"()) OR (EXISTS ( SELECT 1
-           FROM "public"."caregiver_patients" "cp"
-          WHERE (("cp"."patient_id" = "p"."id") AND ("cp"."caregiver_id" = "auth"."uid"())))))))))));
+  WHERE (("p"."id" = "notifications"."patient_id") AND (("p"."owner_user_id" = "auth"."uid"()) OR ("p"."user_id" = "auth"."uid"()) OR "public"."is_caregiver_of"("p"."id"))))))));
 
 
 
@@ -3428,19 +4117,17 @@ CREATE POLICY "therapies: delete primary" ON "public"."therapies" FOR DELETE TO 
 
 
 
-CREATE POLICY "therapies: insert primary" ON "public"."therapies" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_primary_of"("patient_id"));
+CREATE POLICY "therapies: insert primary" ON "public"."therapies" FOR INSERT TO "authenticated" WITH CHECK (("public"."is_primary_of"("patient_id") AND (NOT "public"."patient_is_suspended"("patient_id"))));
 
 
 
 CREATE POLICY "therapies: read linked" ON "public"."therapies" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."patients" "p"
-  WHERE (("p"."id" = "therapies"."patient_id") AND (("p"."user_id" = "auth"."uid"()) OR ("p"."owner_user_id" = "auth"."uid"()) OR (EXISTS ( SELECT 1
-           FROM "public"."caregiver_patients" "cp"
-          WHERE (("cp"."patient_id" = "p"."id") AND ("cp"."caregiver_id" = "auth"."uid"())))))))));
+  WHERE (("p"."id" = "therapies"."patient_id") AND (("p"."owner_user_id" = "auth"."uid"()) OR (("therapies"."suspended_at" IS NULL) AND ("p"."suspended_at" IS NULL) AND (("p"."user_id" = "auth"."uid"()) OR "public"."is_caregiver_of"("p"."id"))))))));
 
 
 
-CREATE POLICY "therapies: update primary" ON "public"."therapies" FOR UPDATE TO "authenticated" USING ("public"."is_primary_of"("patient_id")) WITH CHECK ("public"."is_primary_of"("patient_id"));
+CREATE POLICY "therapies: update primary" ON "public"."therapies" FOR UPDATE TO "authenticated" USING (("public"."is_primary_of"("patient_id") AND (NOT "public"."patient_is_suspended"("patient_id")) AND ("suspended_at" IS NULL))) WITH CHECK (("public"."is_primary_of"("patient_id") AND (NOT "public"."patient_is_suspended"("patient_id"))));
 
 
 
@@ -3740,6 +4427,11 @@ REVOKE ALL ON FUNCTION "public"."_get_notes_encryption_key"() FROM PUBLIC;
 
 
 
+REVOKE ALL ON FUNCTION "public"."check_downgrade_impact"("_new_plan" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."check_downgrade_impact"("_new_plan" "text") TO "authenticated";
+
+
+
 REVOKE ALL ON FUNCTION "public"."cleanup_vital_signs"() FROM PUBLIC;
 
 
@@ -3830,6 +4522,11 @@ GRANT ALL ON FUNCTION "public"."owns_patient"("_patient_id" "text") TO "authenti
 
 
 
+REVOKE ALL ON FUNCTION "public"."perform_downgrade"("_new_plan" "text", "_keep_patient_ids" "text"[], "_keep_therapy_ids" "jsonb", "_keep_caregiver_ids" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."perform_downgrade"("_new_plan" "text", "_keep_patient_ids" "text"[], "_keep_therapy_ids" "jsonb", "_keep_caregiver_ids" "jsonb") TO "authenticated";
+
+
+
 REVOKE ALL ON FUNCTION "public"."process_dose_schedule"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."process_dose_schedule"() TO "service_role";
 
@@ -3895,6 +4592,7 @@ GRANT ALL ON FUNCTION "public"."wellness_symptom_correlation"("_patient_id" "tex
 
 
 GRANT SELECT ON TABLE "public"."adherence_monthly" TO "authenticated";
+GRANT ALL ON TABLE "public"."adherence_monthly" TO "service_role";
 
 
 
@@ -3903,7 +4601,7 @@ GRANT ALL ON TABLE "public"."audit_log" TO "service_role";
 
 
 
-GRANT SELECT,DELETE,UPDATE ON TABLE "public"."caregiver_patients" TO "authenticated";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."caregiver_patients" TO "authenticated";
 GRANT ALL ON TABLE "public"."caregiver_patients" TO "service_role";
 
 
@@ -3930,6 +4628,11 @@ GRANT ALL ON TABLE "public"."caregivers" TO "service_role";
 
 GRANT SELECT,UPDATE ON TABLE "public"."notifications" TO "authenticated";
 GRANT ALL ON TABLE "public"."notifications" TO "service_role";
+
+
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "public"."patient_medical_profiles" TO "authenticated";
+GRANT ALL ON TABLE "public"."patient_medical_profiles" TO "service_role";
 
 
 

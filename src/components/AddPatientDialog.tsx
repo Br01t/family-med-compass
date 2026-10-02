@@ -56,7 +56,8 @@ export function AddPatientDialog({ trigger }: AddPatientDialogProps) {
   const { data, addPatient, subscriptionPlan } = useFamilyMed();
   const limits = getPlanLimits(subscriptionPlan);
 
-  const isLimitReached = data.patients.length >= limits.maxPatients;
+  const activePatientCount = data.patients.filter((p) => !p.suspendedAt).length;
+  const isLimitReached = activePatientCount >= limits.maxPatients;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Lock } from "lucide-react";
-import { useFamilyMed } from "@/lib/store";
+import { useFamilyMedAuth } from "@/lib/store";
 import { canAccessFeature } from "@/lib/subscription";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { TherapyPhotoImg } from "@/components/TherapyPhotoImg";
@@ -27,7 +27,7 @@ export function TherapyPhoto({
 }) {
   // subscriptionPlan è già il piano EFFETTIVO (sincronizzato lato DB col
   // piano della famiglia/gruppo, come Spotify Family).
-  const { subscriptionPlan } = useFamilyMed();
+  const { subscriptionPlan } = useFamilyMedAuth();
   const [open, setOpen] = useState(false);
   const hasAccess = canAccessFeature(subscriptionPlan, "medicationPhoto");
 

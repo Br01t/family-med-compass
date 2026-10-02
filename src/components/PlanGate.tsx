@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Lock, Sparkles, ShieldAlert } from "lucide-react";
-import { useFamilyMed } from "@/lib/store";
+import { useFamilyMedAuth } from "@/lib/store";
 import { canAccessFeature, type PlanLimits, type SubscriptionPlan } from "@/lib/subscription";
 import { Button } from "@/components/ui/button";
 import { UpgradeModal } from "@/components/UpgradeModal";
@@ -30,7 +30,7 @@ export function PlanGate({
   description = "Passa a Pro o Max per accedere a questa sezione e sbloccare tutte le funzionalità avanzate.",
   children,
 }: PlanGateProps) {
-  const { subscriptionPlan } = useFamilyMed();
+  const { subscriptionPlan } = useFamilyMedAuth();
   const [modalOpen, setModalOpen] = useState(false);
 
   const hasAccess = canAccessFeature(subscriptionPlan, feature);

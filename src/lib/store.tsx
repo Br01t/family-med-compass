@@ -11,6 +11,7 @@ import {
 
 import { type User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
+import { clearPersistedSession } from "./auth-storage";
 import { getUserProfile, invalidateUserProfileCache, type UserProfile } from "./auth-service";
 import {
   initialData,
@@ -56,8 +57,31 @@ import {
 import { type SubscriptionPlan, getPlanLimits, PLAN_LIMITS } from "./subscription";
 import { logger } from "@/lib/logger";
 
-type Ctx = {
-  data: FamilyMedData;
+// ---------------------------------------------------------------------------
+// Il context è diviso in TRE parti indipendenti (Auth / Data / Actions)
+// invece di un unico oggetto monolitico. Motivo: prima, qualunque
+// aggiornamento realtime (una dose, una notifica, una terapia...) ricreava
+// UN SOLO oggetto `value` enorme, facendo ri-renderizzare TUTTI i componenti
+// che chiamano useFamilyMed() ovunque nell'app, anche quelli che non usano
+// affatto i dati cambiati (es. un componente che legge solo `subscriptionPlan`
+// si ri-renderizzava anche quando cambiava una singola dose di un paziente).
+//
+// Ora:
+// - AuthCtx cambia raramente (solo su login/logout/modifica profilo)
+// - DataCtx cambia spesso (ogni evento realtime da Supabase)
+// - ActionsCtx ha un riferimento STABILE per sempre (vedi il pattern
+//   "ref + wrapper" più sotto), quindi i componenti che chiamano solo azioni
+//   (bottoni, form) non si ri-renderizzano MAI per via del context, a
+//   prescindere da quanto spesso cambiano i dati da cui quelle azioni
+//   dipendono internamente.
+//
+// `useFamilyMed()` continua a restituire tutto insieme (retro-compatibile al
+// 100% con il codice esistente); i nuovi hook granulari (useFamilyMedAuth,
+// useFamilyMedData, useFamilyMedActions) sono opzionali e vanno preferiti nei
+// componenti nuovi o quando si ottimizza un componente esistente.
+// ---------------------------------------------------------------------------
+
+type AuthCtx = {
   user: User | null;
   userProfile: UserProfile | null;
   // Piano EFFETTIVO dell'utente loggato — già sincronizzato lato DB col
@@ -70,6 +94,13 @@ type Ctx = {
   // distinto da "nessun dato": la UI lo usa per mostrare un banner invece
   // di una lista vuota fuorviante. `retryDataLoad` forza un nuovo tentativo.
   dataLoadError: boolean;
+};
+
+type DataCtx = {
+  data: FamilyMedData;
+};
+
+type ActionsCtx = {
   retryDataLoad: () => void;
   updateSubscriptionPlan: (plan: SubscriptionPlan) => Promise<void>;
   updateCaregiverProfile: (updates: {
@@ -104,7 +135,12 @@ type Ctx = {
   isSecondaryCaregiverOf: (patientId: string) => boolean;
 };
 
-const FamilyMedContext = createContext<Ctx | null>(null);
+// Tipo "tutto insieme", solo per la compatibilità di useFamilyMed().
+type Ctx = AuthCtx & DataCtx & ActionsCtx;
+
+const FamilyMedAuthContext = createContext<AuthCtx | null>(null);
+const FamilyMedDataContext = createContext<DataCtx | null>(null);
+const FamilyMedActionsContext = createContext<ActionsCtx | null>(null);
 
 export function FamilyMedProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -857,6 +893,10 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
     if (supabase) {
       await supabase.auth.signOut();
     }
+    // Rete di sicurezza: rimuove la sessione da entrambi gli storage anche se
+    // signOut() fallisce (es. dispositivo offline in quel momento), cosa che
+    // altrimenti lascerebbe una sessione ancora valida sul dispositivo.
+    clearPersistedSession();
 
     setLoadingAuth(false);
   }, [user?.id]);
@@ -1194,78 +1234,129 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
   // Pro/Max, userProfile.subscriptionPlan È già Pro/Max.
   const subscriptionPlan = userProfile?.subscriptionPlan ?? "free";
 
-  const value = useMemo<Ctx>(
-    () => ({
-      data,
-      user,
-      userProfile,
-      subscriptionPlan,
-      loadingAuth,
-      dataLoadError,
-      retryDataLoad,
-      updateSubscriptionPlan,
-      updateCaregiverProfile,
-      redeemInvite,
-      createInvite,
-      unfollowPatient,
-      setRole,
-      setCurrentPatient,
-      confirmDose,
-      skipDose,
-      snoozeDose,
-      acknowledgeDose,
-      addTherapy,
-      updateTherapy,
-      deleteTherapy,
-      addPatient,
-      deletePatient,
-      markNotificationRead,
-      markNotificationsRead,
-      markAllRead,
-      resetDemoData,
-      logout,
-      isPrimaryCaregiverOf,
-      isSecondaryCaregiverOf,
-    }),
-    [
-      data,
-      user,
-      userProfile,
-      subscriptionPlan,
-      loadingAuth,
-      dataLoadError,
-      retryDataLoad,
-      updateSubscriptionPlan,
-      updateCaregiverProfile,
-      redeemInvite,
-      createInvite,
-      unfollowPatient,
-      setRole,
-      setCurrentPatient,
-      confirmDose,
-      skipDose,
-      snoozeDose,
-      acknowledgeDose,
-      addTherapy,
-      updateTherapy,
-      deleteTherapy,
-      addPatient,
-      deletePatient,
-      markNotificationRead,
-      markNotificationsRead,
-      markAllRead,
-      resetDemoData,
-      logout,
-      isPrimaryCaregiverOf,
-      isSecondaryCaregiverOf,
-    ],
+  // --- 1. AuthCtx: cambia solo su login/logout/modifica profilo/piano ---
+  const authValue = useMemo<AuthCtx>(
+    () => ({ user, userProfile, subscriptionPlan, loadingAuth, dataLoadError }),
+    [user, userProfile, subscriptionPlan, loadingAuth, dataLoadError],
   );
 
-  return <FamilyMedContext.Provider value={value}>{children}</FamilyMedContext.Provider>;
+  // --- 2. DataCtx: cambia ad ogni evento realtime (volutamente separato
+  // così chi non legge `data` non viene mai ricoinvolto da questi update) ---
+  const dataValue = useMemo<DataCtx>(() => ({ data }), [data]);
+
+  // --- 3. ActionsCtx: riferimento STABILE per sempre. Le funzioni sopra
+  // (confirmDose, addTherapy, ecc.) sono già in useCallback ma con
+  // dipendenze che cambiano spesso (therapies, events, data...), quindi
+  // cambierebbero comunque riferimento ad ogni aggiornamento dati. Per
+  // evitarlo, teniamo la versione "vera" più recente in un ref (aggiornato
+  // ad ogni render, costa pochissimo) ed esponiamo nel context solo dei
+  // wrapper creati UNA VOLA SOLA che si limitano a inoltrare la chiamata
+  // al contenuto attuale del ref. Risultato: chi consuma solo le azioni
+  // (bottoni, form di conferma/salto dose, ecc.) non si ri-renderizza mai
+  // per colpa del context, qualunque cosa cambi nei dati.
+  const actionsImpl: ActionsCtx = {
+    retryDataLoad,
+    updateSubscriptionPlan,
+    updateCaregiverProfile,
+    redeemInvite,
+    createInvite,
+    unfollowPatient,
+    setRole,
+    setCurrentPatient,
+    confirmDose,
+    skipDose,
+    snoozeDose,
+    acknowledgeDose,
+    addTherapy,
+    updateTherapy,
+    deleteTherapy,
+    addPatient,
+    deletePatient,
+    markNotificationRead,
+    markNotificationsRead,
+    markAllRead,
+    resetDemoData,
+    logout,
+    isPrimaryCaregiverOf,
+    isSecondaryCaregiverOf,
+  };
+  const actionsImplRef = useRef(actionsImpl);
+  actionsImplRef.current = actionsImpl;
+
+  const actionsValue = useRef<ActionsCtx>({
+    retryDataLoad: (...args) => actionsImplRef.current.retryDataLoad(...args),
+    updateSubscriptionPlan: (...args) => actionsImplRef.current.updateSubscriptionPlan(...args),
+    updateCaregiverProfile: (...args) => actionsImplRef.current.updateCaregiverProfile(...args),
+    redeemInvite: (...args) => actionsImplRef.current.redeemInvite(...args),
+    createInvite: (...args) => actionsImplRef.current.createInvite(...args),
+    unfollowPatient: (...args) => actionsImplRef.current.unfollowPatient(...args),
+    setRole: (...args) => actionsImplRef.current.setRole(...args),
+    setCurrentPatient: (...args) => actionsImplRef.current.setCurrentPatient(...args),
+    confirmDose: (...args) => actionsImplRef.current.confirmDose(...args),
+    skipDose: (...args) => actionsImplRef.current.skipDose(...args),
+    snoozeDose: (...args) => actionsImplRef.current.snoozeDose(...args),
+    acknowledgeDose: (...args) => actionsImplRef.current.acknowledgeDose(...args),
+    addTherapy: (...args) => actionsImplRef.current.addTherapy(...args),
+    updateTherapy: (...args) => actionsImplRef.current.updateTherapy(...args),
+    deleteTherapy: (...args) => actionsImplRef.current.deleteTherapy(...args),
+    addPatient: (...args) => actionsImplRef.current.addPatient(...args),
+    deletePatient: (...args) => actionsImplRef.current.deletePatient(...args),
+    markNotificationRead: (...args) => actionsImplRef.current.markNotificationRead(...args),
+    markNotificationsRead: (...args) => actionsImplRef.current.markNotificationsRead(...args),
+    markAllRead: (...args) => actionsImplRef.current.markAllRead(...args),
+    resetDemoData: (...args) => actionsImplRef.current.resetDemoData(...args),
+    logout: (...args) => actionsImplRef.current.logout(...args),
+    isPrimaryCaregiverOf: (...args) => actionsImplRef.current.isPrimaryCaregiverOf(...args),
+    isSecondaryCaregiverOf: (...args) => actionsImplRef.current.isSecondaryCaregiverOf(...args),
+  }).current;
+
+  return (
+    <FamilyMedAuthContext.Provider value={authValue}>
+      <FamilyMedDataContext.Provider value={dataValue}>
+        <FamilyMedActionsContext.Provider value={actionsValue}>
+          {children}
+        </FamilyMedActionsContext.Provider>
+      </FamilyMedDataContext.Provider>
+    </FamilyMedAuthContext.Provider>
+  );
 }
 
-export function useFamilyMed() {
-  const ctx = useContext(FamilyMedContext);
-  if (!ctx) throw new Error("useFamilyMed must be used within FamilyMedProvider");
+/** Solo dati identità/sessione: user, profilo, piano, stato di caricamento.
+ * Cambia raramente — da preferire a useFamilyMed() nei componenti che non
+ * hanno bisogno di pazienti/terapie/notifiche in tempo reale. */
+export function useFamilyMedAuth() {
+  const ctx = useContext(FamilyMedAuthContext);
+  if (!ctx) throw new Error("useFamilyMedAuth must be used within FamilyMedProvider");
   return ctx;
+}
+
+/** Solo i dati dell'app (pazienti, terapie, eventi, notifiche...). Cambia
+ * ad ogni aggiornamento realtime — usalo quando serve davvero `data`. */
+export function useFamilyMedData() {
+  const ctx = useContext(FamilyMedDataContext);
+  if (!ctx) throw new Error("useFamilyMedData must be used within FamilyMedProvider");
+  return ctx;
+}
+
+/** Solo le funzioni di azione (confirmDose, addTherapy, logout...). Il
+ * riferimento è stabile per sempre: un componente che usa solo questo hook
+ * non si ri-renderizza mai per un cambiamento di `data` o `auth`. Ideale
+ * per bottoni e form che leggono i dati da altrove (props) e si limitano a
+ * chiamare un'azione al click/submit. */
+export function useFamilyMedActions() {
+  const ctx = useContext(FamilyMedActionsContext);
+  if (!ctx) throw new Error("useFamilyMedActions must be used within FamilyMedProvider");
+  return ctx;
+}
+
+/** Hook "tutto insieme", 100% compatibile con l'uso storico: combina i tre
+ * context in un solo oggetto. Comodo per componenti che usano più fette di
+ * stato insieme, ma nota che così facendo si perde l'isolamento dei
+ * re-render — nei componenti nuovi o quando si ottimizza un componente
+ * esistente, preferire useFamilyMedAuth/useFamilyMedData/useFamilyMedActions. */
+export function useFamilyMed(): Ctx {
+  const auth = useFamilyMedAuth();
+  const data = useFamilyMedData();
+  const actions = useFamilyMedActions();
+  return useMemo(() => ({ ...auth, ...data, ...actions }), [auth, data, actions]);
 }

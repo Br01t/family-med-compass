@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Pill, AlertTriangle, Clock, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useFamilyMed } from "@/lib/store";
+import { useFamilyMedAuth } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { setRememberMe } from "@/lib/auth-storage";
 import { getUserProfile, signInUser, formatAuthError } from "@/lib/auth-service";
 import { TurnstileWidget } from "@/components/TurnstileWidget";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
@@ -25,11 +27,12 @@ const LOCKOUT_DURATION_S = 300; // 5 minuti
 const RESET_COOLDOWN_S = 60;
 
 function LoginPage() {
-  const { user, userProfile, loadingAuth } = useFamilyMed();
+  const { user, userProfile, loadingAuth } = useFamilyMedAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMeChecked, setRememberMeChecked] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
@@ -160,6 +163,7 @@ function LoginPage() {
     if (backoffSecondsLeft > 0) return;
 
     setSubmitting(true);
+    setRememberMe(rememberMeChecked);
 
     try {
       const user = await signInUser({ email, password, captchaToken });
@@ -364,6 +368,28 @@ function LoginPage() {
                 style={{ fontSize: "16px" }}
                 disabled={isBlocked}
               />
+            </div>
+
+            <div className="flex items-start gap-2.5 pt-1">
+              <Checkbox
+                id="remember-me"
+                checked={rememberMeChecked}
+                onCheckedChange={(v) => setRememberMeChecked(v === true)}
+                disabled={isBlocked}
+                className="mt-0.5"
+              />
+              <div>
+                <Label
+                  htmlFor="remember-me"
+                  className="cursor-pointer text-sm font-semibold text-stone-700"
+                >
+                  Resta connesso su questo dispositivo
+                </Label>
+                <p className="text-xs text-stone-500">
+                  Disattivala su un computer o tablet condiviso: l'accesso si chiuderà da solo non
+                  appena chiudi il browser.
+                </p>
+              </div>
             </div>
 
             <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(undefined)} />

@@ -1,0 +1,22 @@
+-- ============================================================================
+-- GRANT INSERT mancante su public.caregiver_patients per `authenticated`
+--
+-- addPatientDoc() (src/lib/supabase-service.ts) inserisce il collegamento
+-- caregiver -> paziente con una INSERT diretta. La migration 20260915083535
+-- (fix 2) ha aggiunto la policy RLS "cp: primary can self-insert", ma il
+-- privilegio di tabella INSERT non e' mai stato concesso: nello schema
+-- versionato e in produzione `authenticated` ha solo SELECT, UPDATE, DELETE.
+-- Postgres controlla i privilegi PRIMA delle policy RLS, quindi l'insert
+-- fallisce con "permission denied for table caregiver_patients" (42501)
+-- e la policy non viene nemmeno valutata.
+--
+-- Effetto: aggiungere un paziente inserisce la riga in `patients` e poi
+-- fallisce sul collegamento, lasciando un paziente senza caregiver collegato.
+--
+-- La sicurezza resta garantita dalla policy: l'insert e' consentito solo se
+-- caregiver_id = auth.uid() e l'utente e' primario di quel paziente.
+--
+-- Applicare solo dopo aver verificato il problema (vedi istruzioni in chat).
+-- ============================================================================
+
+GRANT INSERT ON TABLE public.caregiver_patients TO authenticated;

@@ -44,7 +44,7 @@ function applySecurityHeaders(response: Response): Response {
       `script-src 'self' 'unsafe-inline' ${turnstileSrc}`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
-      `connect-src 'self' ${supabaseSrc} https://api.lovable.dev ${turnstileSrc}`,
+      `connect-src 'self' ${supabaseSrc} ${turnstileSrc}`,
       "img-src 'self' blob: data: https:",
       "media-src 'self' blob:",
       "worker-src 'self'",

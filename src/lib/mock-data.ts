@@ -12,6 +12,10 @@ export type Patient = {
   userId?: string;
   ownerUserId?: string;
   primaryCaregiverId?: string | null;
+  /** Impostato da un downgrade di piano (perform_downgrade). Se presente, il
+   * paziente non va contato nel limite "pazienti" del piano corrente: è
+   * già stato sospeso, non è un paziente attivo in più. */
+  suspendedAt?: string | null;
 };
 
 

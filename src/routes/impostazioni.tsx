@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { useFamilyMed } from "@/lib/store";
+import { useFamilyMed, useFamilyMedAuth } from "@/lib/store";
 import { type Role } from "@/lib/mock-data";
 import { useFeatureToggles, type FeatureKey } from "@/lib/feature-toggles";
 import { PLAN_LIMITS } from "@/lib/subscription";
@@ -523,7 +523,7 @@ function FeatureTogglesCard() {
 }
 
 function SubscriptionCard() {
-  const { subscriptionPlan } = useFamilyMed();
+  const { subscriptionPlan } = useFamilyMedAuth();
   const plan = PLAN_LIMITS[subscriptionPlan];
 
   return (

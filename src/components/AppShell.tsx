@@ -265,7 +265,7 @@ export function AppShell({
       <div className="flex min-h-screen w-full bg-background overflow-x-hidden">
         <AppSidebar />
         <div className="flex flex-1 flex-col min-w-0 max-w-full w-full overflow-x-hidden">
-          <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-border/60 bg-background/85 px-4 backdrop-blur-md md:px-8 w-full max-w-full shrink-0">
+          <header className="sticky top-0 z-10 flex min-h-16 items-center gap-3 border-b border-border/60 bg-background/85 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md md:px-8 w-full max-w-full shrink-0">
             <SidebarTrigger className="-ml-1" />
             <div className="min-w-0 flex-1">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">

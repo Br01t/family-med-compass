@@ -11,19 +11,19 @@ import { Pill, Users, HeartPulse, Activity, FileText, Package, Smartphone } from
 // Per (ri)generare questi file: remotion/scripts/render-faq-assets.mjs
 
 import v_faq_crea_terapia from "@/assets/faq/faq-crea-terapia.mp4";
-import p_faq_crea_terapia from "@/assets/faq/faq-crea-terapia.jpg";
+import p_faq_crea_terapia from "@/assets/faq/faq-crea-terapia.webp";
 import v_faq_invita_caregiver from "@/assets/faq/faq-invita-caregiver.mp4";
-import p_faq_invita_caregiver from "@/assets/faq/faq-invita-caregiver.jpg";
+import p_faq_invita_caregiver from "@/assets/faq/faq-invita-caregiver.webp";
 import v_faq_conferma_dose from "@/assets/faq/faq-conferma-dose.mp4";
-import p_faq_conferma_dose from "@/assets/faq/faq-conferma-dose.jpg";
+import p_faq_conferma_dose from "@/assets/faq/faq-conferma-dose.webp";
 import v_faq_parametri_vitali from "@/assets/faq/faq-parametri-vitali.mp4";
-import p_faq_parametri_vitali from "@/assets/faq/faq-parametri-vitali.jpg";
+import p_faq_parametri_vitali from "@/assets/faq/faq-parametri-vitali.webp";
 import v_faq_report_pdf from "@/assets/faq/faq-report-pdf.mp4";
-import p_faq_report_pdf from "@/assets/faq/faq-report-pdf.jpg";
+import p_faq_report_pdf from "@/assets/faq/faq-report-pdf.webp";
 import v_faq_installa_app from "@/assets/faq/faq-installa-app.mp4";
-import p_faq_installa_app from "@/assets/faq/faq-installa-app.jpg";
+import p_faq_installa_app from "@/assets/faq/faq-installa-app.webp";
 import v_faq_scorte from "@/assets/faq/faq-scorte.mp4";
-import p_faq_scorte from "@/assets/faq/faq-scorte.jpg";
+import p_faq_scorte from "@/assets/faq/faq-scorte.webp";
 
 export type FaqVideo = {
   id: string;

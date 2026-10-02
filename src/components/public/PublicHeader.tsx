@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Users, ArrowRight, Menu, X } from "lucide-react";
-import { useFamilyMed } from "@/lib/store";
+import { useFamilyMedAuth } from "@/lib/store";
 
 interface PublicHeaderProps {
   currentPath?: string;
 }
 
 export function PublicHeader({ currentPath }: PublicHeaderProps) {
-  const { user, userProfile, loadingAuth } = useFamilyMed();
+  const { user, userProfile, loadingAuth } = useFamilyMedAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const appLink =
@@ -39,7 +39,7 @@ export function PublicHeader({ currentPath }: PublicHeaderProps) {
 
         {/* Nav completa: solo da sm in su */}
         <nav className="hidden sm:flex shrink-0 items-center gap-1.5 sm:gap-2.5">
-          <Link to={"/prezzi" as any} className={navLinkClass("/prezzi")}>
+          <Link to="/prezzi" className={navLinkClass("/prezzi")}>
             Prezzi
           </Link>
           <Link to="/guida-pubblica" className={navLinkClass("/guida-pubblica")}>
@@ -88,7 +88,7 @@ export function PublicHeader({ currentPath }: PublicHeaderProps) {
       {mobileOpen && (
         <nav className="sm:hidden mt-3 flex flex-col gap-1.5 rounded-3xl border border-stone-200/90 bg-white/95 p-3 shadow-md backdrop-blur-md">
           <Link
-            to={"/prezzi" as any}
+            to="/prezzi"
             onClick={() => setMobileOpen(false)}
             className={`rounded-2xl px-4 py-3 text-base font-semibold transition-colors ${
               currentPath === "/prezzi" ? "bg-emerald-900/10 text-emerald-900 font-bold" : "text-stone-700 hover:bg-stone-100"

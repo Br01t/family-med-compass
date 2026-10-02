@@ -57,6 +57,12 @@ const browser = await openBrowser("chrome", {
     chromeMode: "chrome-for-testing",
 });
 
+// NOTA: i poster usati in produzione (src/assets/faq/*.webp) sono stati
+// convertiti a mano da .jpg a .webp per ridurre il peso pagina (~-49%, vedi
+// data/faq-videos.ts). Questo script continua a produrre .jpg per non
+// modificare la pipeline Remotion senza poterla testare: se rigeneri gli
+// asset, riconverti i .jpg risultanti in .webp (es. `cwebp -q 82`) e
+// aggiorna gli import in data/faq-videos.ts prima del commit.
 async function renderOne({ id, mp4Out, jpgOut, posterFrame }) {
     const composition = await selectComposition({ serveUrl: bundled, id, puppeteerInstance: browser });
 

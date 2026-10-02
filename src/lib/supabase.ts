@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { rememberMeAuthStorage } from "./auth-storage";
 
 /**
  * ATTENZIONE — sicurezza: questo file caricava in precedenza un URL e una
@@ -33,6 +34,7 @@ const isBrowser = typeof window !== "undefined";
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
+    storage: isBrowser ? rememberMeAuthStorage() : undefined,
     persistSession: isBrowser,
     autoRefreshToken: isBrowser,
     detectSessionInUrl: isBrowser,

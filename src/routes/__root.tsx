@@ -10,7 +10,6 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { FamilyMedProvider } from "../lib/store";
 import { Toaster } from "../components/ui/sonner";
 import { InstallBanner } from "../components/InstallBanner";
@@ -48,9 +47,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   logger.error("[root] Errore SSR/render non gestito", error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -152,19 +148,12 @@ function RootComponent() {
 
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
-    // Non registrare il SW nei preview Lovable / dev / iframe: potrebbe servire
-    // HTML stale e mascherare le modifiche.
+    // Non registrare il SW in sviluppo locale o dentro un iframe: potrebbe
+    // servire HTML stale e mascherare le modifiche durante lo sviluppo.
     const host = window.location.hostname;
     const inIframe = window.self !== window.top;
-    const isPreview =
-      host.startsWith("id-preview--") ||
-      host.startsWith("preview--") ||
-      host.endsWith(".lovableproject.com") ||
-      host.endsWith(".lovableproject-dev.com") ||
-      host.endsWith(".beta.lovable.dev") ||
-      host === "localhost" ||
-      host === "127.0.0.1";
-    if (inIframe || isPreview) {
+    const isLocalDev = host === "localhost" || host === "127.0.0.1";
+    if (inIframe || isLocalDev) {
       navigator.serviceWorker.getRegistrations().then((regs) =>
         regs.forEach((r) => r.unregister()),
       );

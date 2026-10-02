@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signUpUser, formatAuthError } from "@/lib/auth-service";
 import { TurnstileWidget } from "@/components/TurnstileWidget";
-import { useFamilyMed } from "@/lib/store";
+import { useFamilyMedAuth } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { type Role } from "@/lib/mock-data";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/registrati")({
 });
 
 function RegisterPage() {
-  const { user, userProfile, loadingAuth } = useFamilyMed();
+  const { user, userProfile, loadingAuth } = useFamilyMedAuth();
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
