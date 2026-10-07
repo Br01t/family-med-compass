@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { logger } from "@/lib/logger";
+import { purgeOwnedTherapyPhotos, purgeOwnCaregiverAvatar } from "@/lib/account-storage-purge";
 
 /**
  * Card GDPR: esportazione dati (Data Portability) e cancellazione
@@ -81,82 +82,6 @@ export function AccountDataCard() {
     }
   }
 
-  /**
-   * Rimuove dal bucket Storage `therapy-photos` tutti i file delle terapie
-   * dei pazienti di cui l'utente è owner, PRIMA di cancellare le righe DB
-   * (che servono per sapere quali path cancellare, e perché la RLS del
-   * bucket autorizza la remove() solo finché il collegamento paziente/
-   * terapia esiste ancora). Senza questo passaggio, `delete_my_account()`
-   * cancella solo la riga `therapies` in Postgres: il file fisico resta
-   * nel bucket per sempre, occupando quota e restando valido per qualunque
-   * Signed URL già emesso e non ancora scaduto (vedi
-   * compliance/data-deletion-trace.md §3). Best-effort: un fallimento qui
-   * non deve mai bloccare la cancellazione dell'account.
-   */
-  async function purgeOwnedTherapyPhotos(ownerUserId: string) {
-    if (!supabase) return;
-    try {
-      const { data: patients, error: patientsError } = await supabase
-        .from("patients")
-        .select("id")
-        .or(`user_id.eq.${ownerUserId},owner_user_id.eq.${ownerUserId}`);
-      if (patientsError || !patients) return;
-
-      for (const patient of patients) {
-        const { data: therapies } = await supabase
-          .from("therapies")
-          .select("id")
-          .eq("patient_id", patient.id);
-
-        for (const therapy of therapies ?? []) {
-          // Schema attuale: therapies/{patientId}/{therapyId}/...
-          const { data: newSchemeFiles } = await supabase.storage
-            .from("therapy-photos")
-            .list(`therapies/${patient.id}/${therapy.id}`);
-          if (newSchemeFiles && newSchemeFiles.length > 0) {
-            const paths = newSchemeFiles.map(
-              (f) => `therapies/${patient.id}/${therapy.id}/${f.name}`,
-            );
-            await supabase.storage.from("therapy-photos").remove(paths);
-          }
-
-          // Schema legacy (foto caricate prima del passaggio a bucket
-          // privato): therapies/{therapyId}/... — ripulito per compatibilità.
-          const { data: legacyFiles } = await supabase.storage
-            .from("therapy-photos")
-            .list(`therapies/${therapy.id}`);
-          if (legacyFiles && legacyFiles.length > 0) {
-            const paths = legacyFiles.map((f) => `therapies/${therapy.id}/${f.name}`);
-            await supabase.storage.from("therapy-photos").remove(paths);
-          }
-        }
-      }
-    } catch (e) {
-      logger.warn("[AccountDataCard] Pulizia foto Storage fallita (non bloccante)", e);
-    }
-  }
-
-  /**
-   * Rimuove dal bucket `caregiver-avatars` l'avatar dell'utente che sta
-   * cancellando l'account — stesso motivo e stesso pattern di
-   * purgeOwnedTherapyPhotos sopra: `delete_my_account()` cancella solo la
-   * riga in `caregivers`, non il file fisico su Storage.
-   */
-  async function purgeOwnCaregiverAvatar(ownerUserId: string) {
-    if (!supabase) return;
-    try {
-      const { data: files } = await supabase.storage
-        .from("caregiver-avatars")
-        .list(`caregivers/${ownerUserId}`);
-      if (files && files.length > 0) {
-        const paths = files.map((f) => `caregivers/${ownerUserId}/${f.name}`);
-        await supabase.storage.from("caregiver-avatars").remove(paths);
-      }
-    } catch (e) {
-      logger.warn("[AccountDataCard] Pulizia avatar caregiver fallita (non bloccante)", e);
-    }
-  }
-
   async function handleDelete() {
     setDeleting(true);
     try {
@@ -166,8 +91,8 @@ export function AccountDataCard() {
         } catch {
           // best-effort
         }
-        await purgeOwnedTherapyPhotos(user.id);
-        await purgeOwnCaregiverAvatar(user.id);
+        await purgeOwnedTherapyPhotos(supabase, user.id);
+        await purgeOwnCaregiverAvatar(supabase, user.id);
         const { error } = await supabase.rpc("delete_my_account");
         if (error) {
           logger.warn("Delete account RPC warning:", error);

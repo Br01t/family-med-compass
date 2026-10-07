@@ -344,5 +344,5 @@ Postgres auth.users aggiorna l'hash della password e invalida le sessioni preced
 Dalla mappatura dei flussi si evidenziano i seguenti punti architetturali critici:
 
 1. **Flusso 5 (Foto Terapia):** Il caricamento è separato dal database (Storage). Se la foto viene caricata ma l'INSERT della terapia fallisce, il file rimane orfano. Inoltre, l'attuale policy di lettura storage è aperta al ruolo `anon`.
-2. **Flusso 9 (Export GDPR):** Le tabelle `vital_signs`, `wellness_notes` e `patient_medical_profiles` devono essere integrate all'interno della RPC `export_my_data()`.
+2. ~~**Flusso 9 (Export GDPR):** integrare `vital_signs`, `wellness_notes` e `patient_medical_profiles` in `export_my_data()`~~ — **RISOLTO** (migration `20261003000000_complete_gdpr_export.sql`).
 3. **Flusso 10 (Cancellazione Account):** La RPC cancella i metadati in Postgres, ma i file immagine presenti nel bucket Supabase Storage non vengono eliminati via trigger SQL (lo storage non supporta FK CASCADE da database relazionale verso storage objects). Deve essere predisposto un hook o una edge function di pulizia storage.

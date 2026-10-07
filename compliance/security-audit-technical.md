@@ -19,7 +19,7 @@ esplicitamente dove serve.
 | 5 | Rate limiting/lockout di login sono **solo client-side** (stato React in memoria) — bypassabili ricaricando la pagina o chiamando l'API Supabase direttamente | 🟡 **Media** | §2.6 |
 | 6 | CSP con `script-src 'unsafe-inline'` + token di sessione in `localStorage` → un XSS diventerebbe furto di sessione completo | 🟡 **Media** | §2.7 |
 | 7 | Config Auth di Supabase (MFA obbligatoria, policy password, rate limit server-side, leaked-password protection) non è in `supabase/config.toml` → non verificabile da codice, solo da Dashboard | 🔵 Info | §2.8 |
-| 8 | Tutto il resto (16/16 tabelle con RLS attiva, isolamento "User A → Patient B", differenziazione primario/secondario per terapie ed eventi, note cliniche cifrate con controllo autorizzazione anche nella funzione di decrypt, funzioni GDPR scoping corretto per `auth.uid()`, feature-gating vitali enforced anche lato DB) | ✅ Pass | §3, §5 |
+| 8 | Tutto il resto (16/16 tabelle con RLS attiva, isolamento "User A → Patient B", differenziazione primario/secondario per terapie ed eventi, funzioni `encrypt_therapy_note()`/`decrypt_therapy_note()` predisposte con controllo autorizzazione (la cifratura delle note NON è attiva nell'app: le note restano in chiaro in `notes`, protette da RLS), funzioni GDPR scoping corretto per `auth.uid()`, feature-gating vitali enforced anche lato DB) | ✅ Pass | §3, §5 |
 
 ---
 

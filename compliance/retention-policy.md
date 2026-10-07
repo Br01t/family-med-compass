@@ -29,7 +29,7 @@ In FamilyMed la retention **non è affidata a promesse manuali**, ma è **ingegn
 | **Pazienti & Anagrafica** | `patients`, `patient_medical_profiles` | Tutta la durata dell'account dell'Owner | CASCADE delete alla cancellazione dell'utente | Gestione continuativa della persona assistita |
 | **Terapie Attive** | `therapies` | Tutta la durata della cura | Eliminazione manuale o CASCADE delete | Esecuzione del piano terapeutico |
 | **Dosi & Eventi Assunzione (Pro/Max)** | `events` | **180 giorni (circa 6 mesi)** | Cron `events-cleanup-daily` (alle 04:00) | Monitoraggio aderenza semestrale per visite mediche |
-| **Dosi & Eventi Assunzione (Free)** | `events` | **30 giorni** (accesso UI limitato a 7 giorni) | Cron `free-events-cleanup-daily` (alle 03:16) | Limitazione contrattuale e risparmio storage |
+| **Dosi & Eventi Assunzione (Free)** | `events` | **35 giorni** (accesso UI limitato a 7 giorni; 35 e non 30 perché il rollup mensile dell'aderenza, che gira il giorno 2, deve poter leggere tutto il mese precedente) | Cron `free-events-cleanup-daily` (alle 03:16) | Limitazione contrattuale e risparmio storage |
 | **Notifiche di Sistema** | `notifications` | **30 giorni** | Cron `notifications-cleanup-daily` (alle 03:00) | Notifiche effimere non più rilevanti dopo 1 mese |
 | **Parametri Vitali (Ad alta risoluzione)** | `vital_signs` | **90 giorni** | Cron `cleanup_vital_signs()` (alle 03:45) | Dettaglio orario completo per il trimestre recente |
 | **Parametri Vitali (Storico sintetico)** | `vital_signs` | **24 mesi (Pro) / 60 mesi (Max)** con downsampling a 1/giorno oltre 90gg | Cron `cleanup_vital_signs()` | Trend cronico a lungo termine senza sovraccaricare il DB |
@@ -68,9 +68,9 @@ SELECT cron.schedule('downgrade-suspended-caregivers-cleanup', '14 3 * * *',
   $$ DELETE FROM public.caregiver_patients WHERE suspended_at IS NOT NULL AND suspended_at < now() - interval '30 days'; $$
 );
 
--- 5. Cleanup eventi utenti Free oltre i 30 giorni
+-- 5. Cleanup eventi utenti Free oltre i 35 giorni
 SELECT cron.schedule('free-events-cleanup-daily', '16 3 * * *',
-  $$ DELETE FROM public.events WHERE scheduled_at < now() - interval '30 days' AND public.get_patient_owner_plan(patient_id) = 'free'; $$
+  $$ DELETE FROM public.events WHERE scheduled_at < now() - interval '35 days' AND public.get_patient_owner_plan(patient_id) = 'free'; $$
 );
 
 -- 6. Pulizia log di audit oltre 90 giorni

@@ -54,6 +54,14 @@ export async function createAndAuthenticateUser(
 
   const userId = created.user.id;
 
+  // Se nel DB esiste il trigger on_auth_user_created (come online), per il ruolo
+  // "paziente" crea in automatico un paziente `p_<id>`. Qui ogni scenario di test
+  // crea i propri pazienti, quindi lo rimuoviamo per non falsare i limiti di piano.
+  // (Senza trigger questa delete non fa nulla.)
+  if (role === "paziente") {
+    await admin.from("patients").delete().eq("user_id", userId);
+  }
+
   // 3. Inserimento profilo e ruolo nel DB
   await admin.from("profiles").upsert({
     id: userId,

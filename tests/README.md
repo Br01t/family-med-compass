@@ -32,6 +32,12 @@ Verifica:
    - Resistenza a SQL Injection e XSS Stored.
 5. **GDPR Export & Oblio (`05_gdpr_export_deletion.test.ts`):** Esportazione completa JSON dei dati sanitari; cancellazione definitiva dell'account e pulizia dei file storage; riservatezza dell'audit log (nessuna fuga di eventi GDPR di altri utenti).
 6. **Concorrenza & Limiti di Piano (`06_concurrency_and_limits.test.ts`):** Tentativo di doppio clic simultaneo sulla stessa dose; trigger Postgres che impedisce a un utente Free di inserire un secondo paziente o una quarta terapia bypassando l'interfaccia.
+7. **Piani, Downgrade, Retention, Cifratura (`07_subscription_tiers_and_downgrade.test.ts`):** limiti pazienti/terapie/caregiver per Free, Pro e Max; `perform_downgrade` (sospensione senza perdita dati e ripristino all'upgrade); impossibilità di auto-upgrade del piano dal client; finestra storico dosi (7 giorni Free, illimitata Pro/Max); cifratura `notes_enc`. Richiede il secret `therapy_notes_key` nel Vault locale.
+8. **Export GDPR completo (`08_gdpr_export_completeness.test.ts`):** `export_my_data()` include profili medici, parametri vitali, note di benessere e aderenza; un estraneo non vede nulla.
+9. **Inviti famiglia (`09_family_invites_lifecycle.test.ts`):** monouso, scadenza, tetto `max_uses`, ruoli, permessi di creazione/lettura e manomissione della tabella.
+10. **Notifiche e scorte (`10_isolation_notifications_stock.test.ts`):** isolamento tra famiglie, anti-spoofing delle notifiche, scorte modificabili solo dal primario.
+11. **Cancellazione account e Storage (`11_account_deletion_storage.test.ts`):** foto e avatar rimossi prima di `delete_my_account`; un caregiver collegato non cancella le foto della famiglia.
+12. **Scheduler delle dosi (`12_dose_scheduler.test.ts`):** generazione all'ora di Roma, ricorrenze, terapie escluse, auto-missed con timeout minimo di 30 minuti, promemoria prima/all'ora/dopo senza duplicati. Ogni test gira in una transazione annullata (nessun dato resta nel DB).
 
 ### C. Test E2E nel Browser con Playwright
 ```bash

@@ -37,6 +37,12 @@ function applySecurityHeaders(response: Response): Response {
   // - frame-ancestors 'none': impedisce embedding in iframe (anti-clickjacking)
   const supabaseSrc = "https://*.supabase.co wss://*.supabase.co";
   const turnstileSrc = "https://challenges.cloudflare.com";
+  // SOLO in sviluppo (npm run dev): permette il Supabase locale (`supabase start`).
+  // In produzione import.meta.env.DEV è false: la CSP resta limitata a *.supabase.co.
+  // @ts-ignore -- import.meta.env non è tipizzato in tutti i target di build
+  const devSupabaseSrc = import.meta.env.DEV
+    ? "http://127.0.0.1:54321 ws://127.0.0.1:54321 http://localhost:54321 ws://localhost:54321"
+    : "";
   headers.set(
     "Content-Security-Policy",
     [
@@ -44,7 +50,7 @@ function applySecurityHeaders(response: Response): Response {
       `script-src 'self' 'unsafe-inline' ${turnstileSrc}`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
-      `connect-src 'self' ${supabaseSrc} ${turnstileSrc}`,
+      `connect-src 'self' ${supabaseSrc} ${devSupabaseSrc} ${turnstileSrc}`,
       "img-src 'self' blob: data: https:",
       "media-src 'self' blob:",
       "worker-src 'self'",

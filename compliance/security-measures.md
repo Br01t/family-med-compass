@@ -23,7 +23,7 @@ Dovendo FamilyMed trattare **dati particolari relativi alla salute (Art. 9 GDPR)
 
 ### 2.2 Crittografia a Riposo (Encryption at Rest)
 - **Cifratura Storage & Volumi:** Tutti i dischi di database (AWS EBS) e gli storage bucket di Supabase sono cifrati a riposo con algoritmo standard **AES-256**.
-- **Cifratura a Livello di Colonna (Column-Level Encryption):** Nel database è predisposta la funzione `encrypt_therapy_note()` e `decrypt_therapy_note()` che sfrutta l'estensione crittografica `pgcrypto` e la gestione chiavi di **Supabase Vault** per consentire la cifratura simmetrica a 256 bit delle note cliniche più sensibili (`notes_enc`).
+- **Cifratura a Livello di Colonna (Column-Level Encryption) — NON ATTIVA:** Nel database sono predisposte le funzioni `encrypt_therapy_note()` e `decrypt_therapy_note()` (estensione `pgcrypto`, chiavi in **Supabase Vault**), ma l'applicazione **non le utilizza**: le note cliniche sono salvate in chiaro nella colonna `notes` e protette da RLS e dalla cifratura a riposo AES-256 del fornitore. Scelta consapevole: la cifratura a livello di campo non è obbligatoria per l'art. 32 GDPR; potrà essere attivata in futuro come misura aggiuntiva.
 
 ### 2.3 Controllo degli Accessi Logici: Row Level Security (RLS)
 La sicurezza applicativa di FamilyMed è incapsulata direttamente nel motore di PostgreSQL. Tutte le 15 tabelle del database hanno la modalità **ROW LEVEL SECURITY (RLS) abilitata**.

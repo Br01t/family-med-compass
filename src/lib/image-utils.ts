@@ -1,5 +1,5 @@
-// Legge un File immagine, lo ridimensiona a max 800px lato lungo e restituisce
-// una dataURL JPEG compressa — così le foto dei farmaci restano < ~150 KB
+// Legge un File immagine, lo ridimensiona a max 600px lato lungo e restituisce
+// una dataURL JPEG compressa — così le foto dei farmaci restano < ~70 KB
 // e non saturano il localStorage.
 //
 // SICUREZZA — perché il controllo dei "magic bytes" (§ isLikelyRasterImage)
@@ -31,8 +31,8 @@ async function isLikelyRasterImage(file: File): Promise<boolean> {
 
 export async function fileToCompressedDataUrl(
   file: File,
-  maxSize = 800,
-  quality = 0.82,
+  maxSize = 600,
+  quality = 0.7,
 ): Promise<string> {
   if (!file.type.startsWith("image/")) {
     throw new Error("Il file deve essere un'immagine");
