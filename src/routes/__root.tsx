@@ -20,7 +20,7 @@ import { MaintenancePage } from "../components/MaintenancePage";
 import { logger } from "@/lib/logger";
 
 // 🔒 MODALITÀ MANUTENZIONE — metti a false per riattivare il sito
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 function NotFoundComponent() {
   return (

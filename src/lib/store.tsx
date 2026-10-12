@@ -1144,27 +1144,32 @@ export function FamilyMedProvider({ children }: { children: ReactNode }) {
 
   const updateSubscriptionPlan = useCallback(
     async (newPlan: SubscriptionPlan) => {
+      // Il piano NON si scrive più dal client: le colonne di abbonamento sono bloccate dal DB
+      // (migration 20261002010000). Il downgrade lo applica perform_downgrade (funzione sul DB),
+      // l'upgrade lo applicherà il server dopo il pagamento. Qui si rilegge solo il piano REALE
+      // dal DB e si aggiorna lo stato locale: nessun aggiornamento "ottimistico" che mostri
+      // funzioni non ancora sbloccate.
+      if (user && supabase) {
+        const { data: row, error } = await supabase
+          .from("profiles")
+          .select("subscription_plan")
+          .eq("id", user.id)
+          .single();
+        if (error) {
+          logger.error("Errore nella lettura del piano di abbonamento:", error.message);
+          throw error;
+        }
+        if (userProfile) {
+          invalidateUserProfileCache(userProfile.uid);
+          const real = (row?.subscription_plan ?? "free") as SubscriptionPlan;
+          setUserProfile((prev) => (prev ? { ...prev, subscriptionPlan: real } : null));
+        }
+        return;
+      }
+      // Modalità locale/demo (senza Supabase): nessun DB da interrogare
       if (userProfile) {
         setUserProfile((prev) => (prev ? { ...prev, subscriptionPlan: newPlan } : null));
         invalidateUserProfileCache(userProfile.uid);
-      }
-      if (user && supabase) {
-        // Scriviamo subscription_plan_own (quanto l'utente ha DAVVERO
-        // comprato), NON subscription_plan direttamente: quest'ultimo è il
-        // piano EFFETTIVO, tenuto sincronizzato da un trigger DB che tiene
-        // conto anche delle famiglie di cui l'utente fa parte come membro
-        // invitato — sovrascriverlo qui lo disallineerebbe subito dopo il
-        // prossimo evento di sync. Il trigger su subscription_plan_own si
-        // occupa anche di propagare l'upgrade a tutti i caregiver/pazienti
-        // che questo utente ha invitato (come Spotify Family).
-        const { error } = await supabase
-          .from("profiles")
-          .update({ subscription_plan_own: newPlan })
-          .eq("id", user.id);
-        if (error) {
-          logger.error("Errore nell'aggiornamento del piano di abbonamento:", error.message);
-          throw error;
-        }
       }
     },
     [user, userProfile],

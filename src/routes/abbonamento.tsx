@@ -17,7 +17,7 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useFamilyMed } from "@/lib/store";
-import { PLAN_LIMITS, formatPrice, type SubscriptionPlan } from "@/lib/subscription";
+import { PAYMENTS_ENABLED, PLAN_LIMITS, formatPrice, type SubscriptionPlan } from "@/lib/subscription";
 import { toast } from "sonner";
 import { DowngradeConfirmDialog } from "@/components/DowngradeConfirmDialog";
 import {
@@ -66,7 +66,15 @@ function AbbonamentoPage() {
       return;
     }
 
-    // Altrimenti è un UPGRADE (o cambio su stesso livello)
+    // Altrimenti è un UPGRADE (o cambio su stesso livello).
+    // Finché non esiste il pagamento lato server il piano non si può acquistare: lo diciamo
+    // chiaramente invece di far fallire la richiesta (il DB rifiuta le scritture dal client).
+    if (!PAYMENTS_ENABLED) {
+      toast.info("Pagamenti in arrivo", {
+        description: `Il passaggio al piano ${PLAN_LIMITS[plan].name} sarà disponibile a breve. Per ora il tuo piano resta invariato.`,
+      });
+      return;
+    }
     setUpdating(true);
     try {
       await updateSubscriptionPlan(plan);

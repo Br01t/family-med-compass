@@ -30,12 +30,12 @@ In FamilyMed la retention **non è affidata a promesse manuali**, ma è **ingegn
 | **Terapie Attive** | `therapies` | Tutta la durata della cura | Eliminazione manuale o CASCADE delete | Esecuzione del piano terapeutico |
 | **Dosi & Eventi Assunzione (Pro/Max)** | `events` | **180 giorni (circa 6 mesi)** | Cron `events-cleanup-daily` (alle 04:00) | Monitoraggio aderenza semestrale per visite mediche |
 | **Dosi & Eventi Assunzione (Free)** | `events` | **35 giorni** (accesso UI limitato a 7 giorni; 35 e non 30 perché il rollup mensile dell'aderenza, che gira il giorno 2, deve poter leggere tutto il mese precedente) | Cron `free-events-cleanup-daily` (alle 03:16) | Limitazione contrattuale e risparmio storage |
-| **Notifiche di Sistema** | `notifications` | **30 giorni** | Cron `notifications-cleanup-daily` (alle 03:00) | Notifiche effimere non più rilevanti dopo 1 mese |
+| **Notifiche di Sistema** | `notifications` | **14 giorni** | Cron `notifications-cleanup-daily` (alle 03:00) | Promemoria effimeri non più rilevanti dopo 2 settimane (l'app ne mostra comunque al massimo 100) |
 | **Parametri Vitali (Ad alta risoluzione)** | `vital_signs` | **90 giorni** | Cron `cleanup_vital_signs()` (alle 03:45) | Dettaglio orario completo per il trimestre recente |
 | **Parametri Vitali (Storico sintetico)** | `vital_signs` | **24 mesi (Pro) / 60 mesi (Max)** con downsampling a 1/giorno oltre 90gg | Cron `cleanup_vital_signs()` | Trend cronico a lungo termine senza sovraccaricare il DB |
 | **Note Cliniche / Sintomi** | `wellness_notes` | **24 mesi** | Cron `wellness-notes-cleanup-daily` (alle 03:40) | Diario dei sintomi per il medico curante |
 | **Riepilogo Aderenza Mensile** | `adherence_monthly` | **Senza scadenza (Cumulativo aggregato)** | Calcolato da `rollup_adherence_monthly()` | Statistica aggregata non dettagliata (percentuale % mensile) |
-| **Log di Audit e Sicurezza** | `audit_log` | **90 giorni** | Cron `audit-log-cleanup-daily` (alle 03:35) | Verifica accessi e modifiche di sicurezza (Art. 32) |
+| **Log di Audit e Sicurezza** | `audit_log` | **90 giorni** | Cron `audit-log-cleanup-daily` (alle 03:35) | Verifica accessi e modifiche di sicurezza (Art. 32). Le variazioni di stato delle dosi sono registrate solo per i pazienti con piano Max (registro attività); chi conferma una dose resta in `events.confirmed_by` |
 | **Movimenti di Scorta** | `stock_movements` | **24 mesi** | Cron `stock-movements-cleanup-daily` (alle 03:50) | Ledger di consumo/rifornimento; storico oltre 24 mesi non necessario, tabella a crescita costante da tenere sotto controllo sul piano free (500 MB totali) |
 | **Dati Sospesi da Downgrade** | `patients`, `therapies`, `caregiver_patients` (`suspended_at IS NOT NULL`) | **30 giorni (Finestra di ripensamento)** | Cron `downgrade-suspended-*-cleanup` (03:10, 03:12, 03:14) | Consente all'utente di fare re-upgrade e recuperare i dati |
 | **Codici Invito Famiglia** | `family_invites` | **7 giorni** dalla generazione | Check logico (`expires_at < now()`) e pulizia | Prevenzione uso improprio di vecchi inviti |
@@ -48,9 +48,9 @@ In FamilyMed la retention **non è affidata a promesse manuali**, ma è **ingegn
 Tutti i job di pulizia automatica vengono eseguiti nella finestra oraria notturna a basso traffico (tra le 03:00 e le 04:30 UTC/Europe Time), distribuiti a intervalli di pochi minuti per non saturare la memoria e l'I/O del database:
 
 ```sql
--- 1. Eliminazione notifiche vecchie di 30 giorni
+-- 1. Eliminazione notifiche vecchie di 14 giorni
 SELECT cron.schedule('notifications-cleanup-daily', '0 3 * * *',
-  $$ DELETE FROM public.notifications WHERE created_at < now() - interval '30 days'; $$
+  $$ DELETE FROM public.notifications WHERE created_at < now() - interval '14 days'; $$
 );
 
 -- 2. Cleanup pazienti sospesi da downgrade da > 30 giorni

@@ -22,6 +22,15 @@ export interface PlanLimits {
   gdprExport: boolean; // Sempre true
 }
 
+/**
+ * Il passaggio a un piano superiore richiede un pagamento verificato LATO SERVER
+ * (webhook del provider che scrive profiles.subscription_plan_own con la chiave di servizio):
+ * il client non può più scrivere il piano (migration 20261002010000_lock_subscription_columns).
+ * Metti `true` solo quando quel flusso esiste: fino ad allora l'upgrade mostra
+ * "Pagamenti in arrivo" invece di fallire.
+ */
+export const PAYMENTS_ENABLED = false;
+
 export const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
   free: {
     name: "Free",
