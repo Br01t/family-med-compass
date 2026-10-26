@@ -30,8 +30,8 @@ function applySecurityHeaders(response: Response): Response {
   // Content-Security-Policy
   // - default-src 'self': tutto da stesso dominio per default
   // - script-src 'unsafe-inline': necessario per TanStack Start (inline hydration script)
-  // - style-src: permette Google Fonts e inline styles (Tailwind)
-  // - font-src: Google Fonts CDN
+  // - style-src: inline styles (Tailwind); nessun CSS esterno
+  // - font-src: font ospitati in proprio (public/fonts), nessuna richiesta a Google
   // - connect-src: Supabase API REST + WebSocket realtime
   // - img-src: 'self' + blob (foto upload) + data (icone base64) + https (avatar remoti)
   // - frame-ancestors 'none': impedisce embedding in iframe (anti-clickjacking)
@@ -48,8 +48,8 @@ function applySecurityHeaders(response: Response): Response {
     [
       "default-src 'self'",
       `script-src 'self' 'unsafe-inline' ${turnstileSrc}`,
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com data:",
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self' data:",
       `connect-src 'self' ${supabaseSrc} ${devSupabaseSrc} ${turnstileSrc}`,
       "img-src 'self' blob: data: https:",
       "media-src 'self' blob:",

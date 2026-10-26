@@ -39,6 +39,7 @@ Verifica:
 11. **Cancellazione account e Storage (`11_account_deletion_storage.test.ts`):** foto e avatar rimossi prima di `delete_my_account`; un caregiver collegato non cancella le foto della famiglia.
 12. **Scheduler delle dosi (`12_dose_scheduler.test.ts`):** generazione all'ora di Roma, ricorrenze, terapie escluse, auto-missed con timeout minimo di 30 minuti, promemoria prima/all'ora/dopo senza duplicati. Ogni test gira in una transazione annullata (nessun dato resta nel DB).
 13. **Impronta sul database (`13_storage_footprint.test.ts`):** audit delle dosi solo per il piano Max, audit delle terapie per tutti, notifiche eliminate dopo 14 giorni.
+14. **Igiene sicurezza (`14_security_hygiene.test.ts`):** sul database reale: RLS attiva su ogni tabella, `search_path` su ogni funzione privilegiata, nessuna funzione privilegiata eseguibile da utenti non autenticati, nessuna scrittura per `anon`, bucket di Storage tutti privati.
 
 ### C. Test E2E nel Browser con Playwright
 ```bash
@@ -69,3 +70,4 @@ npx supabase stop
 - **E2E con utente connesso (`tests/e2e/authenticated_flows.spec.ts`, helper in `tests/e2e/helpers.ts`):** accesso (corretto/errato), aggiunta terapia (Pro), blocco della 4ª terapia (Free), caregiver secondario senza pulsante "aggiungi", conferma di una dose mancata, generazione di un codice invito. Usano gli utenti di `supabase/seed.sql` sul Supabase LOCALE; ogni richiesta verso `*.supabase.co` viene bloccata. Prima: `npx supabase db reset`.
 - **Abbonamento (`tests/e2e/subscription_flows.spec.ts`):** upgrade senza pagamenti (messaggio chiaro, piano invariato) e downgrade Pro -> Free dall'interfaccia su un utente temporaneo.
 - **Reset password (`tests/e2e/reset_password.spec.ts`):** richiesta dal login, email letta da Mailpit, link monouso, nuova password, accesso; email inesistente non rivela nulla. Richiede `supabase/config.toml` con `localhost:5173` consentito (poi `npx supabase stop` e `start`).
+- **Privacy (`tests/e2e/privacy_third_party.spec.ts`):** landing, login e area riservata non contattano servizi di terzi (font, analytics, CDN): solo l'app e il Supabase locale.
